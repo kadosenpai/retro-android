@@ -124,7 +124,7 @@ class AppModel(private val app: Application) {
         }
     }
 
-    fun setSpeed(s: Float) {
+    fun changeSpeed(s: Float) {
         speed = s
         EmulatorEngine.speed = s
     }

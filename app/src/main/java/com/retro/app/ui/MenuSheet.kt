@@ -86,7 +86,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
 
             SectionTitle("Tốc độ game")
             GroupCard {
-                ChipRow(SPEEDS, model.speed, { speedLabel(it) }, { model.setSpeed(it) })
+                ChipRow(SPEEDS, model.speed, { speedLabel(it) }, { model.changeSpeed(it) })
             }
 
             SettingsGroups(model.settings, { model.update(it) }, inGame = true)
