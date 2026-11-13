@@ -9,9 +9,6 @@ enum class ScaleMode(val label: String) {
 
 enum class FilterMode(val label: String, val code: Float) {
     SHARP("Thô", 0f),
-    CRISP("Nét", 2f),
-    SMOOTH("Mịn", 1f),
-    LCD("LCD", 3f),
     CRT("CRT", 4f),
 }
 

@@ -197,7 +197,7 @@ object EmulatorEngine {
         try {
             val minBuf = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
             val frameBytes = (rate / 60) * 4
-            val size = max(minBuf, frameBytes * 3)
+            val size = max(minBuf, frameBytes * 8)
             val t = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
@@ -282,18 +282,15 @@ object EmulatorEngine {
             val n = NativeCore.nativeDrainAudio(audioBuf)
             val t = track
             if (t != null && n > 0) {
-                t.write(audioBuf, 0, n * 2) // chặn khi bộ đệm đầy => giữ nhịp
-            } else {
-                nextNs += (1_000_000_000.0 / (av[0].coerceAtLeast(1.0) * speed)).toLong()
-                val d = nextNs - System.nanoTime()
-                if (d > 0) {
-                    try {
-                        Thread.sleep(d / 1_000_000, (d % 1_000_000).toInt())
-                    } catch (_: InterruptedException) {
-                    }
-                } else if (d < -100_000_000L) {
-                    nextNs = System.nanoTime()
-                }
+                // Không chặn: nhịp game do đồng hồ thời gian thực quyết định; âm thanh chỉ được đẩy vào bộ đệm.
+                t.write(audioBuf, 0, n * 2, AudioTrack.WRITE_NON_BLOCKING)
+            }
+            nextNs += (1_000_000_000.0 / (av[0].coerceAtLeast(1.0) * speed)).toLong()
+            val d = nextNs - System.nanoTime()
+            if (d > 0) {
+                java.util.concurrent.locks.LockSupport.parkNanos(d)
+            } else if (d < -100_000_000L) {
+                nextNs = System.nanoTime()
             }
 
             frames++
