@@ -1,0 +1,56 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mgba_ref:
+        description: "Nhánh/tag/commit của mGBA (mặc định master)"
+        required: false
+        default: "master"
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NDK_VERSION: "27.1.12297006"
+      MGBA_REF: ${{ github.event.inputs.mgba_ref || 'master' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Cài SDK/NDK/CMake
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          sudo apt-get update -y && sudo apt-get install -y ninja-build
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Build lõi mGBA cho Android
+        run: ./scripts/build-mgba-android.sh
+
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleRelease
+
+      - name: Đổi tên APK
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/*.apk out/Retro.apk
+          cp app/src/main/mgba-commit.txt out/mgba-commit.txt || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Retro-apk
+          path: out/
+          if-no-files-found: error

@@ -1,0 +1,10 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+/captures
+.cxx/
+# Lõi mGBA được build trong CI (scripts/build-mgba-android.sh), không commit
+app/src/main/jniLibs/
+.mgba-src/
