@@ -31,7 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
@@ -353,7 +353,8 @@ fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
  */
 @Composable
 fun Modifier.sheetMaxHeight(): Modifier {
-    val screenH = LocalConfiguration.current.screenHeightDp.dp
-    val top = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
-    return this.heightIn(max = screenH - top)
+    val density = LocalDensity.current
+    val winH = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val top = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
+    return this.heightIn(max = winH - top)
 }

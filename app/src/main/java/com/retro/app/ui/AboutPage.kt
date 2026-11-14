@@ -69,8 +69,8 @@ fun AboutPage(onBack: () -> Unit) {
             fontSize = 14.sp,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
         )
-        ActionRow("Mã nguồn mGBA") { open(MGBA_URL) }
-        ActionRow("Nội dung giấy phép MPL 2.0") { open(MPL_URL) }
+        ActionRow("Mã nguồn mGBA", chevron = true) { open(MGBA_URL) }
+        ActionRow("Nội dung giấy phép MPL 2.0", chevron = true) { open(MPL_URL) }
     }
     GroupCard(Modifier.padding(top = 12.dp)) {
         Text(
@@ -80,7 +80,7 @@ fun AboutPage(onBack: () -> Unit) {
             fontSize = 14.sp,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
         )
-        ActionRow("libretro-thumbnails") { open(THUMBS_URL) }
+        ActionRow("libretro-thumbnails", chevron = true) { open(THUMBS_URL) }
     }
     GroupCard(Modifier.padding(top = 12.dp)) {
         Text(

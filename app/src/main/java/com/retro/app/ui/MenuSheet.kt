@@ -130,7 +130,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                             subtitle = "Chạm một lần để giữ, chạm lần nữa để nhả",
                         ) { v -> model.update { it.copy(sticky = v) } }
                         RowDivider()
-                        ActionRow("Chỉnh vị trí & kích thước nút ảo", icon = "move", chevron = true) {
+                        ActionRow("Chỉnh nút ảo", icon = "move", subtitle = "Vị trí và kích thước", chevron = true) {
                             onClose()
                             model.editingLayout = true
                         }

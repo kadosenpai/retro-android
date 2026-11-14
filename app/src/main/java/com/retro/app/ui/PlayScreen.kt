@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -191,7 +192,7 @@ private fun GameSurface(model: AppModel, modifier: Modifier) {
 }
 
 
-/** Bảng chỉnh bố cục (giống web): tiêu đề, gợi ý, thanh trượt kích thước nút đang chọn, Mặc định / Xong. */
+/** Bảng chỉnh bố cục gọn: tiêu đề + nút Mặc định/Xong cùng hàng, gợi ý một dòng, thanh trượt kích thước. */
 @Composable
 private fun LayoutEditBar(
     landscape: Boolean,
@@ -202,30 +203,86 @@ private fun LayoutEditBar(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(24.dp)
     val current = if (selected != null) layout.scaleOf(selected) else 1f
+    if (landscape) {
+        // Màn ngang thấp: gộp thành một hàng mỏng để không che các nút đang chỉnh.
+        Row(
+            modifier
+                .padding(horizontal = 12.dp)
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(26.dp))
+                .background(Rc.Solid.copy(alpha = 0.94f))
+                .border(androidx.compose.foundation.BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(26.dp))
+                .padding(start = 18.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.width(150.dp)) {
+                Text("Chỉnh nút ảo", color = Rc.Text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text(
+                    if (selected == null) "Chạm một nút để chọn" else "${selected.label} · %.1f×".format(current),
+                    color = Rc.Muted,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                )
+            }
+            Slider(
+                value = current,
+                onValueChange = { v -> if (selected != null) onScale(selected, v - current) },
+                valueRange = PadLayout.MIN_SCALE..PadLayout.MAX_SCALE,
+                steps = 14,
+                enabled = selected != null,
+                modifier = Modifier.weight(1f).height(36.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = Color.White,
+                    activeTrackColor = Color.White,
+                    inactiveTrackColor = Rc.GlassStrong,
+                    activeTickColor = Color.Transparent,
+                    inactiveTickColor = Color.Transparent,
+                    disabledThumbColor = Rc.Faint,
+                    disabledActiveTrackColor = Rc.Faint,
+                    disabledInactiveTrackColor = Rc.GlassStrong,
+                    disabledActiveTickColor = Color.Transparent,
+                    disabledInactiveTickColor = Color.Transparent,
+                ),
+            )
+            Spacer(Modifier.width(10.dp))
+            PillButton("Mặc định", primary = false, onClick = onReset, modifier = Modifier.heightIn(min = 40.dp))
+            Spacer(Modifier.width(8.dp))
+            PillButton("Xong", onClick = onDone, modifier = Modifier.heightIn(min = 40.dp))
+        }
+        return
+    }
     Column(
         modifier
             .padding(horizontal = 12.dp)
-            .widthIn(max = 560.dp)
+            .widthIn(max = 520.dp)
             .fillMaxWidth()
             .clip(shape)
             .background(Rc.Solid.copy(alpha = 0.94f))
             .border(androidx.compose.foundation.BorderStroke(1.dp, Rc.Stroke), shape)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(start = 18.dp, end = 12.dp, top = 10.dp, bottom = 4.dp),
     ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (landscape) "Chỉnh nút ảo (ngang)" else "Chỉnh nút ảo (dọc)",
+                color = Rc.Text,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            PillButton("Mặc định", primary = false, onClick = onReset, modifier = Modifier.heightIn(min = 40.dp))
+            Spacer(Modifier.width(8.dp))
+            PillButton("Xong", onClick = onDone, modifier = Modifier.heightIn(min = 40.dp))
+        }
         Text(
-            if (landscape) "Chỉnh nút ảo · màn hình ngang" else "Chỉnh nút ảo · màn hình dọc",
-            color = Rc.Text,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.ExtraBold,
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            if (selected == null) "Chạm vào một nút để chọn, rồi kéo để di chuyển."
-            else "${selected.label} · %.1f× — kéo nút để di chuyển, kéo thanh trượt để đổi kích thước.".format(current),
+            if (selected == null) "Chạm một nút để chọn, kéo để di chuyển."
+            else "${selected.label} · %.1f×".format(current),
             color = Rc.Muted,
-            fontSize = 15.sp,
+            fontSize = 14.sp,
+            maxLines = 1,
         )
         Slider(
             value = current,
@@ -233,6 +290,7 @@ private fun LayoutEditBar(
             valueRange = PadLayout.MIN_SCALE..PadLayout.MAX_SCALE,
             steps = 14,
             enabled = selected != null,
+            modifier = Modifier.height(36.dp),
             colors = SliderDefaults.colors(
                 thumbColor = Color.White,
                 activeTrackColor = Color.White,
@@ -246,14 +304,5 @@ private fun LayoutEditBar(
                 disabledInactiveTickColor = Color.Transparent,
             ),
         )
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PillButton("Mặc định", primary = false, onClick = onReset)
-            Spacer(Modifier.width(10.dp))
-            PillButton("Xong", onClick = onDone)
-        }
     }
 }
