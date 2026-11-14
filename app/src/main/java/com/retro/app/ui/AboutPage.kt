@@ -83,7 +83,7 @@ fun AboutPage(onBack: () -> Unit) {
     GroupCard(Modifier.padding(top = 12.dp)) {
         Text(
             "Ảnh bìa lấy từ kho libretro-thumbnails và cơ sở dữ liệu libretro-database (do cộng đồng libretro duy trì). " +
-                "Thành phần giao diện dùng AndroidX / Jetpack Compose (Apache License 2.0).",
+                "Thành phần giao diện dùng AndroidX / Jetpack Compose (Apache License 2.0). Phông chữ Inter (SIL Open Font License 1.1), biểu tượng theo bộ Lucide (ISC).",
             color = Rc.Muted,
             fontSize = 14.sp,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),

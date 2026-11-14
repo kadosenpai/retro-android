@@ -122,7 +122,7 @@ fun LibraryScreen(model: AppModel) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Rc.Bg)
+            .retroBackground()
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         // Thanh tiêu đề
@@ -249,7 +249,11 @@ fun LibraryScreen(model: AppModel) {
             sheetState = state,
             containerColor = Rc.Sheet,
             contentColor = Rc.Text,
+            scrimColor = Color(0x8C000000),
+            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+            dragHandle = null,
         ) {
+            SheetWindowBlur()
             Column(
                 Modifier
                     .fillMaxWidth()

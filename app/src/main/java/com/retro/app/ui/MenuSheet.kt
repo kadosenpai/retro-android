@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import com.retro.app.SlotView
@@ -79,7 +80,11 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
         sheetState = state,
         containerColor = Rc.Sheet,
         contentColor = Rc.Text,
+        scrimColor = Color(0x8C000000),
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        dragHandle = null,
     ) {
+        SheetWindowBlur()
         Column(
             Modifier
                 .fillMaxWidth()

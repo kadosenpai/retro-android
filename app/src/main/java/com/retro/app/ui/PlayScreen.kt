@@ -124,7 +124,7 @@ fun PlayScreen(model: AppModel) {
                     .align(Alignment.TopEnd)
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(8.dp)
-                    .background(Rc.Card.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+                    .background(Rc.Solid.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
                     .clickableNoRipple { model.menuOpen = true }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
@@ -209,7 +209,7 @@ private fun LayoutEditBar(
 ) {
     Column(
         modifier
-            .background(Rc.Card.copy(alpha = 0.92f), RoundedCornerShape(20.dp))
+            .background(Rc.Solid.copy(alpha = 0.92f), RoundedCornerShape(20.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
