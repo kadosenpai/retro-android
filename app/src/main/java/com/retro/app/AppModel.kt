@@ -133,6 +133,18 @@ class AppModel(private val app: Application) {
         }
     }
 
+    /** Xoá toàn bộ game cùng ảnh bìa, cheat, Save State và .sav. */
+    fun deleteAll() {
+        scope.launch {
+            if (current != null) leaveGame()
+            withContext(Dispatchers.IO) {
+                store.list().forEach { store.delete(it.id) }
+            }
+            refresh()
+            toast = "Đã xoá hết game"
+        }
+    }
+
     // ---------- Tay cầm & bố cục nút ảo ----------
     fun assignKey(button: GbaButton, code: Int) {
         controllerMap = controllerMap.assign(button, code)

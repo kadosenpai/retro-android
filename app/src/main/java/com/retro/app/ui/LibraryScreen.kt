@@ -1,16 +1,11 @@
 package com.retro.app.ui
 
-import androidx.activity.compose.rememberLauncherForActivityResult
 import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
-import androidx.compose.runtime.produceState
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +22,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,17 +31,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -54,15 +43,24 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,15 +68,20 @@ import com.retro.app.AppModel
 import com.retro.app.data.RomInfo
 import com.retro.app.data.SortKey
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(model: AppModel) {
     var query by remember { mutableStateOf("") }
-    var sortMenu by remember { mutableStateOf(false) }
+    var sortTop by remember { mutableStateOf(false) }
+    var sortPill by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var gameMenu by remember { mutableStateOf<RomInfo?>(null) }
     var renameTarget by remember { mutableStateOf<RomInfo?>(null) }
     var deleteTarget by remember { mutableStateOf<RomInfo?>(null) }
+    var deleteAllConfirm by remember { mutableStateOf(false) }
 
     var exportTarget by remember { mutableStateOf<RomInfo?>(null) }
     var importTarget by remember { mutableStateOf<RomInfo?>(null) }
@@ -118,16 +121,28 @@ fun LibraryScreen(model: AppModel) {
             SortKey.ADDED -> filtered.sortedByDescending { it.addedAt }
         }
     }
+    // Màn đủ rộng thì hiện thêm số lượng băng và biểu tượng sắp xếp, như bản web.
+    val roomy = LocalConfiguration.current.screenWidthDp > 420
+    // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
+    val behindSheet = settingsOpen || gameMenu != null
+    val blurRadius = animateDpAsState(if (behindSheet) 18.dp else 0.dp, label = "blur").value
 
     Column(
         Modifier
             .fillMaxSize()
+            .blur(blurRadius, BlurredEdgeTreatment.Unbounded)
             .retroBackground()
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         // Thanh tiêu đề
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-            RoundIcon(Modifier.align(Alignment.CenterStart)) { settingsOpen = true }
+            Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+                IconBtn("settings", "Cài đặt") { settingsOpen = true }
+                Box {
+                    IconBtn("menu", "Sắp xếp") { sortTop = true }
+                    SortMenu(sortTop, { sortTop = false }, sort) { k -> model.update { it.copy(sort = k) } }
+                }
+            }
             Text(
                 "Thư viện",
                 modifier = Modifier.align(Alignment.Center),
@@ -135,16 +150,7 @@ fun LibraryScreen(model: AppModel) {
                 fontSize = 26.sp,
                 fontWeight = FontWeight.ExtraBold,
             )
-            Box(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .clickable { picker.launch(arrayOf("*/*")) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Thêm băng", tint = Rc.Text, modifier = Modifier.size(30.dp))
-            }
+            IconBtn("plus", "Thêm băng", Modifier.align(Alignment.CenterEnd)) { picker.launch(arrayOf("*/*")) }
         }
 
         // Ô tìm kiếm
@@ -154,18 +160,18 @@ fun LibraryScreen(model: AppModel) {
                 .fillMaxWidth()
                 .height(52.dp)
                 .clip(RoundedCornerShape(26.dp))
-                .background(Rc.Card)
+                .background(Rc.Glass)
                 .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(26.dp))
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.Search, contentDescription = null, tint = Rc.Muted, modifier = Modifier.size(22.dp))
+            RetroIcon("search", size = 22.dp, tint = Rc.Muted)
             Spacer(Modifier.size(12.dp))
             BasicTextField(
                 value = query,
                 onValueChange = { query = it },
                 singleLine = true,
-                textStyle = TextStyle(color = Rc.Text, fontSize = 16.sp),
+                textStyle = TextStyle(color = Rc.Text, fontSize = 16.sp, fontFamily = InterFamily),
                 cursorBrush = SolidColor(Color.White),
                 modifier = Modifier.weight(1f),
                 decorationBox = { inner ->
@@ -178,41 +184,53 @@ fun LibraryScreen(model: AppModel) {
         }
 
         // Tiêu đề mục + sắp xếp
+        Spacer(Modifier.height(14.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Rc.Line))
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("KỆ BĂNG CỦA BẠN", color = Rc.Text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp)
+            RetroIcon("layers", size = 22.dp, tint = Rc.Text)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "KỆ BĂNG CỦA BẠN",
+                color = Rc.Text,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.3.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (roomy) {
+                Spacer(Modifier.width(8.dp))
+                Text("(${model.roms.size} băng)", color = Rc.Muted, fontSize = 14.sp, maxLines = 1)
+            }
+            Spacer(Modifier.weight(1f))
+            if (roomy) {
+                RetroIcon("sort", tint = Rc.Muted)
+                Spacer(Modifier.width(10.dp))
+            }
             Box {
                 Row(
                     Modifier
                         .clip(RoundedCornerShape(18.dp))
-                        .background(Rc.Card)
+                        .background(Rc.Glass)
                         .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
-                        .clickable { sortMenu = true }
-                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                        .clickable { sortPill = true }
+                        .padding(start = 14.dp, end = 8.dp, top = 9.dp, bottom = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(sort.label, color = Rc.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = Rc.Text, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(4.dp))
+                    RetroIcon("chevron-down", size = 20.dp, tint = Rc.Text)
                 }
-                DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
-                    SortKey.values().forEach { k ->
-                        DropdownMenuItem(
-                            text = { Text(k.label) },
-                            onClick = {
-                                model.update { it.copy(sort = k) }
-                                sortMenu = false
-                            },
-                        )
-                    }
-                }
+                SortMenu(sortPill, { sortPill = false }, sort) { k -> model.update { it.copy(sort = k) } }
             }
         }
 
         if (shown.isEmpty()) {
-            EmptyState(hasAny = model.roms.isNotEmpty())
+            EmptyState(hasAny = model.roms.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
         } else {
             LazyColumn(
                 Modifier.fillMaxSize(),
@@ -223,18 +241,7 @@ fun LibraryScreen(model: AppModel) {
                     RomCard(
                         rom = rom,
                         onOpen = { model.open(rom) },
-                        onRename = { renameTarget = rom },
-                        onDelete = { deleteTarget = rom },
-                        onExportSave = {
-                            exportTarget = rom
-                            exportLauncher.launch("${rom.name}.sav")
-                        },
-                        onImportSave = { importConfirm = rom },
-                        onAutoCover = { model.fetchCoverNow(rom) },
-                        onPickCover = {
-                            coverTarget = rom
-                            coverPicker.launch(arrayOf("image/*"))
-                        },
+                        onMenu = { gameMenu = rom },
                         cover = rememberCover(model, rom),
                     )
                 }
@@ -242,6 +249,67 @@ fun LibraryScreen(model: AppModel) {
         }
     }
 
+    // Bảng của một game (Xuất/Nhập .sav, ảnh bìa, đổi tên, xoá)
+    gameMenu?.let { rom ->
+        val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { gameMenu = null },
+            sheetState = state,
+            containerColor = Rc.Sheet,
+            contentColor = Rc.Text,
+            scrimColor = Color(0x8C000000),
+            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+            dragHandle = null,
+        ) {
+            SheetWindowBlur()
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .navigationBarsPadding()
+                    .padding(top = 12.dp, bottom = 24.dp),
+            ) {
+                SheetHeader(rom.name) { gameMenu = null }
+                Spacer(Modifier.height(14.dp))
+                GroupCard {
+                    ActionRow("Xuất file .sav", icon = "download") {
+                        gameMenu = null
+                        exportTarget = rom
+                        exportLauncher.launch("${rom.name}.sav")
+                    }
+                    RowDivider()
+                    ActionRow("Nhập file .sav", icon = "upload") {
+                        gameMenu = null
+                        importConfirm = rom
+                    }
+                    RowDivider()
+                    ActionRow("Tải ảnh bìa gốc", icon = "image") {
+                        gameMenu = null
+                        model.fetchCoverNow(rom)
+                    }
+                    RowDivider()
+                    ActionRow("Chọn ảnh bìa từ máy", icon = "image") {
+                        gameMenu = null
+                        coverTarget = rom
+                        coverPicker.launch(arrayOf("image/*"))
+                    }
+                    RowDivider()
+                    ActionRow("Đổi tên", icon = "pencil") {
+                        gameMenu = null
+                        renameTarget = rom
+                    }
+                    RowDivider()
+                    ActionRow("Xoá băng (kèm save)", danger = true, icon = "trash") {
+                        gameMenu = null
+                        deleteTarget = rom
+                    }
+                }
+            }
+        }
+    }
+
+    // Cài đặt
     if (settingsOpen) {
         val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -260,23 +328,66 @@ fun LibraryScreen(model: AppModel) {
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
                     .navigationBarsPadding()
-                    .padding(bottom = 24.dp),
+                    .padding(top = 12.dp, bottom = 24.dp),
             ) {
                 var settingsPage by remember { mutableStateOf(0) }
+                val st = model.settings
                 if (settingsPage == 1) {
                     ControllerPage(model) { settingsPage = 0 }
                 } else if (settingsPage == 2) {
                     AboutPage { settingsPage = 0 }
                 } else {
-                Text("Cài đặt", color = Rc.Text, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
-                SettingsGroups(model.settings, { model.update(it) }, inGame = false)
-                SectionTitle("Tay cầm")
-                GroupCard { ActionRow("Kết nối và gán nút tay cầm") { settingsPage = 1 } }
-                SectionTitle("Giới thiệu")
-                GroupCard { ActionRow("Giới thiệu và giấy phép") { settingsPage = 2 } }
+                    SheetHeader("Cài đặt") { settingsOpen = false }
+                    SectionTitle("Âm thanh")
+                    GroupCard {
+                        ToggleRow("Bật âm thanh", st.sound, icon = "volume") { v -> model.update { it.copy(sound = v) } }
+                    }
+                    SectionTitle("Điều khiển")
+                    GroupCard {
+                        ToggleRow("Ẩn nút ảo", !st.showPad, icon = "pointer") { v -> model.update { it.copy(showPad = !v) } }
+                        RowDivider()
+                        ToggleRow("Rung khi nhấn nút", st.haptics, icon = "phone") { v -> model.update { it.copy(haptics = v) } }
+                        RowDivider()
+                        ActionRow("Tay cầm", icon = "gamepad", chevron = true) { settingsPage = 1 }
+                    }
+                    SectionTitle("Dữ liệu")
+                    GroupCard {
+                        ActionRow("Xóa hết game (kèm Save State & .sav)", danger = true, icon = "trash", chevron = true) {
+                            deleteAllConfirm = true
+                        }
+                    }
+                    SectionTitle("Giới thiệu")
+                    GroupCard {
+                        ActionRow("Giới thiệu và giấy phép", icon = "info", chevron = true) { settingsPage = 2 }
+                    }
+                    Text(
+                        "Tay cầm ngoài sẽ tự nhận khi cắm USB hoặc kết nối Bluetooth. Tất cả dữ liệu nằm trên máy này.",
+                        color = Rc.Muted,
+                        fontSize = 15.sp,
+                        lineHeight = 23.sp,
+                        modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 18.dp),
+                    )
                 }
             }
         }
+    }
+
+    if (deleteAllConfirm) {
+        AlertDialog(
+            onDismissRequest = { deleteAllConfirm = false },
+            title = { Text("Xoá hết game?") },
+            text = {
+                Text("Xoá toàn bộ ROM cùng ảnh bìa, cheat, Save State và file .sav của tất cả game trong app này. Không thể hoàn tác.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteAllConfirm = false
+                    settingsOpen = false
+                    model.deleteAll()
+                }) { Text("Xoá hết", color = Rc.Danger) }
+            },
+            dismissButton = { TextButton(onClick = { deleteAllConfirm = false }) { Text("Huỷ") } },
+        )
     }
 
     renameTarget?.let { rom ->
@@ -349,35 +460,95 @@ private fun rememberCover(model: AppModel, rom: RomInfo): ImageBitmap? {
     return img
 }
 
+
+/** Nút tròn có biểu tượng (cài đặt, sắp xếp, thêm băng). */
 @Composable
-private fun RoundIcon(modifier: Modifier, onClick: () -> Unit) {
+private fun IconBtn(icon: String, desc: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClick),
+        modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClickLabel = desc, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Default.Settings, contentDescription = "Cài đặt", tint = Rc.Text, modifier = Modifier.size(26.dp))
+        RetroIcon(icon, size = 26.dp, tint = Rc.Text)
+    }
+}
+
+/** Menu chọn kiểu sắp xếp: dấu ✓ ở kiểu đang dùng, dấu − ở các kiểu còn lại. */
+@Composable
+private fun SortMenu(expanded: Boolean, onDismiss: () -> Unit, current: SortKey, onPick: (SortKey) -> Unit) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        SortKey.values().forEach { k ->
+            DropdownMenuItem(
+                leadingIcon = { RetroIcon(if (k == current) "check" else "minus", size = 20.dp, tint = Rc.Muted) },
+                text = { Text(k.label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold) },
+                onClick = {
+                    onPick(k)
+                    onDismiss()
+                },
+            )
+        }
     }
 }
 
 @Composable
-private fun EmptyState(hasAny: Boolean) {
+private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
+    val wide = LocalConfiguration.current.screenWidthDp >= 600
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 36.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Text(
-            if (hasAny) "Không tìm thấy băng nào" else "Chưa có băng nào",
-            color = Rc.Text,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            if (hasAny) "Thử từ khoá khác."
-            else "Bấm dấu + ở góc trên để thêm file .gba của bạn. Chỉ dùng ROM bạn sở hữu hợp pháp; dữ liệu nằm trên máy này.",
-            color = Rc.Muted,
-            fontSize = 15.sp,
-        )
+        if (hasAny) {
+            Text(
+                "Không tìm thấy băng nào",
+                color = Rc.Text,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 36.dp),
+            )
+            Text(
+                "Thử từ khoá khác.",
+                color = Rc.Muted,
+                fontSize = 15.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
+            return@Column
+        }
+        val shape = RoundedCornerShape(28.dp)
+        val cardMod = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Rc.Glass)
+            .border(BorderStroke(1.dp, Rc.Stroke), shape)
+        val desc = "Bấm dấu + để thêm file ROM .gba của bạn. Chỉ dùng ROM bạn sở hữu hợp pháp; dữ liệu nằm trên máy này."
+        if (wide) {
+            Row(cardMod.padding(horizontal = 24.dp, vertical = 22.dp), verticalAlignment = Alignment.CenterVertically) {
+                RetroIcon("layers", size = 56.dp, tint = Rc.Text)
+                Spacer(Modifier.width(22.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Chưa có băng nào", color = Rc.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(desc, color = Rc.Muted, fontSize = 16.sp)
+                }
+                Spacer(Modifier.width(22.dp))
+                PillButton("Thêm ROM", icon = "plus", onClick = onAdd)
+            }
+        } else {
+            Column(cardMod.padding(horizontal = 24.dp, vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                RetroIcon("layers", size = 56.dp, tint = Rc.Text)
+                Spacer(Modifier.height(18.dp))
+                Text("Chưa có băng nào", color = Rc.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                Text(desc, color = Rc.Muted, fontSize = 17.sp, lineHeight = 25.sp, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(22.dp))
+                PillButton("Thêm ROM", icon = "plus", onClick = onAdd)
+            }
+        }
     }
 }
 
@@ -385,20 +556,14 @@ private fun EmptyState(hasAny: Boolean) {
 private fun RomCard(
     rom: RomInfo,
     onOpen: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit,
-    onExportSave: () -> Unit,
-    onImportSave: () -> Unit,
-    onAutoCover: () -> Unit,
-    onPickCover: () -> Unit,
+    onMenu: () -> Unit,
     cover: ImageBitmap?,
 ) {
-    var menu by remember { mutableStateOf(false) }
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
-            .background(Rc.Card)
+            .background(Rc.Glass)
             .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(26.dp))
             .clickable(onClick = onOpen)
             .padding(10.dp),
@@ -447,39 +612,11 @@ private fun RomCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Box {
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).clickable { menu = true },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Thêm", tint = Rc.Text)
-            }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text("Đổi tên") }, onClick = {
-                    menu = false
-                    onRename()
-                })
-                DropdownMenuItem(text = { Text("Tải ảnh bìa gốc") }, onClick = {
-                    menu = false
-                    onAutoCover()
-                })
-                DropdownMenuItem(text = { Text("Chọn ảnh bìa từ máy") }, onClick = {
-                    menu = false
-                    onPickCover()
-                })
-                DropdownMenuItem(text = { Text("Xuất save (.sav)") }, onClick = {
-                    menu = false
-                    onExportSave()
-                })
-                DropdownMenuItem(text = { Text("Nhập save (.sav)") }, onClick = {
-                    menu = false
-                    onImportSave()
-                })
-                DropdownMenuItem(text = { Text("Xoá khỏi máy", color = Rc.Danger) }, onClick = {
-                    menu = false
-                    onDelete()
-                })
-            }
+        Box(
+            Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onMenu),
+            contentAlignment = Alignment.Center,
+        ) {
+            RetroIcon("dots", tint = Rc.Text)
         }
     }
 }

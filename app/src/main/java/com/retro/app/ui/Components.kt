@@ -249,6 +249,34 @@ fun SheetHeader(title: String, onClose: () -> Unit) {
     }
 }
 
+/** Đầu trang con trong bảng: nút quay lại tròn + tiêu đề lớn. */
+@Composable
+fun PageHeader(title: String, onBack: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Rc.GlassStrong)
+                .clickable(role = Role.Button, onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            RetroIcon("chevron-left", tint = Rc.Text)
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            title,
+            color = Rc.Text,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.56).sp,
+        )
+    }
+}
+
 /** Nút bo tròn: `primary` = nền trắng chữ đen (như .btn.primary của web), ngược lại là kính đậm. */
 @Composable
 fun PillButton(

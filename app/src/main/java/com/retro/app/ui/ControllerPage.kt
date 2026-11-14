@@ -52,7 +52,28 @@ private fun connectedPads(): List<String> =
         }
         .map { it.name }
 
-private fun keyName(code: Int): String = KeyEvent.keyCodeToString(code).removePrefix("KEYCODE_")
+private fun keyName(code: Int): String = when (code) {
+    KeyEvent.KEYCODE_DPAD_UP -> "Mũi tên lên"
+    KeyEvent.KEYCODE_DPAD_DOWN -> "Mũi tên xuống"
+    KeyEvent.KEYCODE_DPAD_LEFT -> "Mũi tên trái"
+    KeyEvent.KEYCODE_DPAD_RIGHT -> "Mũi tên phải"
+    KeyEvent.KEYCODE_DPAD_CENTER -> "Giữa"
+    KeyEvent.KEYCODE_BUTTON_A -> "Nút A"
+    KeyEvent.KEYCODE_BUTTON_B -> "Nút B"
+    KeyEvent.KEYCODE_BUTTON_X -> "Nút X"
+    KeyEvent.KEYCODE_BUTTON_Y -> "Nút Y"
+    KeyEvent.KEYCODE_BUTTON_C -> "Nút C"
+    KeyEvent.KEYCODE_BUTTON_Z -> "Nút Z"
+    KeyEvent.KEYCODE_BUTTON_L1 -> "L1"
+    KeyEvent.KEYCODE_BUTTON_R1 -> "R1"
+    KeyEvent.KEYCODE_BUTTON_L2 -> "L2"
+    KeyEvent.KEYCODE_BUTTON_R2 -> "R2"
+    KeyEvent.KEYCODE_BUTTON_START -> "Start"
+    KeyEvent.KEYCODE_BUTTON_SELECT -> "Select"
+    KeyEvent.KEYCODE_BUTTON_THUMBL -> "Nhấn cần trái"
+    KeyEvent.KEYCODE_BUTTON_THUMBR -> "Nhấn cần phải"
+    else -> KeyEvent.keyCodeToString(code).removePrefix("KEYCODE_")
+}
 
 /** Trang Tay cầm: xem tay cầm đang kết nối, gán lại từng nút GBA, đặt lại mặc định. */
 @Composable
@@ -79,15 +100,7 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
     }
     var capturing by remember { mutableStateOf<GbaButton?>(null) }
 
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onBack)
-            .heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("‹ Tay cầm", color = Rc.Text, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
-    }
+    PageHeader("Tay cầm", onBack)
 
     GroupCard {
         Text(
@@ -101,7 +114,8 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
 
     SectionTitle("Gán nút")
     GroupCard {
-        GbaButton.values().forEach { b ->
+        GbaButton.values().forEachIndexed { i, b ->
+            if (i > 0) RowDivider(inset = 18.dp)
             val keys = model.controllerMap.keys[b].orEmpty().sorted()
             Row(
                 Modifier
@@ -129,7 +143,7 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
             }
         }
     }
-    GroupCard { ActionRow("Đặt lại mặc định") { model.resetControllerMap() } }
+    GroupCard(Modifier.padding(top = 12.dp)) { ActionRow("Đặt lại mặc định") { model.resetControllerMap() } }
     Text(
         "Cần analog trái luôn dùng làm hướng. Nút Mode/Home trên tay cầm dùng để mở menu và không gán lại được.",
         color = Rc.Faint,

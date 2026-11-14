@@ -35,15 +35,7 @@ fun CheatsPage(model: AppModel, onBack: () -> Unit) {
     var code by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onBack)
-            .heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("‹ Cheat", color = Rc.Text, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
-    }
+    PageHeader("Cheat", onBack)
 
     GroupCard {
         if (model.cheats.isEmpty()) {

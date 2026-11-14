@@ -91,7 +91,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
                 .navigationBarsPadding()
-                .padding(bottom = 24.dp),
+                .padding(top = 12.dp, bottom = 24.dp),
         ) {
             var page by remember { mutableStateOf(0) }
             if (page == 1) {

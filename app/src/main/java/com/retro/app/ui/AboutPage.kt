@@ -47,15 +47,7 @@ fun AboutPage(onBack: () -> Unit) {
         }
     }
 
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onBack)
-            .heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("‹ Giới thiệu", color = Rc.Text, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
-    }
+    PageHeader("Giới thiệu", onBack)
 
     GroupCard {
         Text(
