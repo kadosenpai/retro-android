@@ -1,7 +1,15 @@
 package com.retro.app.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import android.graphics.BitmapFactory
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -75,6 +83,13 @@ fun LibraryScreen(model: AppModel) {
     var exportTarget by remember { mutableStateOf<RomInfo?>(null) }
     var importTarget by remember { mutableStateOf<RomInfo?>(null) }
     var importConfirm by remember { mutableStateOf<RomInfo?>(null) }
+
+    var coverTarget by remember { mutableStateOf<RomInfo?>(null) }
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val rom = coverTarget
+        coverTarget = null
+        if (rom != null && uri != null) model.pickCover(rom, uri)
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream"),
@@ -215,6 +230,12 @@ fun LibraryScreen(model: AppModel) {
                             exportLauncher.launch("${rom.name}.sav")
                         },
                         onImportSave = { importConfirm = rom },
+                        onAutoCover = { model.fetchCoverNow(rom) },
+                        onPickCover = {
+                            coverTarget = rom
+                            coverPicker.launch(arrayOf("image/*"))
+                        },
+                        cover = rememberCover(model, rom),
                     )
                 }
             }
@@ -305,6 +326,23 @@ fun LibraryScreen(model: AppModel) {
     }
 }
 
+/** Đọc ảnh bìa của game từ bộ nhớ (ngoài luồng chính); null nếu chưa có. */
+@Composable
+private fun rememberCover(model: AppModel, rom: RomInfo): ImageBitmap? {
+    val img by produceState<ImageBitmap?>(null, rom.id, rom.coverAt) {
+        value = if (rom.coverAt == 0L) {
+            null
+        } else {
+            withContext(Dispatchers.IO) {
+                model.store.readCover(rom.id)?.let { b ->
+                    runCatching { BitmapFactory.decodeByteArray(b, 0, b.size)?.asImageBitmap() }.getOrNull()
+                }
+            }
+        }
+    }
+    return img
+}
+
 @Composable
 private fun RoundIcon(modifier: Modifier, onClick: () -> Unit) {
     Box(
@@ -345,6 +383,9 @@ private fun RomCard(
     onDelete: () -> Unit,
     onExportSave: () -> Unit,
     onImportSave: () -> Unit,
+    onAutoCover: () -> Unit,
+    onPickCover: () -> Unit,
+    cover: ImageBitmap?,
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
@@ -365,12 +406,21 @@ private fun RomCard(
                 .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                rom.name.trim().take(1).uppercase(Locale.ROOT).ifEmpty { "?" },
-                color = Rc.Muted,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            if (cover != null) {
+                Image(
+                    bitmap = cover,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(72.dp),
+                )
+            } else {
+                Text(
+                    rom.name.trim().take(1).uppercase(Locale.ROOT).ifEmpty { "?" },
+                    color = Rc.Muted,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
         Spacer(Modifier.size(14.dp))
         Column(Modifier.weight(1f)) {
@@ -402,6 +452,14 @@ private fun RomCard(
                 DropdownMenuItem(text = { Text("Đổi tên") }, onClick = {
                     menu = false
                     onRename()
+                })
+                DropdownMenuItem(text = { Text("Tải ảnh bìa gốc") }, onClick = {
+                    menu = false
+                    onAutoCover()
+                })
+                DropdownMenuItem(text = { Text("Chọn ảnh bìa từ máy") }, onClick = {
+                    menu = false
+                    onPickCover()
                 })
                 DropdownMenuItem(text = { Text("Xuất save (.sav)") }, onClick = {
                     menu = false

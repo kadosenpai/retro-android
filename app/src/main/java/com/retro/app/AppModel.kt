@@ -10,12 +10,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.retro.app.core.EmulatorEngine
+import com.retro.app.data.CoverService
 import com.retro.app.data.ImportResult
 import com.retro.app.data.Prefs
 import com.retro.app.data.RomInfo
 import com.retro.app.data.RomStore
 import com.retro.app.data.Settings
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -31,6 +33,8 @@ class SlotView(val slot: Int, val savedAt: Long, val thumb: ImageBitmap?)
 class AppModel(private val app: Application) {
     val store = RomStore(app)
     private val prefs = Prefs(app)
+    private val covers = CoverService(app, store)
+    private var coverJob: Job? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     var roms by mutableStateOf<List<RomInfo>>(emptyList())
@@ -59,6 +63,7 @@ class AppModel(private val app: Application) {
         EmulatorEngine.onCoreMs = { coreMs = it }
         EmulatorEngine.soundOn = settings.sound
         refresh()
+        autoCoverMissing()
     }
 
     fun refresh() {
@@ -81,6 +86,7 @@ class AppModel(private val app: Application) {
         scope.launch {
             val results = withContext(Dispatchers.IO) { uris.map { store.import(it) } }
             refresh()
+            autoCoverMissing()
             val added = results.filterIsInstance<ImportResult.Added>()
             val dup = results.filterIsInstance<ImportResult.Duplicate>().size
             val rejected = results.filterIsInstance<ImportResult.Rejected>()
@@ -109,6 +115,51 @@ class AppModel(private val app: Application) {
             withContext(Dispatchers.IO) { store.delete(rom.id) }
             refresh()
             toast = "Đã xoá \"${rom.name}\""
+        }
+    }
+
+    // ---------- Ảnh bìa ----------
+    /** Tự tải ảnh bìa ở nền cho các game chưa có (mỗi game thử lại sau tối thiểu 7 ngày nếu thất bại). */
+    fun autoCoverMissing() {
+        if (coverJob?.isActive == true) return
+        coverJob = scope.launch {
+            while (true) {
+                val now = System.currentTimeMillis()
+                val next = withContext(Dispatchers.IO) {
+                    store.list().firstOrNull { it.coverAt == 0L && now - it.coverTriedAt > 7L * 24 * 3600 * 1000 }
+                } ?: break
+                val ok = covers.fetchBoxArt(next)
+                if (!ok) withContext(Dispatchers.IO) { store.markCoverTried(next.id) }
+                refresh()
+            }
+        }
+    }
+
+    fun fetchCoverNow(rom: RomInfo) {
+        scope.launch {
+            toast = "Đang tải ảnh bìa…"
+            val ok = covers.fetchBoxArt(rom)
+            if (!ok) withContext(Dispatchers.IO) { store.markCoverTried(rom.id) }
+            refresh()
+            toast = if (ok) "Đã tải ảnh bìa cho \"${rom.name}\""
+            else "Không tìm thấy ảnh bìa gốc (không có mạng hoặc tên game khác chuẩn). Bạn có thể chọn ảnh từ máy."
+        }
+    }
+
+    fun pickCover(rom: RomInfo, uri: Uri) {
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                val bytes = runCatching {
+                    app.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                }.getOrNull()
+                val jpeg = if (bytes != null && bytes.size <= 20 * 1024 * 1024) CoverService.toCoverJpeg(bytes) else null
+                if (jpeg != null) {
+                    store.setCover(rom.id, jpeg)
+                    true
+                } else false
+            }
+            refresh()
+            toast = if (ok) "Đã đổi ảnh bìa" else "Không đọc được file ảnh này"
         }
     }
 

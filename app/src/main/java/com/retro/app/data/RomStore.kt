@@ -14,6 +14,12 @@ data class RomInfo(
     val size: Long,
     val addedAt: Long,
     val lastPlayedAt: Long,
+    /** Tên file gốc (không đuôi), dùng để tra ảnh bìa dù bạn đổi tên hiển thị. */
+    val fileBase: String = "",
+    /** Thời điểm đặt ảnh bìa (0 = chưa có). */
+    val coverAt: Long = 0,
+    /** Lần gần nhất đã thử tải ảnh bìa tự động (để không thử lại liên tục). */
+    val coverTriedAt: Long = 0,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -21,6 +27,9 @@ data class RomInfo(
         .put("size", size)
         .put("addedAt", addedAt)
         .put("lastPlayedAt", lastPlayedAt)
+        .put("fileBase", fileBase)
+        .put("coverAt", coverAt)
+        .put("coverTriedAt", coverTriedAt)
 
     companion object {
         fun fromJson(o: JSONObject) = RomInfo(
@@ -29,6 +38,9 @@ data class RomInfo(
             size = o.optLong("size", 0),
             addedAt = o.optLong("addedAt", 0),
             lastPlayedAt = o.optLong("lastPlayedAt", 0),
+            fileBase = o.optString("fileBase", ""),
+            coverAt = o.optLong("coverAt", 0),
+            coverTriedAt = o.optLong("coverTriedAt", 0),
         )
     }
 }
@@ -44,11 +56,28 @@ class RomStore(private val ctx: Context) {
     private val lock = Any()
     private val romDir = File(ctx.filesDir, "roms").apply { mkdirs() }
     private val saveDir = File(ctx.filesDir, "saves").apply { mkdirs() }
+    private val coverDir = File(ctx.filesDir, "covers").apply { mkdirs() }
     private val stateDir = File(ctx.filesDir, "states").apply { mkdirs() }
     private val indexFile = File(ctx.filesDir, "library.json")
 
     fun romFile(id: String) = File(romDir, "$id.rom")
     fun savFile(id: String) = File(saveDir, "$id.sav")
+
+    // ---------- Ảnh bìa ----------
+    private fun coverFile(id: String) = File(coverDir, "$id.jpg")
+
+    fun readCover(id: String): ByteArray? = coverFile(id).takeIf { it.exists() }?.readBytes()
+
+    fun setCover(id: String, jpeg: ByteArray) = synchronized(lock) {
+        writeAtomic(coverFile(id), jpeg)
+        val now = System.currentTimeMillis()
+        writeIndex(readIndex().map { if (it.id == id) it.copy(coverAt = now, coverTriedAt = now) else it })
+    }
+
+    fun markCoverTried(id: String) = synchronized(lock) {
+        val now = System.currentTimeMillis()
+        writeIndex(readIndex().map { if (it.id == id) it.copy(coverTriedAt = now) else it })
+    }
 
     // ---------- Trạng thái (save state) ----------
     private fun stateFile(id: String, slot: Int) = File(stateDir, "$id.$slot.state")
@@ -133,7 +162,8 @@ class RomStore(private val ctx: Context) {
                     tmp.copyTo(romFile(id), overwrite = true)
                 }
                 val now = System.currentTimeMillis()
-                val info = RomInfo(id, displayName.substringBeforeLast('.'), total, now, 0L)
+                val base = displayName.substringBeforeLast('.')
+                val info = RomInfo(id, base, total, now, 0L, fileBase = base)
                 writeIndex(list + info)
                 return ImportResult.Added(info)
             }
@@ -157,6 +187,7 @@ class RomStore(private val ctx: Context) {
         writeIndex(readIndex().filter { it.id != id })
         romFile(id).delete()
         savFile(id).delete()
+        coverFile(id).delete()
         for (slot in 0..SLOT_COUNT) deleteState(id, slot)
     }
 
