@@ -52,26 +52,7 @@ private val SPEEDS = listOf(0.5f, 1f, 1.5f, 2f, 3f, 4f)
 
 private fun speedLabel(s: Float): String = if (s == s.toInt().toFloat()) "${s.toInt()}×" else "${s}×"
 
-/** Nhóm "Hình ảnh" + "Âm thanh & điều khiển", dùng chung cho menu khi chơi và Cài đặt. */
-@Composable
-fun SettingsGroups(settings: Settings, onChange: ((Settings) -> Settings) -> Unit, inGame: Boolean) {
-    SectionTitle("Hình ảnh")
-    GroupCard {
-        SmallLabel("Co giãn màn hình")
-        ChipRow(ScaleMode.values().toList(), settings.scale, { it.label }, { v -> onChange { it.copy(scale = v) } })
-        SmallLabel("Bộ lọc")
-        ChipRow(FilterMode.values().toList(), settings.filter, { it.label }, { v -> onChange { it.copy(filter = v) } })
-    }
-    SectionTitle("Âm thanh & điều khiển")
-    GroupCard {
-        ToggleRow("Bật âm thanh", settings.sound) { v -> onChange { it.copy(sound = v) } }
-        ToggleRow("Hiện nút ảo", settings.showPad) { v -> onChange { it.copy(showPad = v) } }
-        ToggleRow("Rung khi chạm", settings.haptics) { v -> onChange { it.copy(haptics = v) } }
-        if (inGame) ToggleRow("Hiện thông số", settings.showStats) { v -> onChange { it.copy(showStats = v) } }
-    }
-}
-
-/** Menu ▲ khi đang chơi. */
+/** Menu ▲ khi đang chơi (bố cục giống bản web). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
@@ -85,7 +66,6 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
         shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         dragHandle = null,
     ) {
-        SheetWindowBlur()
         Column(
             Modifier
                 .fillMaxWidth()
@@ -95,67 +75,104 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                 .navigationBarsPadding()
                 .padding(top = 12.dp, bottom = 24.dp),
         ) {
+            // 0 = menu chính, 1 = Cheat, 2 = Tay cầm, 3 = Save state
             var page by remember { mutableStateOf(0) }
-            if (page == 1) {
-                CheatsPage(model) { page = 0 }
-            } else if (page == 2) {
-                ControllerPage(model) { page = 0 }
-            } else {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("Menu", color = Rc.Text, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
-            }
-            GroupCard {
-                ActionRow("Tiếp tục", onClick = onClose)
-                ActionRow("Cheat") { page = 1 }
-                ActionRow("Tay cầm") { page = 2 }
-                ActionRow("Chỉnh bố cục nút ảo") {
-                    onClose()
-                    model.editingLayout = true
-                }
-                ActionRow("Reset game") {
-                    model.resetGame()
-                    onClose()
-                }
-                ActionRow("Thoát về Thư viện") {
-                    onClose()
-                    model.exitToLibrary()
-                }
-            }
+            val st = model.settings
+            when (page) {
+                1 -> CheatsPage(model) { page = 0 }
+                2 -> ControllerPage(model) { page = 0 }
+                3 -> StatesPage(model, onClose) { page = 0 }
+                else -> {
+                    SheetHeader("Menu", onClose)
+                    Spacer(Modifier.height(8.dp))
+                    PillButton("Tiếp tục chơi", Modifier.fillMaxWidth(), icon = "play", onClick = onClose)
 
-            SectionTitle("Trạng thái")
-            LaunchedEffect(Unit) { model.refreshSlots() }
-            GroupCard {
-                val bySlot = model.slots.associateBy { it.slot }
-                for (n in 1..RomStore.SLOT_COUNT) {
-                    SlotRow(
-                        title = "Ô $n",
-                        view = bySlot[n],
-                        canSave = true,
-                        onSave = { model.saveSlot(n) },
-                        onLoad = { model.loadSlot(n) { ok -> if (ok) onClose() } },
-                    )
+                    SectionTitle("Trò chơi")
+                    GroupCard {
+                        ActionRow("Save state", icon = "save", chevron = true) { page = 3 }
+                        RowDivider()
+                        ActionRow("Cheat code", icon = "star", chevron = true) { page = 1 }
+                        RowDivider()
+                        ActionRow("Reset game", icon = "reset") {
+                            model.resetGame()
+                            onClose()
+                        }
+                        RowDivider()
+                        ActionRow("Thoát về Thư viện", icon = "logout") {
+                            onClose()
+                            model.exitToLibrary()
+                        }
+                    }
+
+                    SectionTitle("Tốc độ game")
+                    GroupCard {
+                        ChipRow(SPEEDS, model.speed, { speedLabel(it) }, { model.changeSpeed(it) })
+                    }
+
+                    SectionTitle("Hình ảnh")
+                    GroupCard {
+                        SmallLabel("Co giãn màn hình")
+                        ChipRow(ScaleMode.values().toList(), st.scale, { it.label }, { v -> model.update { it.copy(scale = v) } })
+                        SmallLabel("Bộ lọc")
+                        ChipRow(FilterMode.values().toList(), st.filter, { it.label }, { v -> model.update { it.copy(filter = v) } })
+                        Spacer(Modifier.height(6.dp))
+                    }
+
+                    SectionTitle("Âm thanh & điều khiển")
+                    GroupCard {
+                        ToggleRow("Bật âm thanh", st.sound, icon = "volume") { v -> model.update { it.copy(sound = v) } }
+                        RowDivider()
+                        ToggleRow("Hiện nút ảo", st.showPad, icon = "pointer") { v -> model.update { it.copy(showPad = v) } }
+                        RowDivider()
+                        ToggleRow(
+                            "Giữ nút",
+                            st.sticky,
+                            icon = "lock",
+                            subtitle = "Chạm một lần để giữ, chạm lần nữa để nhả",
+                        ) { v -> model.update { it.copy(sticky = v) } }
+                        RowDivider()
+                        ActionRow("Chỉnh vị trí & kích thước nút ảo", icon = "move", chevron = true) {
+                            onClose()
+                            model.editingLayout = true
+                        }
+                        RowDivider()
+                        ActionRow("Tay cầm", icon = "gamepad", chevron = true) { page = 2 }
+                        RowDivider()
+                        ToggleRow("Hiện thông số (FPS, âm thanh)", st.showStats, icon = "eye") { v ->
+                            model.update { it.copy(showStats = v) }
+                        }
+                    }
                 }
-                SlotRow(
-                    title = "Tự động",
-                    view = bySlot[RomStore.AUTO_SLOT],
-                    canSave = false,
-                    onSave = {},
-                    onLoad = { model.loadSlot(RomStore.AUTO_SLOT) { ok -> if (ok) onClose() } },
-                )
-            }
-
-            SectionTitle("Tốc độ game")
-            GroupCard {
-                ChipRow(SPEEDS, model.speed, { speedLabel(it) }, { model.changeSpeed(it) })
-            }
-
-            SettingsGroups(model.settings, { model.update(it) }, inGame = true)
             }
         }
+    }
+}
+
+/** Trang Save state: 4 ô lưu tay + ô tự động. */
+@Composable
+private fun StatesPage(model: AppModel, onClose: () -> Unit, onBack: () -> Unit) {
+    PageHeader("Save state", onBack)
+    LaunchedEffect(Unit) { model.refreshSlots() }
+    Spacer(Modifier.height(10.dp))
+    GroupCard {
+        val bySlot = model.slots.associateBy { it.slot }
+        for (n in 1..RomStore.SLOT_COUNT) {
+            SlotRow(
+                title = "Ô $n",
+                view = bySlot[n],
+                canSave = true,
+                onSave = { model.saveSlot(n) },
+                onLoad = { model.loadSlot(n) { ok -> if (ok) onClose() } },
+            )
+            RowDivider(inset = 14.dp)
+        }
+        SlotRow(
+            title = "Tự động",
+            view = bySlot[RomStore.AUTO_SLOT],
+            canSave = false,
+            onSave = {},
+            onLoad = { model.loadSlot(RomStore.AUTO_SLOT) { ok -> if (ok) onClose() } },
+        )
     }
 }
 
@@ -212,7 +229,7 @@ private fun SlotButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(RoundedCornerShape(50))
-            .background(Rc.Chip)
+            .background(Rc.GlassStrong)
             .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(50))
             .then(if (enabled) Modifier.clickableNoRipple(onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 8.dp),

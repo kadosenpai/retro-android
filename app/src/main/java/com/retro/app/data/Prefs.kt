@@ -17,6 +17,8 @@ data class Settings(
     val showPad: Boolean = true,
     val haptics: Boolean = true,
     val showStats: Boolean = false,
+    /** Giữ nút: chạm một lần để giữ, chạm lần nữa để nhả. */
+    val sticky: Boolean = false,
     val sort: SortKey = SortKey.RECENT,
 )
 
@@ -32,6 +34,7 @@ class Prefs(ctx: Context) {
             showPad = sp.getBoolean("showPad", d.showPad),
             haptics = sp.getBoolean("haptics", d.haptics),
             showStats = sp.getBoolean("showStats", d.showStats),
+            sticky = sp.getBoolean("sticky", d.sticky),
             sort = enumOf(sp.getString("sort", null), d.sort),
         )
     }
@@ -44,6 +47,7 @@ class Prefs(ctx: Context) {
             .putBoolean("showPad", s.showPad)
             .putBoolean("haptics", s.haptics)
             .putBoolean("showStats", s.showStats)
+            .putBoolean("sticky", s.sticky)
             .putString("sort", s.sort.name)
             .apply()
     }

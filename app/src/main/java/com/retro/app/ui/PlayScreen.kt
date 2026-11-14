@@ -24,6 +24,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -78,6 +84,7 @@ fun PlayScreen(model: AppModel) {
             if (s.showPad || editing) {
                 TouchOverlay(
                     haptics = s.haptics,
+                    sticky = s.sticky,
                     layout = layout,
                     editing = editing,
                     selected = selected,
@@ -100,6 +107,7 @@ fun PlayScreen(model: AppModel) {
                 if (s.showPad || editing) {
                     TouchOverlay(
                         haptics = s.haptics,
+                        sticky = s.sticky,
                     layout = layout,
                     editing = editing,
                     selected = selected,
@@ -183,20 +191,7 @@ private fun GameSurface(model: AppModel, modifier: Modifier) {
 }
 
 
-@Composable
-private fun EditChip(label: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .background(Rc.Chip, RoundedCornerShape(50))
-            .clickableNoRipple(onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, color = Rc.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-/** Thanh công cụ khi chỉnh bố cục: đổi kích thước nút đang chọn, đặt lại, xong. */
+/** Bảng chỉnh bố cục (giống web): tiêu đề, gợi ý, thanh trượt kích thước nút đang chọn, Mặc định / Xong. */
 @Composable
 private fun LayoutEditBar(
     landscape: Boolean,
@@ -207,36 +202,58 @@ private fun LayoutEditBar(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedCornerShape(28.dp)
+    val current = if (selected != null) layout.scaleOf(selected) else 1f
     Column(
         modifier
-            .background(Rc.Solid.copy(alpha = 0.92f), RoundedCornerShape(20.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(horizontal = 12.dp)
+            .widthIn(max = 560.dp)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Rc.Solid.copy(alpha = 0.94f))
+            .border(androidx.compose.foundation.BorderStroke(1.dp, Rc.Stroke), shape)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Text(
-            if (landscape) "Chỉnh nút ảo (màn ngang)" else "Chỉnh nút ảo (màn dọc)",
+            if (landscape) "Chỉnh nút ảo · màn hình ngang" else "Chỉnh nút ảo · màn hình dọc",
             color = Rc.Text,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.ExtraBold,
         )
         Spacer(Modifier.height(6.dp))
-        if (selected == null) {
-            Text("Chạm một nút rồi kéo để di chuyển", color = Rc.Muted, fontSize = 13.sp)
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                EditChip("−") { onScale(selected, -0.1f) }
-                Text(
-                    "${selected.label} · %.1f×".format(layout.scaleOf(selected)),
-                    color = Rc.Text,
-                    fontSize = 14.sp,
-                )
-                EditChip("+") { onScale(selected, 0.1f) }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            EditChip("Đặt lại", onReset)
-            EditChip("Xong", onDone)
+        Text(
+            if (selected == null) "Chạm vào một nút để chọn, rồi kéo để di chuyển."
+            else "${selected.label} · %.1f× — kéo nút để di chuyển, kéo thanh trượt để đổi kích thước.".format(current),
+            color = Rc.Muted,
+            fontSize = 15.sp,
+        )
+        Slider(
+            value = current,
+            onValueChange = { v -> if (selected != null) onScale(selected, v - current) },
+            valueRange = PadLayout.MIN_SCALE..PadLayout.MAX_SCALE,
+            steps = 14,
+            enabled = selected != null,
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Rc.GlassStrong,
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent,
+                disabledThumbColor = Rc.Faint,
+                disabledActiveTrackColor = Rc.Faint,
+                disabledInactiveTrackColor = Rc.GlassStrong,
+                disabledActiveTickColor = Color.Transparent,
+                disabledInactiveTickColor = Color.Transparent,
+            ),
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PillButton("Mặc định", primary = false, onClick = onReset)
+            Spacer(Modifier.width(10.dp))
+            PillButton("Xong", onClick = onDone)
         }
     }
 }

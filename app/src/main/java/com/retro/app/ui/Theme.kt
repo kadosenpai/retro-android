@@ -29,8 +29,8 @@ object Rc {
     /** Nền đặc cho những chỗ không được trong suốt (hộp thoại, menu thả xuống, thanh nổi trên game). */
     val Solid = Color(0xFF17181C)
     val Chip = Color(0xFF27272B)
-    /** Bảng (sheet): rgba(18,18,21,0.9). */
-    val Sheet = Color(0xE6121215)
+    /** Bảng (sheet): gần đặc (95%) để nền phía sau không lộ ra, đỡ tốn công làm mờ. */
+    val Sheet = Color(0xF2121215)
     val Stroke = Color(0x24FFFFFF)
     /** Đường kẻ mảnh giữa các hàng (--faint của web). */
     val Line = Color(0x14FFFFFF)

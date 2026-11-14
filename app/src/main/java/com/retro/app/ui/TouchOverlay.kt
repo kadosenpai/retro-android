@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerId
@@ -233,6 +234,7 @@ fun TouchOverlay(
     onMask: (Int) -> Unit,
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
+    sticky: Boolean = false,
     editing: Boolean = false,
     selected: PadControl? = null,
     onSelect: (PadControl?) -> Unit = {},
@@ -292,15 +294,20 @@ fun TouchOverlay(
                 }
             }
         } else {
-            Modifier.pointerInput(lay) {
+            Modifier.pointerInput(lay, sticky) {
                 val owner = HashMap<PointerId, PadControl?>()
                 var stickId: PointerId? = null
                 var lastMask = 0
+                var latched = 0 // các nút đang được "giữ" (chỉ khi bật Giữ nút)
+                var touchedPrev = 0 // các nút đang bị chạm ở lần xử lý trước
+                onMaskNow(0)
+                pressed = emptySet()
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
                         val nowPressed = HashSet<PadControl>()
-                        var mask = 0
+                        var stickMask = 0
+                        var btnMask = 0
                         var knobOff = Offset.Zero
                         var menuReleased = false
                         for (ch in event.changes) {
@@ -318,7 +325,7 @@ fun TouchOverlay(
                                 stickId = id
                             }
                             if (stickId == id) {
-                                mask = mask or stickBits(lay, ch.position)
+                                stickMask = stickMask or stickBits(lay, ch.position)
                                 val v = ch.position - lay.stickC
                                 val d = len(v.x, v.y)
                                 val lim = lay.stickR - lay.knobR * 0.6f
@@ -329,10 +336,21 @@ fun TouchOverlay(
                                 owner[id] = c
                                 if (c != null) {
                                     nowPressed.add(c)
-                                    mask = mask or bitOf(c)
+                                    btnMask = btnMask or bitOf(c)
                                 }
                             }
                             ch.consume()
+                        }
+                        // Giữ nút: mỗi lần mới chạm vào một nút (không phải cần analog) thì đảo trạng thái giữ.
+                        if (sticky) {
+                            latched = latched xor (btnMask and touchedPrev.inv())
+                        } else {
+                            latched = 0
+                        }
+                        touchedPrev = btnMask
+                        val mask = stickMask or btnMask or latched
+                        if (latched != 0) {
+                            for (c in LATCHABLE) if (bitOf(c) and latched != 0) nowPressed.add(c)
                         }
                         if (mask != lastMask) {
                             val newBits = mask and lastMask.inv()
@@ -352,9 +370,38 @@ fun TouchOverlay(
 
         Canvas(Modifier.fillMaxSize().then(input)) {
             drawPad(lay, if (editing) emptySet() else pressed, if (editing) Offset.Zero else knob, measurer)
-            if (editing) drawSelection(lay, selected)
+            if (editing) {
+                drawEditOutlines(lay)
+                drawSelection(lay, selected)
+            }
         }
     }
+}
+
+private val LATCHABLE = listOf(
+    PadControl.A, PadControl.B, PadControl.L, PadControl.R, PadControl.SELECT, PadControl.START,
+)
+
+/** Viền nét đứt quanh mọi điều khiển khi đang chỉnh bố cục (như bản web). */
+private fun DrawScope.drawEditOutlines(lay: Layout) {
+    val color = Color(0x99FFFFFF)
+    val dash = Stroke(width = 3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f)))
+    fun ring(c: Offset, r: Float) = drawCircle(color, radius = r * 1.04f, center = c, style = dash)
+    fun box(r: Rect) = drawRoundRect(
+        color,
+        topLeft = Offset(r.left - 4f, r.top - 4f),
+        size = Size(r.width + 8f, r.height + 8f),
+        cornerRadius = CornerRadius(r.height / 2f, r.height / 2f),
+        style = dash,
+    )
+    ring(lay.stickC, lay.stickR)
+    ring(lay.a, lay.aR)
+    ring(lay.b, lay.bR)
+    ring(lay.menu, lay.menuR)
+    box(lay.l)
+    box(lay.r)
+    box(lay.select)
+    box(lay.start)
 }
 
 private fun DrawScope.drawSelection(lay: Layout, sel: PadControl?) {

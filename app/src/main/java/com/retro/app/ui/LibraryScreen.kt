@@ -3,7 +3,6 @@ package com.retro.app.ui
 import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -58,6 +57,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +77,12 @@ import kotlinx.coroutines.withContext
 @Composable
 fun LibraryScreen(model: AppModel) {
     var query by remember { mutableStateOf("") }
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    fun hideKeyboard() {
+        focus.clearFocus()
+        keyboard?.hide()
+    }
     var sortTop by remember { mutableStateOf(false) }
     var sortPill by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -126,7 +133,7 @@ fun LibraryScreen(model: AppModel) {
     val roomy = LocalConfiguration.current.screenWidthDp > 420
     // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
     val behindSheet = settingsOpen || gameMenu != null
-    val blurRadius = animateDpAsState(if (behindSheet) 18.dp else 0.dp, label = "blur").value
+    val blurRadius = if (behindSheet) 16.dp else 0.dp
 
     Column(
         Modifier
@@ -138,7 +145,10 @@ fun LibraryScreen(model: AppModel) {
         // Thanh tiêu đề
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
-                IconBtn("settings", "Cài đặt") { settingsOpen = true }
+                IconBtn("settings", "Cài đặt") {
+                    hideKeyboard()
+                    settingsOpen = true
+                }
                 Box {
                     IconBtn("menu", "Sắp xếp") { sortTop = true }
                     SortMenu(sortTop, { sortTop = false }, sort) { k -> model.update { it.copy(sort = k) } }
@@ -242,7 +252,10 @@ fun LibraryScreen(model: AppModel) {
                     RomCard(
                         rom = rom,
                         onOpen = { model.open(rom) },
-                        onMenu = { gameMenu = rom },
+                        onMenu = {
+                            hideKeyboard()
+                            gameMenu = rom
+                        },
                         cover = rememberCover(model, rom),
                     )
                 }
@@ -262,7 +275,6 @@ fun LibraryScreen(model: AppModel) {
             shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
             dragHandle = null,
         ) {
-            SheetWindowBlur()
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -323,7 +335,6 @@ fun LibraryScreen(model: AppModel) {
             shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
             dragHandle = null,
         ) {
-            SheetWindowBlur()
             Column(
                 Modifier
                     .fillMaxWidth()
