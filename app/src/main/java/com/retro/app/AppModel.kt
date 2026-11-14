@@ -37,6 +37,7 @@ class AppModel(private val app: Application) {
     var settings by mutableStateOf(prefs.load())
         private set
     var fps by mutableStateOf(0f)
+    var coreMs by mutableStateOf(0f)
         private set
     var speed by mutableStateOf(1f)
         private set
@@ -45,6 +46,7 @@ class AppModel(private val app: Application) {
     init {
         EmulatorEngine.sramSink = { id, data -> runCatching { store.writeSram(id, data) } }
         EmulatorEngine.onFps = { fps = it }
+        EmulatorEngine.onCoreMs = { coreMs = it }
         EmulatorEngine.soundOn = settings.sound
         refresh()
     }

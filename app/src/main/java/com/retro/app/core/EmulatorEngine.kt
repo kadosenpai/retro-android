@@ -38,6 +38,7 @@ object EmulatorEngine {
     /** Gọi (trên luồng giả lập) khi có dữ liệu SRAM mới cần ghi ra file. */
     @Volatile var sramSink: ((String, ByteArray) -> Unit)? = null
     @Volatile var onFps: ((Float) -> Unit)? = null
+    @Volatile var onCoreMs: ((Float) -> Unit)? = null
 
     @Volatile var soundOn = true
         set(v) {
@@ -265,6 +266,7 @@ object EmulatorEngine {
         var frames = 0
         var fpsStart = System.nanoTime()
         var nextNs = System.nanoTime()
+        var coreNs = 0L
         while (alive) {
             drainTasks()
             if (paused || !loaded) {
@@ -278,7 +280,9 @@ object EmulatorEngine {
                 continue
             }
 
+            val c0 = System.nanoTime()
             NativeCore.nativeRunFrame()
+            coreNs += System.nanoTime() - c0
             val n = NativeCore.nativeDrainAudio(audioBuf)
             val t = track
             if (t != null && n > 0) {
@@ -297,6 +301,8 @@ object EmulatorEngine {
             val now = System.nanoTime()
             if (now - fpsStart >= 1_000_000_000L) {
                 onFps?.invoke(frames * 1e9f / (now - fpsStart))
+                if (frames > 0) onCoreMs?.invoke(coreNs / 1e6f / frames)
+                coreNs = 0L
                 frames = 0
                 fpsStart = now
             }

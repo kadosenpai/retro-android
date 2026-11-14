@@ -105,7 +105,7 @@ fun PlayScreen(model: AppModel) {
 
         if (s.showStats) {
             Text(
-                "%.1f fps".format(model.fps),
+                "%.1f fps · lõi %.1f ms".format(model.fps, model.coreMs),
                 color = Rc.Muted,
                 fontSize = 12.sp,
                 modifier = Modifier
