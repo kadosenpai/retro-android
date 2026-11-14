@@ -258,8 +258,14 @@ fun LibraryScreen(model: AppModel) {
                     .navigationBarsPadding()
                     .padding(bottom = 24.dp),
             ) {
+                var settingsPage by remember { mutableStateOf(0) }
+                if (settingsPage == 1) {
+                    ControllerPage(model) { settingsPage = 0 }
+                } else {
                 Text("Cài đặt", color = Rc.Text, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
                 SettingsGroups(model.settings, { model.update(it) }, inGame = false)
+                SectionTitle("Tay cầm")
+                GroupCard { ActionRow("Kết nối và gán nút tay cầm") { settingsPage = 1 } }
                 SectionTitle("Giới thiệu")
                 GroupCard {
                     Text(
@@ -268,6 +274,7 @@ fun LibraryScreen(model: AppModel) {
                         fontSize = 14.sp,
                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
                     )
+                }
                 }
             }
         }

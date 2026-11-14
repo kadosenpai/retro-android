@@ -43,20 +43,7 @@ class MainActivity : ComponentActivity() {
 
     private fun playing() = model.screen == Screen.PLAY && !model.menuOpen
 
-    private fun bitFor(code: Int): Int = when (code) {
-        KeyEvent.KEYCODE_DPAD_UP -> Pad.UP
-        KeyEvent.KEYCODE_DPAD_DOWN -> Pad.DOWN
-        KeyEvent.KEYCODE_DPAD_LEFT -> Pad.LEFT
-        KeyEvent.KEYCODE_DPAD_RIGHT -> Pad.RIGHT
-        // Tay cầm: nút dưới (A kiểu Xbox) = B của GBA, nút phải = A của GBA.
-        KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_Z -> Pad.B
-        KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_X -> Pad.A
-        KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_A -> Pad.L
-        KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_S -> Pad.R
-        KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_SHIFT_RIGHT -> Pad.SELECT
-        KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_ENTER -> Pad.START
-        else -> 0
-    }
+    private fun bitFor(code: Int): Int = model.controllerMap.bitFor(code)
 
     private fun pushHardware() = EmulatorEngine.setHardwareMask(keyMask or axisMask)
 

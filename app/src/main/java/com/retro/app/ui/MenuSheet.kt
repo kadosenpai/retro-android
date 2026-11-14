@@ -91,6 +91,8 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
             var page by remember { mutableStateOf(0) }
             if (page == 1) {
                 CheatsPage(model) { page = 0 }
+            } else if (page == 2) {
+                ControllerPage(model) { page = 0 }
             } else {
             Row(
                 Modifier.fillMaxWidth(),
@@ -102,6 +104,11 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
             GroupCard {
                 ActionRow("Tiếp tục", onClick = onClose)
                 ActionRow("Cheat") { page = 1 }
+                ActionRow("Tay cầm") { page = 2 }
+                ActionRow("Chỉnh bố cục nút ảo") {
+                    onClose()
+                    model.editingLayout = true
+                }
                 ActionRow("Reset game") {
                     model.resetGame()
                     onClose()

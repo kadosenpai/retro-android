@@ -29,9 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
 import com.retro.app.core.Pad
+import com.retro.app.data.PadControl
+import com.retro.app.data.PadLayout
+import kotlin.math.max
 import kotlin.math.sqrt
-
-private enum class Ctl { A, B, L, R, SELECT, START, MENU }
 
 private class Layout(
     val land: Boolean,
@@ -39,8 +40,9 @@ private class Layout(
     val stickR: Float,
     val knobR: Float,
     val a: Offset,
+    val aR: Float,
     val b: Offset,
-    val btnR: Float,
+    val bR: Float,
     val l: Rect,
     val r: Rect,
     val select: Rect,
@@ -49,42 +51,80 @@ private class Layout(
     val menuR: Float,
 )
 
-private fun makeLayout(w: Float, h: Float): Layout {
+private fun makeLayout(w: Float, h: Float, ov: PadLayout): Layout {
     val land = w > h * 1.2f
-    return if (!land) {
-        Layout(
-            land = false,
-            stickC = Offset(0.25f * w, 0.50f * h),
-            stickR = 0.215f * w,
-            knobR = 0.082f * w,
-            a = Offset(0.87f * w, 0.33f * h),
-            b = Offset(0.70f * w, 0.53f * h),
-            btnR = 0.098f * w,
-            l = Rect(0.035f * w, 0.00f * h, 0.035f * w + 0.30f * w, 0.00f * h + 0.13f * h),
-            r = Rect(0.665f * w, 0.00f * h, 0.665f * w + 0.30f * w, 0.00f * h + 0.13f * h),
-            select = Rect(0.19f * w, 0.78f * h, 0.19f * w + 0.235f * w, 0.78f * h + 0.105f * h),
-            start = Rect(0.575f * w, 0.78f * h, 0.575f * w + 0.235f * w, 0.78f * h + 0.105f * h),
-            menu = Offset(0.5f * w, 0.83f * h),
-            menuR = 0.052f * w,
-        )
+    // Vị trí/kích thước mặc định.
+    val stickC: Offset
+    val stickR: Float
+    val knobR: Float
+    val a: Offset
+    val b: Offset
+    val btnR: Float
+    val l: Rect
+    val r: Rect
+    val select: Rect
+    val start: Rect
+    val menu: Offset
+    val menuR: Float
+    if (!land) {
+        stickC = Offset(0.25f * w, 0.50f * h)
+        stickR = 0.215f * w
+        knobR = 0.082f * w
+        a = Offset(0.87f * w, 0.33f * h)
+        b = Offset(0.70f * w, 0.53f * h)
+        btnR = 0.098f * w
+        l = Rect(0.035f * w, 0.00f * h, 0.035f * w + 0.30f * w, 0.00f * h + 0.13f * h)
+        r = Rect(0.665f * w, 0.00f * h, 0.665f * w + 0.30f * w, 0.00f * h + 0.13f * h)
+        select = Rect(0.19f * w, 0.78f * h, 0.19f * w + 0.235f * w, 0.78f * h + 0.105f * h)
+        start = Rect(0.575f * w, 0.78f * h, 0.575f * w + 0.235f * w, 0.78f * h + 0.105f * h)
+        menu = Offset(0.5f * w, 0.83f * h)
+        menuR = 0.052f * w
     } else {
         val sr = 0.27f * h
-        Layout(
-            land = true,
-            stickC = Offset(0.04f * w + sr + 0.02f * h, 0.62f * h),
-            stickR = sr,
-            knobR = 0.4f * sr,
-            a = Offset(0.93f * w - 0.06f * h, 0.50f * h),
-            b = Offset(0.93f * w - 0.06f * h - 0.17f * h - 0.04f * w, 0.68f * h),
-            btnR = 0.115f * h,
-            l = Rect(0.03f * w, 0.05f * h, 0.03f * w + 0.15f * w, 0.05f * h + 0.15f * h),
-            r = Rect(0.82f * w, 0.05f * h, 0.82f * w + 0.15f * w, 0.05f * h + 0.15f * h),
-            select = Rect(0.36f * w, 0.86f * h, 0.36f * w + 0.11f * w, 0.86f * h + 0.11f * h),
-            start = Rect(0.53f * w, 0.86f * h, 0.53f * w + 0.11f * w, 0.86f * h + 0.11f * h),
-            menu = Offset(0.495f * w + 0.0f * w, 0.915f * h),
-            menuR = 0.05f * h,
-        )
+        stickC = Offset(0.04f * w + sr + 0.02f * h, 0.62f * h)
+        stickR = sr
+        knobR = 0.4f * sr
+        a = Offset(0.93f * w - 0.06f * h, 0.50f * h)
+        b = Offset(0.93f * w - 0.06f * h - 0.17f * h - 0.04f * w, 0.68f * h)
+        btnR = 0.115f * h
+        l = Rect(0.03f * w, 0.05f * h, 0.03f * w + 0.15f * w, 0.05f * h + 0.15f * h)
+        r = Rect(0.82f * w, 0.05f * h, 0.82f * w + 0.15f * w, 0.05f * h + 0.15f * h)
+        select = Rect(0.36f * w, 0.86f * h, 0.36f * w + 0.11f * w, 0.86f * h + 0.11f * h)
+        start = Rect(0.53f * w, 0.86f * h, 0.53f * w + 0.11f * w, 0.86f * h + 0.11f * h)
+        menu = Offset(0.495f * w, 0.915f * h)
+        menuR = 0.05f * h
     }
+
+    // Áp bố cục người dùng đã chỉnh (vị trí tâm và hệ số kích thước).
+    fun center(c: PadControl, base: Offset): Offset {
+        val p = ov[c] ?: return base
+        return Offset((p.cx ?: (base.x / w)) * w, (p.cy ?: (base.y / h)) * h)
+    }
+
+    fun rect(c: PadControl, base: Rect): Rect {
+        val p = ov[c] ?: return base
+        val ctr = Offset((p.cx ?: (base.center.x / w)) * w, (p.cy ?: (base.center.y / h)) * h)
+        val hw = base.width * p.scale / 2f
+        val hh = base.height * p.scale / 2f
+        return Rect(ctr.x - hw, ctr.y - hh, ctr.x + hw, ctr.y + hh)
+    }
+
+    return Layout(
+        land = land,
+        stickC = center(PadControl.STICK, stickC),
+        stickR = stickR * ov.scaleOf(PadControl.STICK),
+        knobR = knobR * ov.scaleOf(PadControl.STICK),
+        a = center(PadControl.A, a),
+        aR = btnR * ov.scaleOf(PadControl.A),
+        b = center(PadControl.B, b),
+        bR = btnR * ov.scaleOf(PadControl.B),
+        l = rect(PadControl.L, l),
+        r = rect(PadControl.R, r),
+        select = rect(PadControl.SELECT, select),
+        start = rect(PadControl.START, start),
+        menu = center(PadControl.MENU, menu),
+        menuR = menuR * ov.scaleOf(PadControl.MENU),
+    )
 }
 
 private fun len(x: Float, y: Float): Float = sqrt(x * x + y * y)
@@ -92,29 +132,70 @@ private fun len(x: Float, y: Float): Float = sqrt(x * x + y * y)
 private fun dist(a: Offset, b: Offset): Float = len(a.x - b.x, a.y - b.y)
 
 /** Điều khiển nào đang nằm dưới ngón tay (null nếu không có). Chọn cái gần tâm nhất. */
-private fun hitTest(lay: Layout, p: Offset): Ctl? {
-    var best: Ctl? = null
+private fun hitTest(lay: Layout, p: Offset): PadControl? {
+    var best: PadControl? = null
     var bestD = Float.MAX_VALUE
-    fun consider(c: Ctl, d: Float, ok: Boolean) {
+    fun consider(c: PadControl, d: Float, ok: Boolean) {
         if (ok && d < bestD) {
             bestD = d
             best = c
         }
     }
-    consider(Ctl.A, dist(p, lay.a), dist(p, lay.a) <= lay.btnR * 1.2f)
-    consider(Ctl.B, dist(p, lay.b), dist(p, lay.b) <= lay.btnR * 1.2f)
-    consider(Ctl.MENU, dist(p, lay.menu), dist(p, lay.menu) <= lay.menuR * 1.3f)
-    val slop = lay.btnR * 0.25f
-    fun rectHit(c: Ctl, r: Rect) = consider(
+    consider(PadControl.A, dist(p, lay.a), dist(p, lay.a) <= lay.aR * 1.2f)
+    consider(PadControl.B, dist(p, lay.b), dist(p, lay.b) <= lay.bR * 1.2f)
+    consider(PadControl.MENU, dist(p, lay.menu), dist(p, lay.menu) <= lay.menuR * 1.3f)
+    val slop = max(lay.aR, lay.bR) * 0.25f
+    fun rectHit(c: PadControl, r: Rect) = consider(
         c,
         dist(p, r.center),
         p.x >= r.left - slop && p.x <= r.right + slop && p.y >= r.top - slop && p.y <= r.bottom + slop,
     )
-    rectHit(Ctl.L, lay.l)
-    rectHit(Ctl.R, lay.r)
-    rectHit(Ctl.SELECT, lay.select)
-    rectHit(Ctl.START, lay.start)
+    rectHit(PadControl.L, lay.l)
+    rectHit(PadControl.R, lay.r)
+    rectHit(PadControl.SELECT, lay.select)
+    rectHit(PadControl.START, lay.start)
     return best
+}
+
+private fun controlCenter(lay: Layout, c: PadControl): Offset = when (c) {
+    PadControl.STICK -> lay.stickC
+    PadControl.A -> lay.a
+    PadControl.B -> lay.b
+    PadControl.L -> lay.l.center
+    PadControl.R -> lay.r.center
+    PadControl.SELECT -> lay.select.center
+    PadControl.START -> lay.start.center
+    PadControl.MENU -> lay.menu
+}
+
+/** Chế độ chỉnh: điều khiển nào nằm dưới ngón tay (gồm cả cần analog). */
+private fun editHit(lay: Layout, p: Offset): PadControl? {
+    var best: PadControl? = null
+    var bestD = Float.MAX_VALUE
+    for (c in PadControl.values()) {
+        val ctr = controlCenter(lay, c)
+        val d = dist(p, ctr)
+        val ok = when (c) {
+            PadControl.STICK -> d <= lay.stickR * 1.05f
+            PadControl.A -> d <= lay.aR * 1.2f
+            PadControl.B -> d <= lay.bR * 1.2f
+            PadControl.MENU -> d <= lay.menuR * 1.4f
+            PadControl.L -> inRect(lay.l, p)
+            PadControl.R -> inRect(lay.r, p)
+            PadControl.SELECT -> inRect(lay.select, p)
+            PadControl.START -> inRect(lay.start, p)
+        }
+        if (ok && d < bestD) {
+            bestD = d
+            best = c
+        }
+    }
+    return best
+}
+
+private fun inRect(r: Rect, p: Offset): Boolean {
+    val slop = 12f
+    return p.x >= r.left - slop && p.x <= r.right + slop && p.y >= r.top - slop && p.y <= r.bottom + slop
 }
 
 private fun stickBits(lay: Layout, p: Offset): Int {
@@ -130,103 +211,172 @@ private fun stickBits(lay: Layout, p: Offset): Int {
     return m
 }
 
-private fun bitOf(c: Ctl): Int = when (c) {
-    Ctl.A -> Pad.A
-    Ctl.B -> Pad.B
-    Ctl.L -> Pad.L
-    Ctl.R -> Pad.R
-    Ctl.SELECT -> Pad.SELECT
-    Ctl.START -> Pad.START
-    Ctl.MENU -> 0
+private fun bitOf(c: PadControl): Int = when (c) {
+    PadControl.A -> Pad.A
+    PadControl.B -> Pad.B
+    PadControl.L -> Pad.L
+    PadControl.R -> Pad.R
+    PadControl.SELECT -> Pad.SELECT
+    PadControl.START -> Pad.START
+    PadControl.MENU, PadControl.STICK -> 0
 }
 
 /**
  * Nút ảo cảm ứng đa điểm. Vẽ bằng Canvas, tự xử lý mọi ngón tay: cần analog kéo được,
  * trượt ngón qua lại giữa các nút vẫn nhận, nhả ngón trên ▲ thì mở menu.
+ * Ở chế độ [editing]: chạm chọn một điều khiển rồi kéo để di chuyển (đổi kích thước do thanh công cụ làm).
  */
 @Composable
 fun TouchOverlay(
     haptics: Boolean,
+    layout: PadLayout,
     onMask: (Int) -> Unit,
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
+    editing: Boolean = false,
+    selected: PadControl? = null,
+    onSelect: (PadControl?) -> Unit = {},
+    onLayoutChange: (PadLayout) -> Unit = {},
 ) {
     val view = LocalView.current
     val measurer = rememberTextMeasurer()
     val hapticsNow by rememberUpdatedState(haptics)
     val onMaskNow by rememberUpdatedState(onMask)
     val onMenuNow by rememberUpdatedState(onMenu)
+    val layoutNow by rememberUpdatedState(layout)
+    val onSelectNow by rememberUpdatedState(onSelect)
+    val onLayoutNow by rememberUpdatedState(onLayoutChange)
 
-    var pressed by remember { mutableStateOf(emptySet<Ctl>()) }
+    var pressed by remember { mutableStateOf(emptySet<PadControl>()) }
     var knob by remember { mutableStateOf(Offset.Zero) } // độ lệch cần analog so với tâm
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wPx = constraints.maxWidth.toFloat()
         val hPx = constraints.maxHeight.toFloat()
-        val lay = remember(wPx, hPx) { makeLayout(wPx, hPx) }
+        val lay = remember(wPx, hPx, layout) { makeLayout(wPx, hPx, layout) }
+        val layNow by rememberUpdatedState(lay)
 
-        Canvas(
-            Modifier
-                .fillMaxSize()
-                .pointerInput(lay) {
-                    val owner = HashMap<PointerId, Ctl?>()
-                    var stickId: PointerId? = null
-                    var lastMask = 0
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val nowPressed = HashSet<Ctl>()
-                            var mask = 0
-                            var knobOff = Offset.Zero
-                            var menuReleased = false
-                            for (ch in event.changes) {
-                                val id = ch.id
+        val input = if (editing) {
+            Modifier.pointerInput(wPx, hPx) {
+                awaitPointerEventScope {
+                    var dragging: PadControl? = null
+                    var dragId: PointerId? = null
+                    var grab = Offset.Zero // khoảng cách từ ngón tay tới tâm điều khiển lúc bắt đầu kéo
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        for (ch in event.changes) {
+                            if (dragId == null && ch.pressed && !ch.previousPressed) {
+                                val c = editHit(layNow, ch.position)
+                                onSelectNow(c)
+                                if (c != null) {
+                                    dragging = c
+                                    dragId = ch.id
+                                    grab = controlCenter(layNow, c) - ch.position
+                                }
+                                ch.consume()
+                            } else if (ch.id == dragId) {
                                 if (!ch.pressed) {
-                                    if (owner[id] == Ctl.MENU) menuReleased = true
-                                    owner.remove(id)
-                                    if (stickId == id) stickId = null
-                                    ch.consume()
-                                    continue
-                                }
-                                if (stickId == null && !ch.previousPressed &&
-                                    dist(ch.position, lay.stickC) <= lay.stickR * 1.25f
-                                ) {
-                                    stickId = id
-                                }
-                                if (stickId == id) {
-                                    mask = mask or stickBits(lay, ch.position)
-                                    val v = ch.position - lay.stickC
-                                    val d = len(v.x, v.y)
-                                    val lim = lay.stickR - lay.knobR * 0.6f
-                                    knobOff = if (d > lim && d > 0f) v * (lim / d) else v
-                                    owner[id] = null
+                                    dragging = null
+                                    dragId = null
                                 } else {
-                                    val c = hitTest(lay, ch.position)
-                                    owner[id] = c
+                                    val c = dragging
                                     if (c != null) {
-                                        nowPressed.add(c)
-                                        mask = mask or bitOf(c)
+                                        val t = ch.position + grab
+                                        onLayoutNow(layoutNow.moved(c, t.x / wPx, t.y / hPx))
                                     }
                                 }
                                 ch.consume()
                             }
-                            if (mask != lastMask) {
-                                val newBits = mask and lastMask.inv()
-                                if (newBits != 0 && hapticsNow) {
-                                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                }
-                                lastMask = mask
-                                onMaskNow(mask)
-                            }
-                            pressed = nowPressed
-                            knob = knobOff
-                            if (menuReleased) onMenuNow()
                         }
                     }
-                },
-        ) {
-            drawPad(lay, pressed, knob, measurer)
+                }
+            }
+        } else {
+            Modifier.pointerInput(lay) {
+                val owner = HashMap<PointerId, PadControl?>()
+                var stickId: PointerId? = null
+                var lastMask = 0
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val nowPressed = HashSet<PadControl>()
+                        var mask = 0
+                        var knobOff = Offset.Zero
+                        var menuReleased = false
+                        for (ch in event.changes) {
+                            val id = ch.id
+                            if (!ch.pressed) {
+                                if (owner[id] == PadControl.MENU) menuReleased = true
+                                owner.remove(id)
+                                if (stickId == id) stickId = null
+                                ch.consume()
+                                continue
+                            }
+                            if (stickId == null && !ch.previousPressed &&
+                                dist(ch.position, lay.stickC) <= lay.stickR * 1.25f
+                            ) {
+                                stickId = id
+                            }
+                            if (stickId == id) {
+                                mask = mask or stickBits(lay, ch.position)
+                                val v = ch.position - lay.stickC
+                                val d = len(v.x, v.y)
+                                val lim = lay.stickR - lay.knobR * 0.6f
+                                knobOff = if (d > lim && d > 0f) v * (lim / d) else v
+                                owner[id] = null
+                            } else {
+                                val c = hitTest(lay, ch.position)
+                                owner[id] = c
+                                if (c != null) {
+                                    nowPressed.add(c)
+                                    mask = mask or bitOf(c)
+                                }
+                            }
+                            ch.consume()
+                        }
+                        if (mask != lastMask) {
+                            val newBits = mask and lastMask.inv()
+                            if (newBits != 0 && hapticsNow) {
+                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            }
+                            lastMask = mask
+                            onMaskNow(mask)
+                        }
+                        pressed = nowPressed
+                        knob = knobOff
+                        if (menuReleased) onMenuNow()
+                    }
+                }
+            }
         }
+
+        Canvas(Modifier.fillMaxSize().then(input)) {
+            drawPad(lay, if (editing) emptySet() else pressed, if (editing) Offset.Zero else knob, measurer)
+            if (editing) drawSelection(lay, selected)
+        }
+    }
+}
+
+private fun DrawScope.drawSelection(lay: Layout, sel: PadControl?) {
+    if (sel == null) return
+    val color = Color(0xFFFFFFFF)
+    val stroke = Stroke(width = 4f)
+    fun rectRing(r: Rect) = drawRoundRect(
+        color,
+        topLeft = Offset(r.left - 8f, r.top - 8f),
+        size = Size(r.width + 16f, r.height + 16f),
+        cornerRadius = CornerRadius(16f, 16f),
+        style = stroke,
+    )
+    when (sel) {
+        PadControl.STICK -> drawCircle(color, radius = lay.stickR * 1.06f, center = lay.stickC, style = stroke)
+        PadControl.A -> drawCircle(color, radius = lay.aR * 1.12f, center = lay.a, style = stroke)
+        PadControl.B -> drawCircle(color, radius = lay.bR * 1.12f, center = lay.b, style = stroke)
+        PadControl.MENU -> drawCircle(color, radius = lay.menuR * 1.2f, center = lay.menu, style = stroke)
+        PadControl.L -> rectRing(lay.l)
+        PadControl.R -> rectRing(lay.r)
+        PadControl.SELECT -> rectRing(lay.select)
+        PadControl.START -> rectRing(lay.start)
     }
 }
 
@@ -261,7 +411,7 @@ private fun DrawScope.centerText(
     drawText(layout, topLeft = Offset(center.x - layout.size.width / 2f, center.y - layout.size.height / 2f))
 }
 
-private fun DrawScope.drawPad(lay: Layout, pressed: Set<Ctl>, knob: Offset, m: androidx.compose.ui.text.TextMeasurer) {
+private fun DrawScope.drawPad(lay: Layout, pressed: Set<PadControl>, knob: Offset, m: androidx.compose.ui.text.TextMeasurer) {
     // Cần analog
     drawCircle(
         Brush.radialGradient(
@@ -283,18 +433,18 @@ private fun DrawScope.drawPad(lay: Layout, pressed: Set<Ctl>, knob: Offset, m: a
         radius = lay.knobR,
         center = kc,
     )
-    circleButton(lay.a, lay.btnR, Ctl.A in pressed, "A", m)
-    circleButton(lay.b, lay.btnR, Ctl.B in pressed, "B", m)
+    circleButton(lay.a, lay.aR, PadControl.A in pressed, "A", m)
+    circleButton(lay.b, lay.bR, PadControl.B in pressed, "B", m)
 
-    shoulder(lay.l, left = true, on = Ctl.L in pressed, label = "L", m = m)
-    shoulder(lay.r, left = false, on = Ctl.R in pressed, label = "R", m = m)
-    pill(lay.select, Ctl.SELECT in pressed, "SELECT", m)
-    pill(lay.start, Ctl.START in pressed, "START", m)
+    shoulder(lay.l, left = true, on = PadControl.L in pressed, label = "L", m = m)
+    shoulder(lay.r, left = false, on = PadControl.R in pressed, label = "R", m = m)
+    pill(lay.select, PadControl.SELECT in pressed, "SELECT", m)
+    pill(lay.start, PadControl.START in pressed, "START", m)
 
     // Nút ▲ (menu)
     val mr = lay.menuR
     val mRect = Rect(lay.menu.x - mr, lay.menu.y - mr, lay.menu.x + mr, lay.menu.y + mr)
-    val on = Ctl.MENU in pressed
+    val on = PadControl.MENU in pressed
     drawCircle(fillBrush(mRect, on), radius = mr, center = lay.menu)
     drawCircle(strokeColor, radius = mr, center = lay.menu, style = Stroke(width = 2.5f))
     val tri = Path().apply {

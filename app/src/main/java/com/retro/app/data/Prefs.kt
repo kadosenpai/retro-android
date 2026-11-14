@@ -48,6 +48,19 @@ class Prefs(ctx: Context) {
             .apply()
     }
 
+    fun loadPadMap(): ControllerMap = ControllerMap.decode(sp.getString("padmap", null))
+
+    fun savePadMap(m: ControllerMap) {
+        sp.edit().putString("padmap", m.encode()).apply()
+    }
+
+    /** Bố cục nút ảo riêng cho màn ngang ([land] = true) hoặc màn dọc. */
+    fun loadLayout(land: Boolean): PadLayout = PadLayout.decode(sp.getString(if (land) "layoutL" else "layoutP", null))
+
+    fun saveLayout(land: Boolean, l: PadLayout) {
+        sp.edit().putString(if (land) "layoutL" else "layoutP", l.encode()).apply()
+    }
+
     private inline fun <reified T : Enum<T>> enumOf(name: String?, default: T): T =
         enumValues<T>().firstOrNull { it.name == name } ?: default
 }
