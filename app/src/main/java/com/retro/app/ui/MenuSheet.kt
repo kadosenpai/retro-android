@@ -1,6 +1,25 @@
 package com.retro.app.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import com.retro.app.SlotView
+import com.retro.app.data.RomStore
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -84,6 +103,28 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                 }
             }
 
+            SectionTitle("Trạng thái")
+            LaunchedEffect(Unit) { model.refreshSlots() }
+            GroupCard {
+                val bySlot = model.slots.associateBy { it.slot }
+                for (n in 1..RomStore.SLOT_COUNT) {
+                    SlotRow(
+                        title = "Ô $n",
+                        view = bySlot[n],
+                        canSave = true,
+                        onSave = { model.saveSlot(n) },
+                        onLoad = { model.loadSlot(n) { ok -> if (ok) onClose() } },
+                    )
+                }
+                SlotRow(
+                    title = "Tự động",
+                    view = bySlot[RomStore.AUTO_SLOT],
+                    canSave = false,
+                    onSave = {},
+                    onLoad = { model.loadSlot(RomStore.AUTO_SLOT) { ok -> if (ok) onClose() } },
+                )
+            }
+
             SectionTitle("Tốc độ game")
             GroupCard {
                 ChipRow(SPEEDS, model.speed, { speedLabel(it) }, { model.changeSpeed(it) })
@@ -91,5 +132,74 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
 
             SettingsGroups(model.settings, { model.update(it) }, inGame = true)
         }
+    }
+}
+
+
+private val timeFmt = SimpleDateFormat("HH:mm dd/MM", Locale.getDefault())
+
+@Composable
+private fun SlotRow(title: String, view: SlotView?, canSave: Boolean, onSave: () -> Unit, onLoad: () -> Unit) {
+    val filled = view != null && view.savedAt > 0
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .width(72.dp)
+                .height(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Rc.Chip)
+                .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            val img = view?.thumb
+            if (img != null) {
+                Image(
+                    bitmap = img,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(72.dp, 48.dp),
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Rc.Text, fontSize = 16.sp)
+            Text(
+                if (filled) timeFmt.format(Date(view!!.savedAt)) else "Trống",
+                color = Rc.Muted,
+                fontSize = 12.sp,
+            )
+        }
+        if (canSave) {
+            SlotButton("Lưu", enabled = true, onClick = onSave)
+            Spacer(Modifier.width(8.dp))
+        }
+        SlotButton("Nạp", enabled = filled, onClick = onLoad)
+    }
+}
+
+@Composable
+private fun SlotButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Rc.Chip)
+            .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(50))
+            .then(if (enabled) Modifier.clickableNoRipple(onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = if (enabled) Rc.Text else Rc.Faint,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
     }
 }

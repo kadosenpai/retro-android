@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        model.autoSave()
         model.pauseGame()
     }
 

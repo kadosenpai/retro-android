@@ -1,10 +1,14 @@
 package com.retro.app
 
 import android.app.Application
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import com.retro.app.core.EmulatorEngine
 import com.retro.app.data.ImportResult
 import com.retro.app.data.Prefs
@@ -16,8 +20,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 
 enum class Screen { LIBRARY, PLAY }
+
+/** Một ô trạng thái hiển thị trong menu. savedAt = 0 nghĩa là ô trống. */
+class SlotView(val slot: Int, val savedAt: Long, val thumb: ImageBitmap?)
 
 /** Trạng thái toàn ứng dụng. Sống ở mức Application nên không mất khi xoay màn hình. */
 class AppModel(private val app: Application) {
@@ -42,6 +50,8 @@ class AppModel(private val app: Application) {
     var speed by mutableStateOf(1f)
         private set
     var menuOpen by mutableStateOf(false)
+    var slots by mutableStateOf<List<SlotView>>(emptyList())
+        private set
 
     init {
         EmulatorEngine.sramSink = { id, data -> runCatching { store.writeSram(id, data) } }
@@ -107,15 +117,26 @@ class AppModel(private val app: Application) {
         if (loading) return
         scope.launch {
             loading = true
+            var resumed = false
             val err = withContext(Dispatchers.IO) {
                 val sram = store.readSram(rom.id)
-                EmulatorEngine.load(app, store.romFile(rom.id), rom.id, sram)
+                val e = EmulatorEngine.load(app, store.romFile(rom.id), rom.id, sram)
+                if (e == null) {
+                    // Tiếp tục từ lần chơi trước (trạng thái tự động); hỏng thì bỏ qua.
+                    val auto = store.readState(rom.id, RomStore.AUTO_SLOT)
+                    if (auto != null) {
+                        resumed = EmulatorEngine.loadState(auto)
+                        if (!resumed) store.deleteState(rom.id, RomStore.AUTO_SLOT)
+                    }
+                }
+                e
             }
             loading = false
             if (err != null) {
                 toast = err
                 return@launch
             }
+            if (resumed) toast = "Tiếp tục từ lần chơi trước"
             speed = 1f
             EmulatorEngine.speed = 1f
             menuOpen = false
@@ -147,7 +168,74 @@ class AppModel(private val app: Application) {
         scope.launch { leaveGame() }
     }
 
+    // ---------- Trạng thái ----------
+    private fun thumbPng(bmp: Bitmap?): ByteArray? {
+        if (bmp == null) return null
+        return runCatching {
+            val out = ByteArrayOutputStream()
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            out.toByteArray()
+        }.getOrNull()
+    }
+
+    /** Lưu trạng thái hiện tại vào ô [slot]; trả true nếu thành công. Gọi trên luồng IO. */
+    private fun writeSlot(rom: RomInfo, slot: Int): Boolean {
+        val data = EmulatorEngine.saveState() ?: return false
+        val png = thumbPng(EmulatorEngine.snapshot())
+        return runCatching { store.writeState(rom.id, slot, data, png) }.isSuccess
+    }
+
+    fun refreshSlots() {
+        val rom = current ?: run {
+            slots = emptyList()
+            return
+        }
+        scope.launch {
+            slots = withContext(Dispatchers.IO) {
+                (0..RomStore.SLOT_COUNT).map { n ->
+                    val t = store.stateTime(rom.id, n)
+                    val img = if (t > 0) {
+                        store.readThumb(rom.id, n)?.let { b ->
+                            runCatching { BitmapFactory.decodeByteArray(b, 0, b.size)?.asImageBitmap() }.getOrNull()
+                        }
+                    } else null
+                    SlotView(n, t, img)
+                }
+            }
+        }
+    }
+
+    fun saveSlot(slot: Int) {
+        val rom = current ?: return
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) { writeSlot(rom, slot) }
+            toast = if (ok) "Đã lưu vào ô $slot" else "Không lưu được trạng thái"
+            refreshSlots()
+        }
+    }
+
+    /** Nạp trạng thái từ ô [slot]; trả về qua [done] (true nếu thành công). */
+    fun loadSlot(slot: Int, done: (Boolean) -> Unit = {}) {
+        val rom = current ?: return
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                val data = store.readState(rom.id, slot) ?: return@withContext false
+                EmulatorEngine.loadState(data)
+            }
+            toast = if (ok) "Đã nạp trạng thái" else "Không nạp được (trạng thái cũ hoặc lõi đã đổi)"
+            done(ok)
+        }
+    }
+
+    /** Tự lưu khi tạm dừng/thoát để lần sau chơi tiếp. */
+    fun autoSave() {
+        val rom = current ?: return
+        if (screen != Screen.PLAY) return
+        scope.launch { withContext(Dispatchers.IO) { writeSlot(rom, RomStore.AUTO_SLOT) } }
+    }
+
     private suspend fun leaveGame() {
+        current?.let { rom -> withContext(Dispatchers.IO) { writeSlot(rom, RomStore.AUTO_SLOT) } }
         withContext(Dispatchers.IO) { EmulatorEngine.unload() }
         current = null
         screen = Screen.LIBRARY

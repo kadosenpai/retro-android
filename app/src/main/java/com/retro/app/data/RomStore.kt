@@ -44,10 +44,32 @@ class RomStore(private val ctx: Context) {
     private val lock = Any()
     private val romDir = File(ctx.filesDir, "roms").apply { mkdirs() }
     private val saveDir = File(ctx.filesDir, "saves").apply { mkdirs() }
+    private val stateDir = File(ctx.filesDir, "states").apply { mkdirs() }
     private val indexFile = File(ctx.filesDir, "library.json")
 
     fun romFile(id: String) = File(romDir, "$id.rom")
     fun savFile(id: String) = File(saveDir, "$id.sav")
+
+    // ---------- Trạng thái (save state) ----------
+    private fun stateFile(id: String, slot: Int) = File(stateDir, "$id.$slot.state")
+    private fun thumbFile(id: String, slot: Int) = File(stateDir, "$id.$slot.png")
+
+    fun writeState(id: String, slot: Int, data: ByteArray, thumbPng: ByteArray?) {
+        writeAtomic(stateFile(id, slot), data)
+        if (thumbPng != null) writeAtomic(thumbFile(id, slot), thumbPng) else thumbFile(id, slot).delete()
+    }
+
+    fun readState(id: String, slot: Int): ByteArray? = stateFile(id, slot).takeIf { it.exists() }?.readBytes()
+
+    fun readThumb(id: String, slot: Int): ByteArray? = thumbFile(id, slot).takeIf { it.exists() }?.readBytes()
+
+    /** Thời điểm lưu (ms); 0 nếu ô trống. */
+    fun stateTime(id: String, slot: Int): Long = stateFile(id, slot).takeIf { it.exists() }?.lastModified() ?: 0L
+
+    fun deleteState(id: String, slot: Int) {
+        stateFile(id, slot).delete()
+        thumbFile(id, slot).delete()
+    }
 
     fun list(): List<RomInfo> = synchronized(lock) { readIndex() }
 
@@ -135,6 +157,7 @@ class RomStore(private val ctx: Context) {
         writeIndex(readIndex().filter { it.id != id })
         romFile(id).delete()
         savFile(id).delete()
+        for (slot in 0..SLOT_COUNT) deleteState(id, slot)
     }
 
     fun readSram(id: String): ByteArray? = savFile(id).takeIf { it.exists() }?.readBytes()
@@ -151,5 +174,9 @@ class RomStore(private val ctx: Context) {
 
     companion object {
         val ALLOWED_EXT = setOf("gba", "agb", "bin")
+
+        /** Ô 0 = tự động; ô 1..SLOT_COUNT = người chơi tự lưu. */
+        const val AUTO_SLOT = 0
+        const val SLOT_COUNT = 4
     }
 }
