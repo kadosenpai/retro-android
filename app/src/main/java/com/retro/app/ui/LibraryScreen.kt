@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -265,6 +266,7 @@ fun LibraryScreen(model: AppModel) {
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
                     .navigationBarsPadding()
@@ -325,6 +327,7 @@ fun LibraryScreen(model: AppModel) {
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
                     .navigationBarsPadding()
@@ -494,7 +497,9 @@ private fun SortMenu(expanded: Boolean, onDismiss: () -> Unit, current: SortKey,
 
 @Composable
 private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
-    val wide = LocalConfiguration.current.screenWidthDp >= 600
+    val cfg = LocalConfiguration.current
+    val wide = cfg.screenWidthDp >= 600
+    val compact = cfg.screenHeightDp < 480
     Column(
         Modifier
             .fillMaxSize()
@@ -526,7 +531,20 @@ private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
             .background(Rc.Glass)
             .border(BorderStroke(1.dp, Rc.Stroke), shape)
         val desc = "Bấm dấu + để thêm file ROM .gba của bạn. Chỉ dùng ROM bạn sở hữu hợp pháp; dữ liệu nằm trên máy này."
-        if (wide) {
+        if (compact) {
+            // Màn ngang thấp: thẻ gọn một hàng để nằm vừa màn hình, không phải vuốt.
+            Row(cardMod.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                RetroIcon("layers", size = 40.dp, tint = Rc.Text)
+                Spacer(Modifier.width(18.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Chưa có băng nào", color = Rc.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(2.dp))
+                    Text(desc, color = Rc.Muted, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                Spacer(Modifier.width(18.dp))
+                PillButton("Thêm ROM", icon = "plus", onClick = onAdd)
+            }
+        } else if (wide) {
             Row(cardMod.padding(horizontal = 24.dp, vertical = 22.dp), verticalAlignment = Alignment.CenterVertically) {
                 RetroIcon("layers", size = 56.dp, tint = Rc.Text)
                 Spacer(Modifier.width(22.dp))
