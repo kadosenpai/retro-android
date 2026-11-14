@@ -33,6 +33,8 @@ int PixelFormatCode();
 // Sao chép khung hình mới nhất vào dst (dstCap byte). Trả về số thứ tự khung hình; w,h,fmt là kích thước hiện tại.
 uint32_t CopyFrame(uint8_t* dst, size_t dstCap, int* w, int* h, int* fmt);
 // Lấy tối đa maxFrames mẫu âm thanh stereo (int16, xen kẽ L,R). Trả về số khung (cặp L/R).
+constexpr int kOutputRate = 48000;  // tần số phát ra (Hz)
+// Lấy âm thanh đã đổi sang kOutputRate (L,R xen kẽ). Trả về số khung.
 size_t DrainAudio(int16_t* out, size_t maxFrames);
 
 bool GetSram(std::vector<uint8_t>* out);

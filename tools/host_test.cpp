@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
   retro::RunFrame();
   retro::Shutdown();
   std::printf("shutdown ok\n");
-  bool pass = w == 240 && h == 160 && serial > 100 && audio > 50000 && ok && ok2;
+  bool pass = w == 240 && h == 160 && serial > 100 && audio > 90000 && audio < 102000 && ok && ok2;
   std::printf(pass ? "PASS\n" : "FAIL\n");
   return pass ? 0 : 1;
 }

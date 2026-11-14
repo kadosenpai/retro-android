@@ -37,6 +37,9 @@ object EmulatorEngine {
 
     /** Gọi (trên luồng giả lập) khi có dữ liệu SRAM mới cần ghi ra file. */
     @Volatile var sramSink: ((String, ByteArray) -> Unit)? = null
+    /** Tần số phát ra (Hz); khớp retro::kOutputRate bên C++. */
+    private const val OUTPUT_RATE = 48000
+
     @Volatile var onFps: ((Float) -> Unit)? = null
     @Volatile var onCoreMs: ((Float) -> Unit)? = null
 
@@ -115,7 +118,7 @@ object EmulatorEngine {
             lastSramSaveNs = System.nanoTime()
             currentId = romId
             pushInput()
-            startAudio(av[1].toInt())
+            startAudio(OUTPUT_RATE)
             loaded = true
             paused = false
             null
@@ -198,7 +201,7 @@ object EmulatorEngine {
         try {
             val minBuf = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
             val frameBytes = (rate / 60) * 4
-            val size = max(minBuf, frameBytes * 8)
+            val size = max(minBuf * 2, frameBytes * 8)
             val t = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
@@ -215,7 +218,7 @@ object EmulatorEngine {
                 )
                 .setBufferSizeInBytes(size)
                 .setTransferMode(AudioTrack.MODE_STREAM)
-                .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+                .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_NONE)
                 .build()
             t.setVolume(if (soundOn) 1f else 0f)
             track = t

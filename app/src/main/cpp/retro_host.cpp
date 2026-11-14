@@ -70,6 +70,8 @@ uint32_t g_frameSerial = 0;
 
 std::mutex g_audioMu;
 std::vector<int16_t> g_audio;  // L,R xen kẽ
+double g_resPos = 0.0;      // vị trí nội suy (tính theo khung nguồn)
+int16_t g_resPrevL = 0, g_resPrevR = 0;  // khung nguồn đứng trước vị trí 0
 const size_t kAudioCapFrames = 48000;  // giữ tối đa ~1 giây để không phình bộ nhớ
 
 // ---- Callback ----
@@ -289,6 +291,8 @@ std::string LoadGame(const std::string& romPath) {
   {
     std::lock_guard<std::mutex> l(g_audioMu);
     g_audio.clear();
+    g_resPos = 0.0;
+    g_resPrevL = g_resPrevR = 0;
   }
   g_pad = 0;
   return "";
@@ -335,12 +339,36 @@ uint32_t CopyFrame(uint8_t* dst, size_t dstCap, int* w, int* h, int* fmt) {
 }
 
 size_t DrainAudio(int16_t* out, size_t maxFrames) {
+  // Đổi tần số từ tần số của lõi (32768 Hz với GBA) sang kOutputRate bằng nội suy tuyến tính.
   std::lock_guard<std::mutex> lock(g_audioMu);
-  size_t have = g_audio.size() / 2;
-  size_t n = have < maxFrames ? have : maxFrames;
-  if (n == 0) return 0;
-  memcpy(out, g_audio.data(), n * 2 * sizeof(int16_t));
-  g_audio.erase(g_audio.begin(), g_audio.begin() + static_cast<long>(n * 2));
+  const size_t N = g_audio.size() / 2;
+  if (N < 2 || maxFrames == 0) return 0;
+  const double ratio = (g_av.sampleRate > 1.0 ? g_av.sampleRate : 32768.0) / static_cast<double>(kOutputRate);
+  auto sample = [&](long j, int ch) -> double {
+    return j < 0 ? (ch == 0 ? g_resPrevL : g_resPrevR) : g_audio[static_cast<size_t>(j) * 2 + ch];
+  };
+  size_t n = 0;
+  double pos = g_resPos;
+  while (n < maxFrames) {
+    long i = static_cast<long>(pos);
+    if (i + 1 >= static_cast<long>(N)) break;
+    double f = pos - static_cast<double>(i);
+    for (int ch = 0; ch < 2; ++ch) {
+      double v = sample(i, ch) * (1.0 - f) + sample(i + 1, ch) * f;
+      out[n * 2 + ch] = static_cast<int16_t>(v < -32768.0 ? -32768.0 : (v > 32767.0 ? 32767.0 : v));
+    }
+    ++n;
+    pos += ratio;
+  }
+  long k = static_cast<long>(pos);
+  if (k > static_cast<long>(N)) k = static_cast<long>(N);
+  if (k > 0) {
+    g_resPrevL = g_audio[static_cast<size_t>(k - 1) * 2];
+    g_resPrevR = g_audio[static_cast<size_t>(k - 1) * 2 + 1];
+    g_audio.erase(g_audio.begin(), g_audio.begin() + static_cast<long>(k * 2));
+    pos -= static_cast<double>(k);
+  }
+  g_resPos = pos;
   return n;
 }
 
