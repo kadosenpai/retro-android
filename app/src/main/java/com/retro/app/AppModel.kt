@@ -112,6 +112,21 @@ class AppModel(private val app: Application) {
         }
     }
 
+    // ---------- Save game (.sav) ----------
+    fun exportSave(rom: RomInfo, uri: Uri) {
+        scope.launch {
+            val err = withContext(Dispatchers.IO) { store.exportSram(rom.id, uri) }
+            toast = err ?: "Đã xuất save của \"${rom.name}\""
+        }
+    }
+
+    fun importSave(rom: RomInfo, uri: Uri) {
+        scope.launch {
+            val err = withContext(Dispatchers.IO) { store.importSram(rom.id, uri) }
+            toast = err ?: "Đã nhập save cho \"${rom.name}\". Mở game để dùng."
+        }
+    }
+
     // ---------- Chơi ----------
     fun open(rom: RomInfo) {
         if (loading) return

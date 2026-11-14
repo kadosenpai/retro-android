@@ -72,6 +72,23 @@ fun LibraryScreen(model: AppModel) {
     var renameTarget by remember { mutableStateOf<RomInfo?>(null) }
     var deleteTarget by remember { mutableStateOf<RomInfo?>(null) }
 
+    var exportTarget by remember { mutableStateOf<RomInfo?>(null) }
+    var importTarget by remember { mutableStateOf<RomInfo?>(null) }
+    var importConfirm by remember { mutableStateOf<RomInfo?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { uri ->
+        val rom = exportTarget
+        exportTarget = null
+        if (rom != null && uri != null) model.exportSave(rom, uri)
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val rom = importTarget
+        importTarget = null
+        if (rom != null && uri != null) model.importSave(rom, uri)
+    }
+
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         model.addRoms(uris)
     }
@@ -193,6 +210,11 @@ fun LibraryScreen(model: AppModel) {
                         onOpen = { model.open(rom) },
                         onRename = { renameTarget = rom },
                         onDelete = { deleteTarget = rom },
+                        onExportSave = {
+                            exportTarget = rom
+                            exportLauncher.launch("${rom.name}.sav")
+                        },
+                        onImportSave = { importConfirm = rom },
                     )
                 }
             }
@@ -246,6 +268,27 @@ fun LibraryScreen(model: AppModel) {
         )
     }
 
+    importConfirm?.let { rom ->
+        AlertDialog(
+            onDismissRequest = { importConfirm = null },
+            title = { Text("Nhập save cho \"${rom.name}\"?") },
+            text = {
+                Text(
+                    "Save hiện tại của game này sẽ bị ghi đè bằng file .sav bạn chọn, " +
+                        "và trạng thái \"Tự động\" sẽ bị xoá. Các ô Lưu 1–4 giữ nguyên.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    importTarget = rom
+                    importConfirm = null
+                    importLauncher.launch(arrayOf("*/*"))
+                }) { Text("Chọn file .sav") }
+            },
+            dismissButton = { TextButton(onClick = { importConfirm = null }) { Text("Huỷ") } },
+        )
+    }
+
     deleteTarget?.let { rom ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
@@ -295,7 +338,14 @@ private fun EmptyState(hasAny: Boolean) {
 }
 
 @Composable
-private fun RomCard(rom: RomInfo, onOpen: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
+private fun RomCard(
+    rom: RomInfo,
+    onOpen: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onExportSave: () -> Unit,
+    onImportSave: () -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
     Row(
         Modifier
@@ -352,6 +402,14 @@ private fun RomCard(rom: RomInfo, onOpen: () -> Unit, onRename: () -> Unit, onDe
                 DropdownMenuItem(text = { Text("Đổi tên") }, onClick = {
                     menu = false
                     onRename()
+                })
+                DropdownMenuItem(text = { Text("Xuất save (.sav)") }, onClick = {
+                    menu = false
+                    onExportSave()
+                })
+                DropdownMenuItem(text = { Text("Nhập save (.sav)") }, onClick = {
+                    menu = false
+                    onImportSave()
                 })
                 DropdownMenuItem(text = { Text("Xoá khỏi máy", color = Rc.Danger) }, onClick = {
                     menu = false

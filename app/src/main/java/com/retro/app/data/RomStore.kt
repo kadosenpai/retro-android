@@ -164,6 +164,45 @@ class RomStore(private val ctx: Context) {
 
     fun writeSram(id: String, data: ByteArray) = writeAtomic(savFile(id), data)
 
+    fun hasSram(id: String): Boolean = savFile(id).let { it.exists() && it.length() > 0 }
+
+    /** Ghi file .sav của game ra Uri người dùng chọn. Trả về thông báo lỗi, hoặc null nếu thành công. */
+    fun exportSram(id: String, uri: Uri): String? {
+        val src = savFile(id)
+        if (!src.exists() || src.length() == 0L) return "Game này chưa có save để xuất"
+        return try {
+            ctx.contentResolver.openOutputStream(uri, "wt").use { out ->
+                if (out == null) return "Không ghi được file"
+                out.write(src.readBytes())
+            }
+            null
+        } catch (e: Exception) {
+            "Lỗi khi xuất save: ${e.message}"
+        }
+    }
+
+    /**
+     * Nhập file .sav từ Uri thành save của game. Kích thước hợp lệ của GBA: 512 B đến 128 KB
+     * (cho phép dư tối đa 64 byte vì vài trình giả lập ghi thêm dữ liệu đồng hồ).
+     * Xoá luôn trạng thái tự động của game, nếu không lần mở sau sẽ nạp lại trạng thái cũ đè lên save vừa nhập.
+     */
+    fun importSram(id: String, uri: Uri): String? {
+        return try {
+            val data = ctx.contentResolver.openInputStream(uri).use { it?.readBytes() }
+                ?: return "Không đọc được file"
+            if (data.size < 512 || data.size > 131072 + 64) {
+                return "File không phải save GBA hợp lệ (${data.size} byte)"
+            }
+            synchronized(lock) {
+                writeAtomic(savFile(id), data)
+                deleteState(id, AUTO_SLOT)
+            }
+            null
+        } catch (e: Exception) {
+            "Lỗi khi nhập save: ${e.message}"
+        }
+    }
+
     private fun queryName(uri: Uri): String? = try {
         ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) c.getString(0) else null
