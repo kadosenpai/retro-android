@@ -45,11 +45,11 @@ import com.retro.app.data.GbaButton
 
 /** Tên các tay cầm đang kết nối. */
 private fun connectedPads(): List<String> =
-    InputDevice.getDeviceIds().mapNotNull { InputDevice.getDevice(it) }
+    InputDevice.getDeviceIds().toList().mapNotNull { InputDevice.getDevice(it) }
         .filter { d ->
             !d.isVirtual &&
-                (d.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
-                    d.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK)
+                ((d.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
+                    (d.sources and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK)
         }
         .map { it.name }
 
