@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.retro.app.core.EmulatorEngine
+import com.retro.app.data.CheatCodes
+import com.retro.app.data.CheatItem
 import com.retro.app.data.CoverService
 import com.retro.app.data.ImportResult
 import com.retro.app.data.Prefs
@@ -55,6 +57,8 @@ class AppModel(private val app: Application) {
         private set
     var menuOpen by mutableStateOf(false)
     var slots by mutableStateOf<List<SlotView>>(emptyList())
+        private set
+    var cheats by mutableStateOf<List<CheatItem>>(emptyList())
         private set
 
     init {
@@ -117,6 +121,37 @@ class AppModel(private val app: Application) {
             toast = "Đã xoá \"${rom.name}\""
         }
     }
+
+    // ---------- Cheat ----------
+    /** Đưa các cheat đang bật vào lõi. Gọi trên luồng IO. */
+    private fun applyCheatList(list: List<CheatItem>) {
+        val codes = list.filter { it.enabled }.map { CheatCodes.normalize(it.code) }.filter { it.isNotEmpty() }
+        EmulatorEngine.setCheats(codes)
+    }
+
+    private fun commitCheats(list: List<CheatItem>) {
+        val rom = current ?: return
+        cheats = list
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching { store.writeCheats(rom.id, list) }
+                applyCheatList(list)
+            }
+        }
+    }
+
+    /** Thêm cheat; trả về thông báo lỗi nếu mã không hợp lệ, null nếu đã thêm. */
+    fun addCheat(name: String, code: String): String? {
+        CheatCodes.validate(code)?.let { return it }
+        val n = name.trim().ifEmpty { "Cheat ${cheats.size + 1}" }
+        commitCheats(cheats + CheatItem(java.util.UUID.randomUUID().toString(), n, code.trim(), true))
+        return null
+    }
+
+    fun toggleCheat(id: String, enabled: Boolean) =
+        commitCheats(cheats.map { if (it.id == id) it.copy(enabled = enabled) else it })
+
+    fun deleteCheat(id: String) = commitCheats(cheats.filter { it.id != id })
 
     // ---------- Ảnh bìa ----------
     /** Tự tải ảnh bìa ở nền cho các game chưa có (mỗi game thử lại sau tối thiểu 7 ngày nếu thất bại). */
@@ -184,10 +219,13 @@ class AppModel(private val app: Application) {
         scope.launch {
             loading = true
             var resumed = false
+            var loadedCheats: List<CheatItem> = emptyList()
             val err = withContext(Dispatchers.IO) {
                 val sram = store.readSram(rom.id)
                 val e = EmulatorEngine.load(app, store.romFile(rom.id), rom.id, sram)
                 if (e == null) {
+                    loadedCheats = store.readCheats(rom.id)
+                    applyCheatList(loadedCheats)
                     // Tiếp tục từ lần chơi trước (trạng thái tự động); hỏng thì bỏ qua.
                     val auto = store.readState(rom.id, RomStore.AUTO_SLOT)
                     if (auto != null) {
@@ -202,6 +240,7 @@ class AppModel(private val app: Application) {
                 toast = err
                 return@launch
             }
+            cheats = loadedCheats
             if (resumed) toast = "Tiếp tục từ lần chơi trước"
             speed = 1f
             EmulatorEngine.speed = 1f
@@ -303,6 +342,7 @@ class AppModel(private val app: Application) {
     private suspend fun leaveGame() {
         current?.let { rom -> withContext(Dispatchers.IO) { writeSlot(rom, RomStore.AUTO_SLOT) } }
         withContext(Dispatchers.IO) { EmulatorEngine.unload() }
+        cheats = emptyList()
         current = null
         screen = Screen.LIBRARY
         refresh()

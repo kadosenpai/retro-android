@@ -113,18 +113,23 @@ fun ToggleRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(title, color = Rc.Text, fontSize = 17.sp, modifier = Modifier.weight(1f))
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.Black,
-                checkedTrackColor = Color.White,
-                uncheckedThumbColor = Color(0xFFBBBBBB),
-                uncheckedTrackColor = Rc.Chip,
-                uncheckedBorderColor = Rc.Stroke,
-            ),
-        )
+        RetroSwitch(checked, onChange)
     }
+}
+
+@Composable
+fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onChange,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Color.Black,
+            checkedTrackColor = Color.White,
+            uncheckedThumbColor = Color(0xFFBBBBBB),
+            uncheckedTrackColor = Rc.Chip,
+            uncheckedBorderColor = Rc.Stroke,
+        ),
+    )
 }
 
 @Composable

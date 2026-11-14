@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -84,6 +88,10 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                 .navigationBarsPadding()
                 .padding(bottom = 24.dp),
         ) {
+            var page by remember { mutableStateOf(0) }
+            if (page == 1) {
+                CheatsPage(model) { page = 0 }
+            } else {
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -93,6 +101,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
             }
             GroupCard {
                 ActionRow("Tiếp tục", onClick = onClose)
+                ActionRow("Cheat") { page = 1 }
                 ActionRow("Reset game") {
                     model.resetGame()
                     onClose()
@@ -131,6 +140,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
             }
 
             SettingsGroups(model.settings, { model.update(it) }, inGame = true)
+            }
         }
     }
 }

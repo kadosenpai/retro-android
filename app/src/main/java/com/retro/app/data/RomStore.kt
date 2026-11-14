@@ -57,11 +57,39 @@ class RomStore(private val ctx: Context) {
     private val romDir = File(ctx.filesDir, "roms").apply { mkdirs() }
     private val saveDir = File(ctx.filesDir, "saves").apply { mkdirs() }
     private val coverDir = File(ctx.filesDir, "covers").apply { mkdirs() }
+    private val cheatDir = File(ctx.filesDir, "cheats").apply { mkdirs() }
     private val stateDir = File(ctx.filesDir, "states").apply { mkdirs() }
     private val indexFile = File(ctx.filesDir, "library.json")
 
     fun romFile(id: String) = File(romDir, "$id.rom")
     fun savFile(id: String) = File(saveDir, "$id.sav")
+
+    // ---------- Cheat ----------
+    private fun cheatFile(id: String) = File(cheatDir, "$id.json")
+
+    fun readCheats(id: String): List<CheatItem> {
+        val f = cheatFile(id)
+        if (!f.exists()) return emptyList()
+        return try {
+            val arr = JSONArray(f.readText())
+            (0 until arr.length()).mapNotNull { i ->
+                val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                val code = o.optString("code", "")
+                if (code.isEmpty()) return@mapNotNull null
+                CheatItem(o.optString("id", "c$i"), o.optString("name", ""), code, o.optBoolean("enabled", false))
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun writeCheats(id: String, list: List<CheatItem>) {
+        val arr = JSONArray()
+        list.forEach {
+            arr.put(JSONObject().put("id", it.id).put("name", it.name).put("code", it.code).put("enabled", it.enabled))
+        }
+        writeAtomic(cheatFile(id), arr.toString().toByteArray())
+    }
 
     // ---------- Ảnh bìa ----------
     private fun coverFile(id: String) = File(coverDir, "$id.jpg")
@@ -188,6 +216,7 @@ class RomStore(private val ctx: Context) {
         romFile(id).delete()
         savFile(id).delete()
         coverFile(id).delete()
+        cheatFile(id).delete()
         for (slot in 0..SLOT_COUNT) deleteState(id, slot)
     }
 
