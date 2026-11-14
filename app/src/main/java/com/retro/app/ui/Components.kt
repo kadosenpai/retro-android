@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -342,3 +346,14 @@ fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
         indication = null,
         onClick = onClick,
     )
+
+/**
+ * Giới hạn chiều cao nội dung bảng: tối đa bằng màn hình trừ thanh trạng thái.
+ * Trang ngắn thì bảng ôm sát nội dung (không còn khoảng trống phía trên); trang dài thì cuộn.
+ */
+@Composable
+fun Modifier.sheetMaxHeight(): Modifier {
+    val screenH = LocalConfiguration.current.screenHeightDp.dp
+    val top = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+    return this.heightIn(max = screenH - top)
+}

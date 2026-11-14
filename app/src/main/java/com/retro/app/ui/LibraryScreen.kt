@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -83,7 +82,6 @@ fun LibraryScreen(model: AppModel) {
         focus.clearFocus()
         keyboard?.hide()
     }
-    var sortTop by remember { mutableStateOf(false) }
     var sortPill by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var gameMenu by remember { mutableStateOf<RomInfo?>(null) }
@@ -143,15 +141,11 @@ fun LibraryScreen(model: AppModel) {
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         // Thanh tiêu đề
-        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (LocalConfiguration.current.screenHeightDp < 480) 4.dp else 12.dp)) {
             Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
                 IconBtn("settings", "Cài đặt") {
                     hideKeyboard()
                     settingsOpen = true
-                }
-                Box {
-                    IconBtn("menu", "Sắp xếp") { sortTop = true }
-                    SortMenu(sortTop, { sortTop = false }, sort) { k -> model.update { it.copy(sort = k) } }
                 }
             }
             Text(
@@ -196,6 +190,7 @@ fun LibraryScreen(model: AppModel) {
 
         // Tiêu đề mục + sắp xếp
         Spacer(Modifier.height(14.dp))
+        if (model.roms.isNotEmpty()) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Rc.Line))
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -203,21 +198,21 @@ fun LibraryScreen(model: AppModel) {
         ) {
             RetroIcon("layers", size = 22.dp, tint = Rc.Text)
             Spacer(Modifier.width(8.dp))
-            Text(
-                "KỆ BĂNG CỦA BẠN",
-                color = Rc.Text,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.3.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (roomy) {
-                Spacer(Modifier.width(8.dp))
-                Text("(${model.roms.size} băng)", color = Rc.Muted, fontSize = 14.sp, maxLines = 1)
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "KỆ BĂNG CỦA BẠN",
+                    color = Rc.Text,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.3.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                if (roomy) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("(${model.roms.size} băng)", color = Rc.Muted, fontSize = 14.sp, maxLines = 1)
+                }
             }
-            Spacer(Modifier.weight(1f))
             if (roomy) {
                 RetroIcon("sort", tint = Rc.Muted)
                 Spacer(Modifier.width(10.dp))
@@ -238,6 +233,7 @@ fun LibraryScreen(model: AppModel) {
                 }
                 SortMenu(sortPill, { sortPill = false }, sort) { k -> model.update { it.copy(sort = k) } }
             }
+        }
         }
 
         if (shown.isEmpty()) {
@@ -278,7 +274,7 @@ fun LibraryScreen(model: AppModel) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
+                    .sheetMaxHeight()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
                     .navigationBarsPadding()
@@ -338,7 +334,7 @@ fun LibraryScreen(model: AppModel) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
+                    .sheetMaxHeight()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
                     .navigationBarsPadding()
