@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       mgba_ref:
-        description: "Nhánh/tag/commit của mGBA (mặc định master)"
+        description: "Nhánh/tag/commit của mGBA (mặc định 0.10.5)"
         required: false
-        default: "master"
+        default: "0.10.5"
 
 jobs:
   apk:
@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 45
     env:
       NDK_VERSION: "27.1.12297006"
-      MGBA_REF: ${{ github.event.inputs.mgba_ref || 'master' }}
+      MGBA_REF: ${{ github.event.inputs.mgba_ref || '0.10.5' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,8 +42,28 @@ jobs:
       - name: Build lõi mGBA cho Android
         run: ./scripts/build-mgba-android.sh
 
+      - name: Chuẩn bị khoá ký
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/retro.jks"
+            echo "RETRO_KEYSTORE_FILE=$RUNNER_TEMP/retro.jks" >> "$GITHUB_ENV"
+            echo "Dùng khoá ký riêng."
+          else
+            echo "Chưa có secret KEYSTORE_BASE64, ký bằng khoá debug."
+          fi
+
       - name: Build APK
+        env:
+          RETRO_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          RETRO_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          RETRO_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle --no-daemon :app:assembleRelease
+
+      - name: Kiểm tra chữ ký
+        run: |
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/*.apk | head -5
 
       - name: Đổi tên APK
         run: |

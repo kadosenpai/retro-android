@@ -8,3 +8,6 @@ local.properties
 # Lõi mGBA được build trong CI (scripts/build-mgba-android.sh), không commit
 app/src/main/jniLibs/
 .mgba-src/
+app/src/main/assets/mgba-version.txt
+*.jks
+*.keystore

@@ -261,20 +261,15 @@ fun LibraryScreen(model: AppModel) {
                 var settingsPage by remember { mutableStateOf(0) }
                 if (settingsPage == 1) {
                     ControllerPage(model) { settingsPage = 0 }
+                } else if (settingsPage == 2) {
+                    AboutPage { settingsPage = 0 }
                 } else {
                 Text("Cài đặt", color = Rc.Text, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
                 SettingsGroups(model.settings, { model.update(it) }, inGame = false)
                 SectionTitle("Tay cầm")
                 GroupCard { ActionRow("Kết nối và gán nút tay cầm") { settingsPage = 1 } }
                 SectionTitle("Giới thiệu")
-                GroupCard {
-                    Text(
-                        "Retro 1.0.0\nLõi giả lập: mGBA (giấy phép MPL 2.0). Chỉ dùng ROM bạn sở hữu hợp pháp.",
-                        color = Rc.Muted,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                    )
-                }
+                GroupCard { ActionRow("Giới thiệu và giấy phép") { settingsPage = 2 } }
                 }
             }
         }

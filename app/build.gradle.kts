@@ -34,11 +34,23 @@ android {
         }
     }
 
+    // Khoá ký riêng: CI truyền qua biến môi trường (từ GitHub Secrets). Không có thì ký bằng khoá debug.
+    val retroKeystore = System.getenv("RETRO_KEYSTORE_FILE")
+    signingConfigs {
+        if (!retroKeystore.isNullOrBlank() && File(retroKeystore).exists()) {
+            create("retro") {
+                storeFile = File(retroKeystore)
+                storePassword = System.getenv("RETRO_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RETRO_KEY_ALIAS")
+                keyPassword = System.getenv("RETRO_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Ký bằng khoá debug để cài thẳng được file APK (không cần tạo keystore riêng).
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("retro") ?: signingConfigs.getByName("debug")
         }
     }
 
