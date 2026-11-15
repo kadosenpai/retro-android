@@ -48,10 +48,6 @@ import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
 import com.retro.app.data.Settings
 
-private val SPEEDS = listOf(0.5f, 1f, 1.5f, 2f, 3f, 4f)
-
-private fun speedLabel(s: Float): String = if (s == s.toInt().toFloat()) "${s.toInt()}×" else "${s}×"
-
 /** Menu ▲ khi đang chơi: thanh trên (Thoát · Tạm dừng · Tiếp tục), lưới biểu tượng, vài cài đặt gọn. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,23 +83,14 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                     // Thanh trên
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                            Text(
-                                "Thoát",
-                                color = Rc.Muted,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickableNoRipple {
-                                        onClose()
-                                        model.exitToLibrary()
-                                    }
-                                    .padding(vertical = 8.dp, horizontal = 4.dp),
-                            )
+                            PillButton("Thoát", compact = true, primary = false, onClick = {
+                                onClose()
+                                model.exitToLibrary()
+                            })
                         }
                         Text("Tạm dừng", color = Rc.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                            PillButton("Tiếp tục", compact = true, onClick = onClose)
+                            PillButton("Tiếp tục", compact = true, primary = false, onClick = onClose)
                         }
                     }
                     Text(
@@ -125,20 +112,19 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth()) {
                         MenuTile("fast-forward", "Tua nhanh", Modifier.weight(1f), on = model.speed != 1f) {
-                            model.changeSpeed(if (model.speed == 1f) 2f else 1f)
+                            val fast = model.speed == 1f
+                            model.changeSpeed(if (fast) 2f else 1f)
+                            model.showToast(if (fast) "Tua nhanh: 2×" else "Tua nhanh: tắt")
                         }
                         MenuTile("lock", "Giữ nút", Modifier.weight(1f), on = st.sticky) {
-                            model.update { it.copy(sticky = !st.sticky) }
+                            val on = !st.sticky
+                            model.update { it.copy(sticky = on) }
+                            model.showToast(if (on) "Giữ nút: bật" else "Giữ nút: tắt")
                         }
                         MenuTile("reset", "Reset", Modifier.weight(1f)) {
                             model.resetGame()
                             onClose()
                         }
-                    }
-
-                    SectionTitle("Tốc độ game")
-                    GroupCard {
-                        ChipRow(SPEEDS, model.speed, { speedLabel(it) }, { model.changeSpeed(it) })
                     }
 
                     SectionTitle("Âm thanh & điều khiển")

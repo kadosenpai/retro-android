@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -357,8 +358,10 @@ fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
 fun Modifier.sheetMaxHeight(): Modifier {
     val density = LocalDensity.current
     val view = LocalView.current
-    val rootH = view.rootView.height
-    val winH = if (rootH > 0) with(density) { rootH.toDp() } else LocalConfiguration.current.screenHeightDp.dp
+    val cfg = LocalConfiguration.current
+    // keyed on the configuration so it is recomputed after rotation
+    val rootH = remember(cfg.orientation, cfg.screenHeightDp, cfg.screenWidthDp) { view.rootView.height }
+    val winH = if (rootH > 0) with(density) { rootH.toDp() } else cfg.screenHeightDp.dp
     val top = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
     return this.heightIn(max = winH - top)
 }
