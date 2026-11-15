@@ -136,7 +136,6 @@ fun LibraryScreen(model: AppModel) {
         }
     }
     // Màn đủ rộng thì hiện thêm số lượng băng và biểu tượng sắp xếp, như bản web.
-    val roomy = LocalConfiguration.current.screenWidthDp > 420
     // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
     val behindSheet = settingsOpen
     val blurRadius = if (behindSheet) 16.dp else 0.dp
@@ -212,10 +211,6 @@ fun LibraryScreen(model: AppModel) {
                     maxLines = 1,
                     softWrap = false,
                 )
-                if (roomy) {
-                    Spacer(Modifier.width(8.dp))
-                    Text("${model.roms.size} băng", color = Rc.Faint, fontSize = 12.sp, maxLines = 1)
-                }
             }
             Box {
                 Row(
@@ -240,7 +235,7 @@ fun LibraryScreen(model: AppModel) {
             EmptyState(hasAny = model.roms.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(150.dp),
+                columns = GridCells.Adaptive(if (LocalConfiguration.current.screenHeightDp < 480) 104.dp else 150.dp),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -294,6 +289,8 @@ fun LibraryScreen(model: AppModel) {
 
     // Cài đặt
     if (settingsOpen) {
+      // key theo chiều xoay: tạo lại bảng để nó đo lại, tránh bị tụt xuống sau khi xoay
+      androidx.compose.runtime.key(LocalConfiguration.current.orientation) {
         val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = { settingsOpen = false },
@@ -381,6 +378,7 @@ fun LibraryScreen(model: AppModel) {
                 }
             }
         }
+      }
     }
 
     if (deleteAllConfirm) {
