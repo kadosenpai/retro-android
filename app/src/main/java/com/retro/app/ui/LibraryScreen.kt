@@ -4,6 +4,9 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -137,7 +140,7 @@ fun LibraryScreen(model: AppModel) {
     }
     // Màn đủ rộng thì hiện thêm số lượng băng và biểu tượng sắp xếp, như bản web.
     // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
-    val behindSheet = settingsOpen
+    val behindSheet = settingsOpen || gameMenu != null
     val blurRadius = if (behindSheet) 16.dp else 0.dp
 
     Column(
@@ -252,39 +255,35 @@ fun LibraryScreen(model: AppModel) {
                                 gameMenu = rom
                             },
                         )
-                        // Menu nhỏ hiện khi giữ lâu vào một game.
-                        DropdownMenu(expanded = gameMenu?.id == rom.id, onDismissRequest = { gameMenu = null }) {
-                            GameMenuItem("Đổi tên", "pencil") {
-                                gameMenu = null
-                                renameTarget = rom
-                            }
-                            GameMenuItem("Tải ảnh bìa gốc", "image") {
-                                gameMenu = null
-                                model.fetchCoverNow(rom)
-                            }
-                            GameMenuItem("Chọn ảnh bìa từ máy", "image") {
-                                gameMenu = null
-                                coverTarget = rom
-                                coverPicker.launch(arrayOf("image/*"))
-                            }
-                            GameMenuItem("Xuất file .sav", "download") {
-                                gameMenu = null
-                                exportTarget = rom
-                                exportLauncher.launch("${rom.name}.sav")
-                            }
-                            GameMenuItem("Nhập file .sav", "upload") {
-                                gameMenu = null
-                                importConfirm = rom
-                            }
-                            GameMenuItem("Xoá băng (kèm save)", "trash", danger = true) {
-                                gameMenu = null
-                                deleteTarget = rom
-                            }
-                        }
                     }
                 }
             }
         }
+    }
+
+    // Giữ lâu vào một băng: băng phóng to ở giữa, bảng thao tác nằm dưới, phần còn lại mờ đi.
+    gameMenu?.let { rom ->
+        GameMenuOverlay(
+            rom = rom,
+            cover = rememberCover(model, rom),
+            onDismiss = { gameMenu = null },
+            actions = listOf(
+                GameAction("Đổi tên", "pencil") { gameMenu = null; renameTarget = rom },
+                GameAction("Tải ảnh bìa gốc", "image") { gameMenu = null; model.fetchCoverNow(rom) },
+                GameAction("Chọn ảnh bìa từ máy", "image") {
+                    gameMenu = null
+                    coverTarget = rom
+                    coverPicker.launch(arrayOf("image/*"))
+                },
+                GameAction("Xuất file .sav", "download") {
+                    gameMenu = null
+                    exportTarget = rom
+                    exportLauncher.launch("${rom.name}.sav")
+                },
+                GameAction("Nhập file .sav", "upload") { gameMenu = null; importConfirm = rom },
+                GameAction("Xoá băng (kèm save)", "trash", danger = true) { gameMenu = null; deleteTarget = rom },
+            ),
+        )
     }
 
     // Cài đặt
@@ -577,20 +576,103 @@ private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
 }
 
 /** Menu nhỏ khi giữ lâu vào một game. */
+private class GameAction(val label: String, val icon: String, val danger: Boolean = false, val onClick: () -> Unit)
+
 @Composable
-private fun GameMenuItem(label: String, icon: String, danger: Boolean = false, onClick: () -> Unit) {
-    DropdownMenuItem(
-        leadingIcon = { RetroIcon(icon, size = 20.dp, tint = if (danger) Rc.Danger else Rc.Muted) },
-        text = {
-            Text(
-                label,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = if (danger) Rc.Danger else Rc.Text,
-            )
-        },
-        onClick = onClick,
-    )
+private fun GameMenuOverlay(rom: RomInfo, cover: ImageBitmap?, actions: List<GameAction>, onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        val cfg = LocalConfiguration.current
+        val landscape = cfg.screenWidthDp > cfg.screenHeightDp
+        val scale = remember { androidx.compose.animation.core.Animatable(0.85f) }
+        LaunchedEffect(Unit) { scale.animateTo(1f, androidx.compose.animation.core.tween(160)) }
+        val coverSize = if (landscape) (cfg.screenHeightDp - 64).coerceIn(120, 260).dp else (cfg.screenWidthDp * 0.62f).coerceIn(160f, 280f).dp
+        val bigCover: @Composable () -> Unit = {
+            Box(
+                Modifier
+                    .size(coverSize)
+                    .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF101114))
+                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (cover != null) {
+                    Image(bitmap = cover, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                } else {
+                    Text(
+                        rom.name.trim().take(1).uppercase(Locale.ROOT).ifEmpty { "?" },
+                        color = Rc.Muted,
+                        fontSize = 56.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+        val menu: @Composable (Modifier) -> Unit = { m ->
+            Column(
+                m
+                    .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Rc.Sheet)
+                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp)),
+            ) {
+                Text(
+                    rom.name,
+                    color = Rc.Muted,
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+                actions.forEach { a ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = a.onClick)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            a.label,
+                            color = if (a.danger) Rc.Danger else Rc.Text,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        RetroIcon(a.icon, size = 20.dp, tint = if (a.danger) Rc.Danger else Rc.Muted)
+                    }
+                }
+            }
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color(0x99000000))
+                .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onDismiss)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (landscape) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    bigCover()
+                    menu(Modifier.width(300.dp).verticalScroll(rememberScrollState()))
+                }
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    bigCover()
+                    Spacer(Modifier.height(16.dp))
+                    menu(Modifier.fillMaxWidth().widthIn(max = 360.dp))
+                }
+            }
+        }
+    }
 }
 
 /** Ô game trong lưới: bìa vuông, tên bên dưới. Chạm để chơi, giữ lâu để mở menu. */
