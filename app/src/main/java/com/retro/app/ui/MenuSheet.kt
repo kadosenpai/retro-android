@@ -44,8 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
 import com.retro.app.data.Settings
-import com.retro.app.render.FilterMode
-import com.retro.app.render.ScaleMode
 
 private val SPEEDS = listOf(0.5f, 1f, 1.5f, 2f, 3f, 4f)
 
@@ -108,15 +106,6 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                         ChipRow(SPEEDS, model.speed, { speedLabel(it) }, { model.changeSpeed(it) })
                     }
 
-                    SectionTitle("Hình ảnh")
-                    GroupCard {
-                        SmallLabel("Co giãn màn hình")
-                        ChipRow(ScaleMode.values().toList(), st.scale, { it.label }, { v -> model.update { it.copy(scale = v) } })
-                        SmallLabel("Bộ lọc")
-                        ChipRow(FilterMode.values().toList(), st.filter, { it.label }, { v -> model.update { it.copy(filter = v) } })
-                        Spacer(Modifier.height(6.dp))
-                    }
-
                     SectionTitle("Âm thanh & điều khiển")
                     GroupCard {
                         ToggleRow("Bật âm thanh", st.sound, icon = "volume") { v -> model.update { it.copy(sound = v) } }
@@ -129,11 +118,6 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                             icon = "lock",
                             subtitle = "Chạm một lần để giữ, chạm lần nữa để nhả",
                         ) { v -> model.update { it.copy(sticky = v) } }
-                        RowDivider()
-                        ActionRow("Chỉnh nút ảo", icon = "move", subtitle = "Vị trí và kích thước", chevron = true) {
-                            onClose()
-                            model.editingLayout = true
-                        }
                         RowDivider()
                         ActionRow("Tay cầm", icon = "gamepad", chevron = true) { page = 2 }
                         RowDivider()

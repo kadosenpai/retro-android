@@ -84,6 +84,15 @@ fun AboutPage(onBack: () -> Unit) {
     }
     GroupCard(Modifier.padding(top = 12.dp)) {
         Text(
+            "Giao diện nút ảo \"Xám trong suốt\": skin \"Atomic Advance – SmokeGray\" của Stanley Sy (starvingartist). " +
+                "Ảnh thuộc về tác giả; Retro chỉ dùng làm giao diện.",
+            color = Rc.Muted,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+        )
+    }
+    GroupCard(Modifier.padding(top = 12.dp)) {
+        Text(
             "Game Boy Advance là nhãn hiệu của Nintendo. Retro không liên kết hay được Nintendo xác nhận.",
             color = Rc.Faint,
             fontSize = 13.sp,
