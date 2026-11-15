@@ -48,7 +48,7 @@ fun GroupCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(Rc.Glass),
     ) { content() }
 }
@@ -56,17 +56,18 @@ fun GroupCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(
-        text,
-        modifier = modifier.padding(start = 4.dp, top = 22.dp, bottom = 10.dp),
-        color = Rc.Text,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
+        text.uppercase(),
+        modifier = modifier.padding(start = 6.dp, top = 18.dp, bottom = 6.dp),
+        color = Rc.Muted,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.6.sp,
     )
 }
 
 /** Đường kẻ mảnh giữa hai hàng; thụt vào bằng chỗ biểu tượng (18 + 24 + 16 = 58dp). */
 @Composable
-fun RowDivider(inset: androidx.compose.ui.unit.Dp = 58.dp) {
+fun RowDivider(inset: androidx.compose.ui.unit.Dp = 52.dp) {
     Box(
         Modifier
             .padding(start = inset)
@@ -89,25 +90,25 @@ private fun RetroRow(
     Row(
         modifier
             .fillMaxWidth()
-            .heightIn(min = 64.dp)
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Box(Modifier.width(24.dp), contentAlignment = Alignment.Center) {
-                RetroIcon(icon, tint = if (danger) Rc.Danger else Rc.Muted)
+            Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
+                RetroIcon(icon, size = 22.dp, tint = if (danger) Rc.Danger else Rc.Muted)
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(14.dp))
         }
         Column(Modifier.weight(1f)) {
             Text(
                 title,
                 color = if (danger) Rc.Danger else Rc.Text,
-                fontSize = 18.sp,
-                fontWeight = if (danger) FontWeight.Bold else FontWeight.Normal,
+                fontSize = 16.sp,
+                fontWeight = if (danger) FontWeight.SemiBold else FontWeight.Normal,
             )
             if (subtitle != null) {
-                Text(subtitle, color = Rc.Muted, fontSize = 14.sp)
+                Text(subtitle, color = Rc.Muted, fontSize = 13.sp)
             }
         }
         trailing()
@@ -148,18 +149,18 @@ fun ToggleRow(
 /** Nút gạt như web: bật = nền trắng, núm đen; tắt = nền kính, núm trắng. */
 @Composable
 fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
-    val x = animateDpAsState(if (checked) 30.dp else 4.dp, label = "thumb").value
+    val x = animateDpAsState(if (checked) 24.dp else 3.dp, label = "thumb").value
     Box(
         Modifier
-            .size(62.dp, 36.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .size(52.dp, 30.dp)
+            .clip(RoundedCornerShape(15.dp))
             .background(if (checked) Color.White else Color(0x38FFFFFF))
             .clickable(role = Role.Switch) { onChange(!checked) },
     ) {
         Box(
             Modifier
-                .offset(x = x, y = 4.dp)
-                .size(28.dp)
+                .offset(x = x, y = 3.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(if (checked) Color.Black else Color.White),
         )
@@ -184,17 +185,17 @@ fun <T> ChipRow(
             Box(
                 Modifier
                     .weight(1f)
-                    .heightIn(min = 40.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .heightIn(min = 36.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .background(if (on) Color.White else Rc.Glass)
-                    .border(BorderStroke(1.dp, if (on) Color.White else Rc.Stroke), RoundedCornerShape(20.dp))
+                    .border(BorderStroke(1.dp, if (on) Color.White else Rc.Stroke), RoundedCornerShape(18.dp))
                     .clickable { onSelect(opt) },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     label(opt),
                     color = if (on) Color.Black else Rc.Text,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Clip,
@@ -222,13 +223,13 @@ fun SmallLabel(text: String) {
 fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier
-            .size(52.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(Rc.GlassStrong)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        RetroIcon("x", tint = Rc.Text)
+        RetroIcon("x", size = 20.dp, tint = Rc.Text)
     }
 }
 
@@ -243,9 +244,9 @@ fun SheetHeader(title: String, onClose: () -> Unit) {
         Text(
             title,
             color = Rc.Text,
-            fontSize = 28.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.56).sp,
+            letterSpacing = (-0.3).sp,
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(12.dp))
@@ -262,21 +263,21 @@ fun PageHeader(title: String, onBack: () -> Unit) {
     ) {
         Box(
             Modifier
-                .size(44.dp)
+                .size(36.dp)
                 .clip(CircleShape)
                 .background(Rc.GlassStrong)
                 .clickable(role = Role.Button, onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            RetroIcon("chevron-left", tint = Rc.Text)
+            RetroIcon("chevron-left", size = 20.dp, tint = Rc.Text)
         }
         Spacer(Modifier.width(12.dp))
         Text(
             title,
             color = Rc.Text,
-            fontSize = 28.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.56).sp,
+            letterSpacing = (-0.3).sp,
         )
     }
 }
@@ -288,25 +289,26 @@ fun PillButton(
     modifier: Modifier = Modifier,
     icon: String? = null,
     primary: Boolean = true,
+    compact: Boolean = false,
     onClick: () -> Unit,
 ) {
     val fg = if (primary) Color.Black else Rc.Text
     Row(
         modifier
-            .heightIn(min = 48.dp)
+            .heightIn(min = if (compact) 36.dp else 44.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(if (primary) Color.White else Rc.GlassStrong)
             .border(BorderStroke(1.dp, if (primary) Color.White else Rc.Stroke), RoundedCornerShape(24.dp))
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 22.dp),
+            .padding(horizontal = if (compact) 16.dp else 22.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         if (icon != null) {
-            RetroIcon(icon, size = 22.dp, tint = fg)
-            Spacer(Modifier.width(10.dp))
+            RetroIcon(icon, size = 20.dp, tint = fg)
+            Spacer(Modifier.width(8.dp))
         }
-        Text(text, color = fg, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = fg, fontSize = if (compact) 14.sp else 16.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

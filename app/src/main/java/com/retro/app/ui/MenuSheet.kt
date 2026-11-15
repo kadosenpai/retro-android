@@ -3,10 +3,12 @@ package com.retro.app.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,7 +51,7 @@ private val SPEEDS = listOf(0.5f, 1f, 1.5f, 2f, 3f, 4f)
 
 private fun speedLabel(s: Float): String = if (s == s.toInt().toFloat()) "${s.toInt()}×" else "${s}×"
 
-/** Menu ▲ khi đang chơi (bố cục giống bản web). */
+/** Menu ▲ khi đang chơi: thanh trên (Thoát · Tạm dừng · Tiếp tục), lưới biểu tượng, vài cài đặt gọn. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
@@ -60,7 +62,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
         containerColor = Rc.Sheet,
         contentColor = Rc.Text,
         scrimColor = Color(0x8C000000),
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null,
     ) {
         Column(
@@ -70,34 +72,66 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
                 .navigationBarsPadding()
-                .padding(top = 12.dp, bottom = 24.dp),
+                .padding(top = 12.dp, bottom = 20.dp),
         ) {
-            // 0 = menu chính, 1 = Cheat, 2 = Tay cầm, 3 = Save state
+            // 0 = menu chính, 1 = Cheat, 2 = Tay cầm, 3 = Lưu trạng thái, 4 = Nạp trạng thái
             var page by remember { mutableStateOf(0) }
             val st = model.settings
             when (page) {
                 1 -> CheatsPage(model) { page = 0 }
                 2 -> ControllerPage(model) { page = 0 }
-                3 -> StatesPage(model, onClose) { page = 0 }
+                3 -> StatesPage(model, save = true, onClose = onClose) { page = 0 }
+                4 -> StatesPage(model, save = false, onClose = onClose) { page = 0 }
                 else -> {
-                    SheetHeader("Menu", onClose)
-                    Spacer(Modifier.height(8.dp))
-                    PillButton("Tiếp tục chơi", Modifier.fillMaxWidth(), icon = "play", onClick = onClose)
+                    // Thanh trên
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                            Text(
+                                "Thoát",
+                                color = Rc.Muted,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickableNoRipple {
+                                        onClose()
+                                        model.exitToLibrary()
+                                    }
+                                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                            )
+                        }
+                        Text("Tạm dừng", color = Rc.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                            PillButton("Tiếp tục", compact = true, onClick = onClose)
+                        }
+                    }
+                    Text(
+                        model.current?.name ?: "",
+                        color = Rc.Faint,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                    )
 
-                    SectionTitle("Trò chơi")
-                    GroupCard {
-                        ActionRow("Save state", icon = "save", chevron = true) { page = 3 }
-                        RowDivider()
-                        ActionRow("Cheat code", icon = "star", chevron = true) { page = 1 }
-                        RowDivider()
-                        ActionRow("Reset game", icon = "reset") {
+                    // Lưới biểu tượng 3 x 2
+                    Spacer(Modifier.height(14.dp))
+                    Row(Modifier.fillMaxWidth()) {
+                        MenuTile("save", "Lưu", Modifier.weight(1f)) { page = 3 }
+                        MenuTile("upload", "Nạp", Modifier.weight(1f)) { page = 4 }
+                        MenuTile("star", "Cheat", Modifier.weight(1f)) { page = 1 }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth()) {
+                        MenuTile("fast-forward", "Tua nhanh", Modifier.weight(1f), on = model.speed != 1f) {
+                            model.changeSpeed(if (model.speed == 1f) 2f else 1f)
+                        }
+                        MenuTile("lock", "Giữ nút", Modifier.weight(1f), on = st.sticky) {
+                            model.update { it.copy(sticky = !st.sticky) }
+                        }
+                        MenuTile("reset", "Reset", Modifier.weight(1f)) {
                             model.resetGame()
                             onClose()
-                        }
-                        RowDivider()
-                        ActionRow("Thoát về Thư viện", icon = "logout") {
-                            onClose()
-                            model.exitToLibrary()
                         }
                     }
 
@@ -108,20 +142,13 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
 
                     SectionTitle("Âm thanh & điều khiển")
                     GroupCard {
-                        ToggleRow("Bật âm thanh", st.sound, icon = "volume") { v -> model.update { it.copy(sound = v) } }
+                        ToggleRow("Âm thanh", st.sound, icon = "volume") { v -> model.update { it.copy(sound = v) } }
                         RowDivider()
                         ToggleRow("Hiện nút ảo", st.showPad, icon = "pointer") { v -> model.update { it.copy(showPad = v) } }
                         RowDivider()
-                        ToggleRow(
-                            "Giữ nút",
-                            st.sticky,
-                            icon = "lock",
-                            subtitle = "Chạm một lần để giữ, chạm lần nữa để nhả",
-                        ) { v -> model.update { it.copy(sticky = v) } }
-                        RowDivider()
                         ActionRow("Tay cầm", icon = "gamepad", chevron = true) { page = 2 }
                         RowDivider()
-                        ToggleRow("Hiện thông số (FPS, âm thanh)", st.showStats, icon = "eye") { v ->
+                        ToggleRow("Hiện thông số", st.showStats, icon = "eye") { v ->
                             model.update { it.copy(showStats = v) }
                         }
                     }
@@ -131,53 +158,71 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
     }
 }
 
-/** Trang Save state: 4 ô lưu tay + ô tự động. */
+/** Ô biểu tượng trong lưới menu: ô vuông kính, bật = nền trắng biểu tượng đen. */
 @Composable
-private fun StatesPage(model: AppModel, onClose: () -> Unit, onBack: () -> Unit) {
-    PageHeader("Save state", onBack)
-    LaunchedEffect(Unit) { model.refreshSlots() }
-    Spacer(Modifier.height(10.dp))
-    GroupCard {
-        val bySlot = model.slots.associateBy { it.slot }
-        for (n in 1..RomStore.SLOT_COUNT) {
-            SlotRow(
-                title = "Ô $n",
-                view = bySlot[n],
-                canSave = true,
-                onSave = { model.saveSlot(n) },
-                onLoad = { model.loadSlot(n) { ok -> if (ok) onClose() } },
-            )
-            RowDivider(inset = 14.dp)
-        }
-        SlotRow(
-            title = "Tự động",
-            view = bySlot[RomStore.AUTO_SLOT],
-            canSave = false,
-            onSave = {},
-            onLoad = { model.loadSlot(RomStore.AUTO_SLOT) { ok -> if (ok) onClose() } },
-        )
-    }
-}
-
-
-private val timeFmt = SimpleDateFormat("HH:mm dd/MM", Locale.getDefault())
-
-@Composable
-private fun SlotRow(title: String, view: SlotView?, canSave: Boolean, onSave: () -> Unit, onLoad: () -> Unit) {
-    val filled = view != null && view.savedAt > 0
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun MenuTile(icon: String, label: String, modifier: Modifier = Modifier, on: Boolean = false, onClick: () -> Unit) {
+    Column(
+        modifier.clickableNoRipple(onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             Modifier
-                .width(72.dp)
-                .height(48.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Rc.Chip)
-                .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(8.dp)),
+                .size(60.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(if (on) Color.White else Rc.GlassStrong),
+            contentAlignment = Alignment.Center,
+        ) {
+            RetroIcon(icon, size = 26.dp, tint = if (on) Color.Black else Rc.Text)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(label, color = if (on) Rc.Text else Rc.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+    }
+}
+
+private val timeFmt = SimpleDateFormat("HH:mm dd/MM", Locale.getDefault())
+
+/** Lưới ô trạng thái (2 cột, ảnh chụp + ngày giờ). save = chạm để lưu; ngược lại chạm để nạp (kèm ô Tự động). */
+@Composable
+private fun StatesPage(model: AppModel, save: Boolean, onClose: () -> Unit, onBack: () -> Unit) {
+    PageHeader(if (save) "Lưu trạng thái" else "Nạp trạng thái", onBack)
+    LaunchedEffect(Unit) { model.refreshSlots() }
+    Spacer(Modifier.height(12.dp))
+    val bySlot = model.slots.associateBy { it.slot }
+    val ids = (1..RomStore.SLOT_COUNT).toList() + if (save) emptyList() else listOf(RomStore.AUTO_SLOT)
+    ids.chunked(2).forEachIndexed { i, pair ->
+        if (i > 0) Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            for (n in pair) {
+                val view = bySlot[n]
+                val filled = view != null && view.savedAt > 0
+                SlotCard(
+                    title = if (n == RomStore.AUTO_SLOT) "Tự động" else "Ô $n",
+                    view = view,
+                    enabled = save || filled,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (save) model.saveSlot(n) else model.loadSlot(n) { ok -> if (ok) onClose() }
+                }
+            }
+            if (pair.size == 1) Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun SlotCard(title: String, view: SlotView?, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val filled = view != null && view.savedAt > 0
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Rc.Glass)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1.5f)
+                .background(Rc.Chip),
             contentAlignment = Alignment.Center,
         ) {
             val img = view?.thumb
@@ -186,44 +231,19 @@ private fun SlotRow(title: String, view: SlotView?, canSave: Boolean, onSave: ()
                     bitmap = img,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(72.dp, 48.dp),
+                    modifier = Modifier.fillMaxSize(),
                 )
+            } else {
+                RetroIcon("image", size = 26.dp, tint = Rc.Faint)
             }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Rc.Text, fontSize = 16.sp)
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(title, color = if (enabled) Rc.Text else Rc.Faint, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 if (filled) timeFmt.format(Date(view!!.savedAt)) else "Trống",
                 color = Rc.Muted,
                 fontSize = 12.sp,
             )
         }
-        if (canSave) {
-            SlotButton("Lưu", enabled = true, onClick = onSave)
-            Spacer(Modifier.width(8.dp))
-        }
-        SlotButton("Nạp", enabled = filled, onClick = onLoad)
-    }
-}
-
-@Composable
-private fun SlotButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .clip(RoundedCornerShape(50))
-            .background(Rc.GlassStrong)
-            .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(50))
-            .then(if (enabled) Modifier.clickableNoRipple(onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            label,
-            color = if (enabled) Rc.Text else Rc.Faint,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-        )
     }
 }
