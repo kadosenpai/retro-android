@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
@@ -597,7 +596,6 @@ private fun GameMenuOverlay(
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         val density = androidx.compose.ui.platform.LocalDensity.current
-        var measuredH by remember { mutableStateOf(0) }
         val scale = remember { androidx.compose.animation.core.Animatable(1f) }
         LaunchedEffect(Unit) { scale.animateTo(1.08f, androidx.compose.animation.core.tween(160)) }
         BoxWithConstraints(
@@ -619,14 +617,18 @@ private fun GameMenuOverlay(
             val a = anchor ?: androidx.compose.ui.geometry.Rect(sw / 2 - 90f, sh / 3, sw / 2 + 90f, sh / 3 + 180f)
             val coverW = a.width
             val menuW = with(density) { 260.dp.toPx() }
-            val menuH = (if (measuredH > 0) measuredH.toFloat() else with(density) { (actions.size * 48 + 30).dp.toPx() })
-                .coerceAtMost(sh - insetTop - insetBottom)
+            val dens = density.density
             val coverBottom = a.top + coverW + coverW * 0.04f
-            // Ưu tiên bảng nằm dưới băng; không đủ chỗ thì sang cạnh băng.
+            val titleDp = 30f
+            val n = actions.size
+            // Ưu tiên bảng nằm dưới băng; không đủ chỗ thì sang cạnh băng, đáy bảng bằng đáy băng.
+            var rowDp = 48f
             var mx = a.left.coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
             var my = coverBottom + gap
-            if (my + menuH > sh - insetBottom) {
-                my = (a.top).coerceIn(insetTop, (sh - menuH - insetBottom).coerceAtLeast(insetTop))
+            if (my + (titleDp + n * rowDp) * dens > sh - insetBottom) {
+                val bottomY = minOf(coverBottom, sh - insetBottom)
+                rowDp = (((bottomY - insetTop) / dens - titleDp) / n).coerceIn(34f, 48f)
+                my = bottomY - (titleDp + n * rowDp) * dens
                 mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
                 else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
             }
@@ -662,8 +664,6 @@ private fun GameMenuOverlay(
                 Modifier
                     .offset { androidx.compose.ui.unit.IntOffset(mx.toInt(), my.toInt()) }
                     .width(260.dp)
-                    .onSizeChanged { measuredH = it.height }
-                    .graphicsLayer { alpha = if (measuredH > 0) 1f else 0f }
                     .clip(RoundedCornerShape(18.dp))
                     .background(Rc.Sheet)
                     .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
@@ -679,16 +679,14 @@ private fun GameMenuOverlay(
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.height(30.dp).padding(horizontal = 16.dp).wrapContentHeight(Alignment.CenterVertically),
+                    modifier = Modifier.height(titleDp.dp).padding(horizontal = 16.dp).wrapContentHeight(Alignment.CenterVertically),
                 )
-                // Chiều cao dòng tự co theo chỗ trống để cả bảng luôn vừa màn hình, không phải cuộn.
-                val rowH = (((sh - insetTop - insetBottom) / density.density - 30f) / actions.size).coerceIn(34f, 48f).dp
                 actions.forEach { act ->
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .clickable(onClick = act.onClick)
-                            .height(rowH)
+                            .height(rowDp.dp)
                             .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
