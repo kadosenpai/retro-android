@@ -3,12 +3,26 @@ package com.retro.app.data
 /** Một cheat của một game. */
 data class CheatItem(val id: String, val name: String, val code: String, val enabled: Boolean)
 
-/** Kiểm tra và chuẩn hoá mã cheat GBA (GameShark/Action Replay…); logic thuần Kotlin, giống bản web. */
+/**
+ * Kiểm tra và chuẩn hoá mã cheat.
+ * GBA: GameShark/Action Replay, mỗi dòng 12 hoặc 16 ký tự hex.
+ * Game Boy/GBC: GameShark 8 ký tự hex (vd. 01FF16D1) hoặc Game Genie (XXX-XXX hoặc XXX-XXX-XXX).
+ */
 object CheatCodes {
     private val hex = Regex("^[0-9A-F]+$")
+    private val gbGameShark = Regex("^[0-9A-F]{8}$")
+    private val gbGenie = Regex("^[0-9A-F]{3}-[0-9A-F]{3}(-[0-9A-F]{3})?$")
 
-    /** Mỗi dòng 12 hoặc 16 ký tự hex (có thể cách bằng khoảng trắng hoặc gạch). Trả về lỗi, hoặc null nếu hợp lệ. */
-    fun validate(code: String): String? {
+    /** Trả về lỗi, hoặc null nếu hợp lệ. */
+    fun validate(code: String, gameBoy: Boolean = false): String? =
+        if (gameBoy) validateGb(code) else validateGba(code)
+
+    /** Dạng đưa vào lõi: viết hoa, các mã ngăn bằng dấu "+". */
+    fun normalize(code: String, gameBoy: Boolean = false): String =
+        if (gameBoy) gbTokens(code).joinToString("+") else
+            code.uppercase().replace('-', ' ').split(Regex("[\\s+]+")).filter { it.isNotEmpty() }.joinToString("+")
+
+    private fun validateGba(code: String): String? {
         val lines = code.uppercase()
             .split(Regex("[\n+]+"))
             .map { it.replace(Regex("[\\s-]+"), "") }
@@ -21,7 +35,24 @@ object CheatCodes {
         return null
     }
 
-    /** Dạng đưa vào lõi: viết hoa, các nhóm ngăn bằng dấu "+". */
-    fun normalize(code: String): String =
-        code.uppercase().replace('-', ' ').split(Regex("[\\s+]+")).filter { it.isNotEmpty() }.joinToString("+")
+    /** Tách thành từng mã; Game Genie viết liền 6 hoặc 9 ký tự thì tự thêm dấu gạch. */
+    private fun gbTokens(code: String): List<String> =
+        code.uppercase().split(Regex("[\\s+,]+")).filter { it.isNotEmpty() }.map { t ->
+            when {
+                hex.matches(t) && t.length == 6 -> t.substring(0, 3) + "-" + t.substring(3)
+                hex.matches(t) && t.length == 9 -> t.substring(0, 3) + "-" + t.substring(3, 6) + "-" + t.substring(6)
+                else -> t
+            }
+        }
+
+    private fun validateGb(code: String): String? {
+        val tokens = gbTokens(code)
+        if (tokens.isEmpty()) return "Chưa nhập mã"
+        for (t in tokens) {
+            if (!gbGameShark.matches(t) && !gbGenie.matches(t)) {
+                return "Mã Game Boy: GameShark 8 ký tự (vd. 01FF16D1) hoặc Game Genie (XXX-XXX-XXX)"
+            }
+        }
+        return null
+    }
 }

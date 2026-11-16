@@ -30,6 +30,7 @@ object NativeCore {
     external fun nativeSetSram(data: ByteArray)
     external fun nativeSerialize(): ByteArray?
     external fun nativeUnserialize(data: ByteArray): Boolean
+    external fun nativeSetOption(key: String, value: String)
     external fun nativeCheatReset()
     external fun nativeCheatSet(index: Int, enabled: Boolean, code: String)
 }

@@ -71,6 +71,7 @@ class AppModel(private val app: Application) {
         EmulatorEngine.onFps = { fps = it }
         EmulatorEngine.onCoreMs = { coreMs = it }
         EmulatorEngine.soundOn = settings.sound
+        applyCoreOptions()
         refresh()
         autoCoverMissing()
     }
@@ -83,6 +84,13 @@ class AppModel(private val app: Application) {
         settings = change(settings)
         prefs.save(settings)
         EmulatorEngine.soundOn = settings.sound
+        applyCoreOptions()
+    }
+
+    /** Đẩy các tuỳ chọn Game Boy vào lõi (bảng màu đổi ngay; viền SGB có hiệu lực khi mở lại game). */
+    private fun applyCoreOptions() {
+        EmulatorEngine.setOption("mgba_gb_colors", settings.gbPalette)
+        EmulatorEngine.setOption("mgba_sgb_borders", if (settings.sgbBorder) "ON" else "OFF")
     }
 
     fun showToast(msg: String) {
@@ -157,8 +165,9 @@ class AppModel(private val app: Application) {
 
     // ---------- Cheat ----------
     /** Đưa các cheat đang bật vào lõi. Gọi trên luồng IO. */
-    private fun applyCheatList(list: List<CheatItem>) {
-        val codes = list.filter { it.enabled }.map { CheatCodes.normalize(it.code) }.filter { it.isNotEmpty() }
+    private fun applyCheatList(list: List<CheatItem>, rom: RomInfo) {
+        val gb = GameSystem.fromId(rom.system).isGameBoy
+        val codes = list.filter { it.enabled }.map { CheatCodes.normalize(it.code, gb) }.filter { it.isNotEmpty() }
         EmulatorEngine.setCheats(codes)
     }
 
@@ -168,14 +177,14 @@ class AppModel(private val app: Application) {
         scope.launch {
             withContext(Dispatchers.IO) {
                 runCatching { store.writeCheats(rom.id, list) }
-                applyCheatList(list)
+                applyCheatList(list, rom)
             }
         }
     }
 
     /** Thêm cheat; trả về thông báo lỗi nếu mã không hợp lệ, null nếu đã thêm. */
     fun addCheat(name: String, code: String): String? {
-        CheatCodes.validate(code)?.let { return it }
+        CheatCodes.validate(code, GameSystem.fromId(current?.system).isGameBoy)?.let { return it }
         val n = name.trim().ifEmpty { "Cheat ${cheats.size + 1}" }
         commitCheats(cheats + CheatItem(java.util.UUID.randomUUID().toString(), n, code.trim(), true))
         return null
@@ -258,7 +267,7 @@ class AppModel(private val app: Application) {
                 val e = EmulatorEngine.load(app, store.romFile(rom.id), rom.id, sram)
                 if (e == null) {
                     loadedCheats = store.readCheats(rom.id)
-                    applyCheatList(loadedCheats)
+                    applyCheatList(loadedCheats, rom)
                     // Tiếp tục từ lần chơi trước (trạng thái tự động); hỏng thì bỏ qua.
                     val auto = store.readState(rom.id, RomStore.AUTO_SLOT)
                     if (auto != null) {

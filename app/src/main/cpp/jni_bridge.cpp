@@ -106,6 +106,10 @@ JNI(jboolean, nativeUnserialize)(JNIEnv* env, jobject, jbyteArray data) {
   return retro::Unserialize(v.data(), v.size()) ? JNI_TRUE : JNI_FALSE;
 }
 
+JNI(void, nativeSetOption)(JNIEnv* env, jobject, jstring key, jstring value) {
+  retro::SetOption(Str(env, key), Str(env, value));
+}
+
 JNI(void, nativeCheatReset)(JNIEnv*, jobject) { retro::CheatReset(); }
 
 JNI(void, nativeCheatSet)(JNIEnv* env, jobject, jint index, jboolean enabled, jstring code) {

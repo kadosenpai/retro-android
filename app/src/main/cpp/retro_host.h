@@ -41,6 +41,7 @@ bool GetSram(std::vector<uint8_t>* out);
 void SetSram(const uint8_t* data, size_t size);
 bool Serialize(std::vector<uint8_t>* out);
 bool Unserialize(const uint8_t* data, size_t size);
+void SetOption(const std::string& key, const std::string& value);
 void CheatReset();
 void CheatSet(unsigned index, bool enabled, const std::string& code);
 

@@ -161,6 +161,9 @@ object EmulatorEngine {
         }
     }
 
+    /** Đặt tuỳ chọn của lõi (vd. bảng màu Game Boy). Lõi đọc ngay ở khung kế tiếp hoặc khi nạp game. */
+    fun setOption(key: String, value: String) = post { NativeCore.nativeSetOption(key, value) }
+
     fun reset() = post { if (loaded) NativeCore.nativeReset() }
 
     // ---------- Lưu trạng thái / cheat ----------

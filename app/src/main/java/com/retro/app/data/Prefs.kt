@@ -18,6 +18,10 @@ data class Settings(
     val sort: SortKey = SortKey.RECENT,
     /** Tab đang chọn trong thư viện (xem [GameSystem.TABS]). */
     val tab: String = "gba",
+    /** Bảng màu Game Boy đời đầu: tên preset của mGBA (Grayscale, DMG Green, GB Pocket, GB Light). */
+    val gbPalette: String = "Grayscale",
+    /** Hiện viền Super Game Boy (áp dụng khi mở lại game). */
+    val sgbBorder: Boolean = true,
 )
 
 class Prefs(ctx: Context) {
@@ -33,6 +37,8 @@ class Prefs(ctx: Context) {
             sticky = sp.getBoolean("sticky", d.sticky),
             sort = enumOf(sp.getString("sort", null), d.sort),
             tab = sp.getString("tab", null) ?: d.tab,
+            gbPalette = sp.getString("gbPalette", null) ?: d.gbPalette,
+            sgbBorder = sp.getBoolean("sgbBorder", d.sgbBorder),
         )
     }
 
@@ -45,6 +51,8 @@ class Prefs(ctx: Context) {
             .putBoolean("sticky", s.sticky)
             .putString("sort", s.sort.name)
             .putString("tab", s.tab)
+            .putString("gbPalette", s.gbPalette)
+            .putBoolean("sgbBorder", s.sgbBorder)
             .apply()
     }
 

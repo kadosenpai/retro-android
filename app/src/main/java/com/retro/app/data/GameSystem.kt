@@ -13,8 +13,11 @@ enum class GameSystem(
     val hasCheats: Boolean,
 ) {
     GBA("gba", "GBA", "gba", setOf("gba", "agb", "bin"), "Nintendo - Game Boy Advance", "Nintendo_-_Game_Boy_Advance", 0x200, true),
-    GB("gb", "Game Boy", "gb", setOf("gb"), "Nintendo - Game Boy", "Nintendo_-_Game_Boy", 0x150, false),
-    GBC("gbc", "Game Boy Color", "gbc", setOf("gbc", "cgb"), "Nintendo - Game Boy Color", "Nintendo_-_Game_Boy_Color", 0x150, false);
+    GB("gb", "Game Boy", "gb", setOf("gb"), "Nintendo - Game Boy", "Nintendo_-_Game_Boy", 0x150, true),
+    GBC("gbc", "Game Boy Color", "gbc", setOf("gbc", "cgb"), "Nintendo - Game Boy Color", "Nintendo_-_Game_Boy_Color", 0x150, true);
+
+    /** Mã cheat của GBA khác Game Boy/GBC (GameShark 8 ký tự hoặc Game Genie). */
+    val isGameBoy: Boolean get() = this != GBA
 
     companion object {
         fun fromId(id: String?): GameSystem = values().firstOrNull { it.id == id } ?: GBA

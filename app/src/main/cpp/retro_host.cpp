@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <fstream>
+#include <map>
 #include <mutex>
 
 #include "libretro.h"
@@ -54,6 +55,11 @@ struct CoreApi {
 CoreApi g;
 bool g_initialized = false;  // retro_init đã gọi
 bool g_gameLoaded = false;
+
+// Tuỳ chọn của lõi (khoá -> giá trị) do app đặt; lõi đọc qua GET_VARIABLE.
+std::map<std::string, std::string> g_options;
+bool g_optionsDirty = false;
+std::mutex g_optionsMu;
 
 std::string g_systemDir;
 std::string g_saveDir;
@@ -114,9 +120,20 @@ bool RETRO_CALLCONV EnvCb(unsigned cmd, void* data) {
       }
       return false;
     }
-    case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE & 0xFFFF:
-      *static_cast<bool*>(data) = false;
+    case RETRO_ENVIRONMENT_GET_VARIABLE & 0xFFFF: {
+      auto* var = static_cast<struct retro_variable*>(data);
+      std::lock_guard<std::mutex> l(g_optionsMu);
+      auto it = var->key ? g_options.find(var->key) : g_options.end();
+      if (it == g_options.end()) return false;  // chưa đặt: lõi dùng giá trị mặc định
+      var->value = it->second.c_str();
       return true;
+    }
+    case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE & 0xFFFF: {
+      std::lock_guard<std::mutex> l(g_optionsMu);
+      *static_cast<bool*>(data) = g_optionsDirty;
+      g_optionsDirty = false;
+      return true;
+    }
     case RETRO_ENVIRONMENT_GET_LOG_INTERFACE & 0xFFFF:
       static_cast<struct retro_log_callback*>(data)->log = LogCb;
       return true;
@@ -143,7 +160,7 @@ bool RETRO_CALLCONV EnvCb(unsigned cmd, void* data) {
       return true;
     }
     default:
-      // Mọi thứ khác (GET_VARIABLE, SET_VARIABLES, rumble, sensor...) không hỗ trợ.
+      // Mọi thứ khác (SET_VARIABLES, rumble, sensor...) không hỗ trợ.
       return false;
   }
 }
@@ -400,6 +417,14 @@ bool Serialize(std::vector<uint8_t>* out) {
 bool Unserialize(const uint8_t* data, size_t size) {
   if (!g_initialized || !g_gameLoaded) return false;
   return g.retro_unserialize(data, size);
+}
+
+void SetOption(const std::string& key, const std::string& value) {
+  std::lock_guard<std::mutex> l(g_optionsMu);
+  auto it = g_options.find(key);
+  if (it != g_options.end() && it->second == value) return;
+  g_options[key] = value;
+  g_optionsDirty = true;
 }
 
 void CheatReset() {
