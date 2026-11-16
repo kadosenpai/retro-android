@@ -355,7 +355,7 @@ fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
  * Trang ngắn thì bảng ôm sát nội dung (không còn khoảng trống phía trên); trang dài thì cuộn.
  */
 @Composable
-fun Modifier.sheetMaxHeight(): Modifier {
+fun Modifier.sheetMaxHeight(full: Boolean = false): Modifier {
     val density = LocalDensity.current
     val view = LocalView.current
     val cfg = LocalConfiguration.current
@@ -363,5 +363,6 @@ fun Modifier.sheetMaxHeight(): Modifier {
     val rootH = remember(cfg.orientation, cfg.screenHeightDp, cfg.screenWidthDp) { view.rootView.height }
     val winH = if (rootH > 0) with(density) { rootH.toDp() } else cfg.screenHeightDp.dp
     val top = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
-    return this.heightIn(max = winH - top)
+    // full = bảng luôn cao hết cỡ (dưới thanh trạng thái một đoạn), mọi trang con cùng chiều cao
+    return if (full) this.height(winH - top - 24.dp) else this.heightIn(max = winH - top)
 }

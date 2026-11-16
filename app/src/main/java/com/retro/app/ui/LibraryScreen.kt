@@ -4,6 +4,10 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.widthIn
@@ -96,6 +100,7 @@ fun LibraryScreen(model: AppModel) {
     var sortPill by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var gameMenu by remember { mutableStateOf<RomInfo?>(null) } // game đang mở menu giữ lâu
+    var menuAnchor by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var renameTarget by remember { mutableStateOf<RomInfo?>(null) }
     var deleteTarget by remember { mutableStateOf<RomInfo?>(null) }
     var deleteAllConfirm by remember { mutableStateOf(false) }
@@ -245,13 +250,15 @@ fun LibraryScreen(model: AppModel) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 items(shown, key = { it.id }) { rom ->
-                    Box {
+                    var tileBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+                    Box(Modifier.onGloballyPositioned { tileBounds = it.boundsInWindow() }) {
                         RomTile(
                             rom = rom,
                             cover = rememberCover(model, rom),
                             onOpen = { model.open(rom) },
                             onMenu = {
                                 hideKeyboard()
+                                menuAnchor = tileBounds
                                 gameMenu = rom
                             },
                         )
@@ -265,6 +272,7 @@ fun LibraryScreen(model: AppModel) {
     gameMenu?.let { rom ->
         GameMenuOverlay(
             rom = rom,
+            anchor = menuAnchor,
             cover = rememberCover(model, rom),
             onDismiss = { gameMenu = null },
             actions = listOf(
@@ -303,7 +311,7 @@ fun LibraryScreen(model: AppModel) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .sheetMaxHeight()
+                    .sheetMaxHeight(full = true)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
                     .navigationBarsPadding()
@@ -579,24 +587,61 @@ private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
 private class GameAction(val label: String, val icon: String, val danger: Boolean = false, val onClick: () -> Unit)
 
 @Composable
-private fun GameMenuOverlay(rom: RomInfo, cover: ImageBitmap?, actions: List<GameAction>, onDismiss: () -> Unit) {
+private fun GameMenuOverlay(
+    rom: RomInfo,
+    cover: ImageBitmap?,
+    anchor: androidx.compose.ui.geometry.Rect?,
+    actions: List<GameAction>,
+    onDismiss: () -> Unit,
+) {
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        val cfg = LocalConfiguration.current
-        val landscape = cfg.screenWidthDp > cfg.screenHeightDp
-        val scale = remember { androidx.compose.animation.core.Animatable(0.85f) }
-        LaunchedEffect(Unit) { scale.animateTo(1f, androidx.compose.animation.core.tween(160)) }
-        val coverSize = if (landscape) (cfg.screenHeightDp - 64).coerceIn(120, 260).dp else (cfg.screenWidthDp * 0.62f).coerceIn(160f, 280f).dp
-        val bigCover: @Composable () -> Unit = {
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val scale = remember { androidx.compose.animation.core.Animatable(1f) }
+        LaunchedEffect(Unit) { scale.animateTo(1.08f, androidx.compose.animation.core.tween(160)) }
+        BoxWithConstraints(
+            Modifier
+                .fillMaxSize()
+                .background(Color(0x99000000))
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
+        ) {
+            val sw = with(density) { maxWidth.toPx() }
+            val sh = with(density) { maxHeight.toPx() }
+            val gap = with(density) { 12.dp.toPx() }
+            val margin = with(density) { 12.dp.toPx() }
+            val a = anchor ?: androidx.compose.ui.geometry.Rect(sw / 2 - 90f, sh / 3, sw / 2 + 90f, sh / 3 + 180f)
+            val coverW = a.width
+            val menuW = with(density) { 260.dp.toPx() }
+            val menuH = with(density) { (actions.size * 48 + 40).dp.toPx() }
+            val coverBottom = a.top + coverW + coverW * 0.04f
+            // Ưu tiên bảng nằm dưới băng; không đủ chỗ thì sang cạnh băng.
+            var mx = a.left.coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
+            var my = coverBottom + gap
+            if (my + menuH > sh - margin) {
+                my = (a.top).coerceIn(margin, (sh - menuH - margin).coerceAtLeast(margin))
+                mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
+                else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
+            }
+            // Băng giữ nguyên vị trí cũ, phóng to nhẹ.
             Box(
                 Modifier
-                    .size(coverSize)
+                    .offset { androidx.compose.ui.unit.IntOffset(a.left.toInt(), a.top.toInt()) }
+                    .size(with(density) { coverW.toDp() })
                     .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFF101114))
-                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(20.dp)),
+                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(16.dp))
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (cover != null) {
@@ -605,70 +650,50 @@ private fun GameMenuOverlay(rom: RomInfo, cover: ImageBitmap?, actions: List<Gam
                     Text(
                         rom.name.trim().take(1).uppercase(Locale.ROOT).ifEmpty { "?" },
                         color = Rc.Muted,
-                        fontSize = 56.sp,
+                        fontSize = 40.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }
             }
-        }
-        val menu: @Composable (Modifier) -> Unit = { m ->
+            // Bảng thao tác
             Column(
-                m
-                    .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
+                Modifier
+                    .offset { androidx.compose.ui.unit.IntOffset(mx.toInt(), my.toInt()) }
+                    .width(260.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(Rc.Sheet)
-                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp)),
+                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    ),
             ) {
                 Text(
                     rom.name,
                     color = Rc.Muted,
                     fontSize = 12.sp,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 )
-                actions.forEach { a ->
+                actions.forEach { act ->
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable(onClick = a.onClick)
+                            .clickable(onClick = act.onClick)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            a.label,
-                            color = if (a.danger) Rc.Danger else Rc.Text,
+                            act.label,
+                            color = if (act.danger) Rc.Danger else Rc.Text,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.weight(1f),
                         )
-                        RetroIcon(a.icon, size = 20.dp, tint = if (a.danger) Rc.Danger else Rc.Muted)
+                        RetroIcon(act.icon, size = 20.dp, tint = if (act.danger) Rc.Danger else Rc.Muted)
                     }
-                }
-            }
-        }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Color(0x99000000))
-                .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onDismiss)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(16.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (landscape) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    bigCover()
-                    menu(Modifier.width(300.dp).verticalScroll(rememberScrollState()))
-                }
-            } else {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                ) {
-                    bigCover()
-                    Spacer(Modifier.height(16.dp))
-                    menu(Modifier.fillMaxWidth().widthIn(max = 360.dp))
                 }
             }
         }
