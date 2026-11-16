@@ -1,8 +1,5 @@
 package com.retro.app.ui
 
-import android.os.Build
-import android.view.View
-import android.view.WindowManager
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -27,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +37,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogWindowProvider
 
 /** Nhóm nội dung dạng thẻ kính bo tròn, như `.group` của bản web. */
 @Composable
@@ -168,46 +163,6 @@ fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
-/** Hàng chip nằm trên một dòng, các chip chia đều chiều rộng. */
-@Composable
-fun <T> ChipRow(
-    options: List<T>,
-    selected: T,
-    label: (T) -> String,
-    onSelect: (T) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        options.forEach { opt ->
-            val on = opt == selected
-            Box(
-                Modifier
-                    .weight(1f)
-                    .heightIn(min = 36.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(if (on) Color.White else Rc.Glass)
-                    .border(BorderStroke(1.dp, if (on) Color.White else Rc.Stroke), RoundedCornerShape(18.dp))
-                    .clickable { onSelect(opt) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label(opt),
-                    color = if (on) Color.Black else Rc.Text,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 2.dp),
-                )
-            }
-        }
-    }
-}
-
 @Composable
 fun SmallLabel(text: String) {
     Text(
@@ -310,34 +265,6 @@ fun PillButton(
             Spacer(Modifier.width(8.dp))
         }
         Text(text, color = fg, fontSize = if (compact) 14.sp else 16.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-/**
- * Làm mờ thật phần nền phía sau bảng (Android 12 trở lên). Gọi bên trong nội dung của ModalBottomSheet.
- * Nếu máy không hỗ trợ thì không có gì xảy ra; vẫn còn lớp tối phủ phía sau.
- */
-@Composable
-fun SheetWindowBlur(radiusPx: Int = 40) {
-    val view = LocalView.current
-    SideEffect {
-        if (Build.VERSION.SDK_INT < 31) return@SideEffect
-        var v: View? = view
-        var window: android.view.Window? = null
-        var hops = 0
-        while (v != null && window == null && hops < 6) {
-            window = (v as? DialogWindowProvider)?.window
-            v = v.parent as? View
-            hops++
-        }
-        val w = window ?: return@SideEffect
-        try {
-            w.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            val lp = w.attributes
-            lp.setBlurBehindRadius(radiusPx)
-            w.attributes = lp
-        } catch (_: Throwable) {
-        }
     }
 }
 

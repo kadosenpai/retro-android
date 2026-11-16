@@ -16,7 +16,6 @@ import com.retro.app.data.ControllerMap
 import com.retro.app.data.CoverService
 import com.retro.app.data.GbaButton
 import com.retro.app.data.ImportResult
-import com.retro.app.data.PadLayout
 import com.retro.app.data.Prefs
 import com.retro.app.data.RomInfo
 import com.retro.app.data.RomStore
@@ -65,12 +64,6 @@ class AppModel(private val app: Application) {
         private set
     var controllerMap by mutableStateOf(prefs.loadPadMap())
         private set
-    var layoutPortrait by mutableStateOf(prefs.loadLayout(false))
-        private set
-    var layoutLandscape by mutableStateOf(prefs.loadLayout(true))
-        private set
-    /** Đang ở chế độ chỉnh bố cục nút ảo. */
-    var editingLayout by mutableStateOf(false)
 
     init {
         EmulatorEngine.sramSink = { id, data -> runCatching { store.writeSram(id, data) } }
@@ -154,11 +147,6 @@ class AppModel(private val app: Application) {
     fun resetControllerMap() {
         controllerMap = ControllerMap.defaults()
         prefs.savePadMap(controllerMap)
-    }
-
-    fun setLayout(land: Boolean, layout: PadLayout) {
-        if (land) layoutLandscape = layout else layoutPortrait = layout
-        prefs.saveLayout(land, layout)
     }
 
     // ---------- Cheat ----------
@@ -382,7 +370,6 @@ class AppModel(private val app: Application) {
         current?.let { rom -> withContext(Dispatchers.IO) { writeSlot(rom, RomStore.AUTO_SLOT) } }
         withContext(Dispatchers.IO) { EmulatorEngine.unload() }
         cheats = emptyList()
-        editingLayout = false
         current = null
         screen = Screen.LIBRARY
         refresh()

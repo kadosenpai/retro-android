@@ -1,8 +1,6 @@
 package com.retro.app.data
 
 import android.content.Context
-import com.retro.app.render.FilterMode
-import com.retro.app.render.ScaleMode
 
 enum class SortKey(val label: String) {
     RECENT("Chơi gần đây"),
@@ -11,8 +9,6 @@ enum class SortKey(val label: String) {
 }
 
 data class Settings(
-    val scale: ScaleMode = ScaleMode.INTEGER,
-    val filter: FilterMode = FilterMode.SHARP,
     val sound: Boolean = true,
     val showPad: Boolean = true,
     val haptics: Boolean = true,
@@ -28,8 +24,6 @@ class Prefs(ctx: Context) {
     fun load(): Settings {
         val d = Settings()
         return Settings(
-            scale = enumOf(sp.getString("scale", null), d.scale),
-            filter = enumOf(sp.getString("filter", null), d.filter),
             sound = sp.getBoolean("sound", d.sound),
             showPad = sp.getBoolean("showPad", d.showPad),
             haptics = sp.getBoolean("haptics", d.haptics),
@@ -41,8 +35,6 @@ class Prefs(ctx: Context) {
 
     fun save(s: Settings) {
         sp.edit()
-            .putString("scale", s.scale.name)
-            .putString("filter", s.filter.name)
             .putBoolean("sound", s.sound)
             .putBoolean("showPad", s.showPad)
             .putBoolean("haptics", s.haptics)
@@ -56,13 +48,6 @@ class Prefs(ctx: Context) {
 
     fun savePadMap(m: ControllerMap) {
         sp.edit().putString("padmap", m.encode()).apply()
-    }
-
-    /** Bố cục nút ảo riêng cho màn ngang ([land] = true) hoặc màn dọc. */
-    fun loadLayout(land: Boolean): PadLayout = PadLayout.decode(sp.getString(if (land) "layoutL" else "layoutP", null))
-
-    fun saveLayout(land: Boolean, l: PadLayout) {
-        sp.edit().putString(if (land) "layoutL" else "layoutP", l.encode()).apply()
     }
 
     private inline fun <reified T : Enum<T>> enumOf(name: String?, default: T): T =
