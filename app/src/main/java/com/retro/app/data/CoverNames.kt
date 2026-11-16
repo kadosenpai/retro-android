@@ -4,9 +4,8 @@ import java.net.URLEncoder
 
 /** Phần thuần Kotlin (không phụ thuộc Android) của việc tìm ảnh bìa: đọc DAT libretro và dựng URL. */
 object CoverNames {
-    const val DAT_URL =
-        "https://raw.githubusercontent.com/libretro/libretro-database/master/dat/Nintendo%20-%20Game%20Boy%20Advance.dat"
-    private const val THUMB_DIR = "Nintendo_-_Game_Boy_Advance"
+    fun datUrl(sys: GameSystem): String =
+        "https://raw.githubusercontent.com/libretro/libretro-database/master/dat/${enc(sys.datName)}.dat"
 
     private val nameRe = Regex("""name\s+"([^"]+)"""")
     private val crcRe = Regex("""\bcrc\s+([0-9A-Fa-f]{8})\b""")
@@ -32,6 +31,6 @@ object CoverNames {
 
     private fun enc(s: String): String = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
 
-    fun boxArtUrl(gameName: String): String =
-        "https://raw.githubusercontent.com/libretro-thumbnails/$THUMB_DIR/master/Named_Boxarts/${enc(thumbFileName(gameName))}.png"
+    fun boxArtUrl(sys: GameSystem, gameName: String): String =
+        "https://raw.githubusercontent.com/libretro-thumbnails/${sys.thumbDir}/master/Named_Boxarts/${enc(thumbFileName(gameName))}.png"
 }

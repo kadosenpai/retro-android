@@ -19,19 +19,21 @@ import java.util.zip.CRC32
  */
 class CoverService(private val ctx: Context, private val store: RomStore) {
     private val mutex = Mutex()
-    private val datFile = File(ctx.cacheDir, "gba.dat")
-    private var datMap: Map<Long, String>? = null
+    private val datMaps = HashMap<String, Map<Long, String>>()
+
+    private fun datFile(sys: GameSystem) = File(ctx.cacheDir, "${sys.id}.dat")
 
     /** Tải ảnh bìa gốc và lưu lại. Trả true nếu đặt được ảnh bìa. */
     suspend fun fetchBoxArt(rom: RomInfo): Boolean = withContext(Dispatchers.IO) {
         mutex.withLock {
+            val sys = GameSystem.fromId(rom.system)
             val crc = crc32Of(store.romFile(rom.id))
             val names = LinkedHashSet<String>()
-            lookup(crc)?.let { names.add(it) }
+            lookup(sys, crc)?.let { names.add(it) }
             val base = rom.fileBase.ifEmpty { rom.name }
             if (base.isNotEmpty()) names.add(base)
             for (n in names) {
-                val png = httpGet(CoverNames.boxArtUrl(n)) ?: continue
+                val png = httpGet(CoverNames.boxArtUrl(sys, n)) ?: continue
                 val jpeg = toCoverJpeg(png) ?: continue
                 store.setCover(rom.id, jpeg)
                 return@withLock true
@@ -40,27 +42,29 @@ class CoverService(private val ctx: Context, private val store: RomStore) {
         }
     }
 
-    private fun lookup(crc: Long): String? {
+    private fun lookup(sys: GameSystem, crc: Long): String? {
         if (crc < 0) return null
-        var map = datMap ?: loadDat(refresh = false)
+        var map = datMaps[sys.id] ?: loadDat(sys, refresh = false)
         map?.get(crc)?.let { return it }
         // Không thấy: nếu bản DAT đã cũ (hơn 14 ngày) thì tải lại một lần.
-        val old = !datFile.exists() || System.currentTimeMillis() - datFile.lastModified() > 14L * 24 * 3600 * 1000
+        val f = datFile(sys)
+        val old = !f.exists() || System.currentTimeMillis() - f.lastModified() > 14L * 24 * 3600 * 1000
         if (old) {
-            map = loadDat(refresh = true)
+            map = loadDat(sys, refresh = true)
             return map?.get(crc)
         }
         return null
     }
 
-    private fun loadDat(refresh: Boolean): Map<Long, String>? {
-        if (refresh || !datFile.exists()) {
-            val bytes = httpGet(CoverNames.DAT_URL, maxBytes = 16 * 1024 * 1024) ?: return datMap
-            runCatching { datFile.writeBytes(bytes) }
+    private fun loadDat(sys: GameSystem, refresh: Boolean): Map<Long, String>? {
+        val f = datFile(sys)
+        if (refresh || !f.exists()) {
+            val bytes = httpGet(CoverNames.datUrl(sys), maxBytes = 16 * 1024 * 1024) ?: return datMaps[sys.id]
+            runCatching { f.writeBytes(bytes) }
         }
-        val parsed = runCatching { CoverNames.parseDat(datFile.readText()) }.getOrNull()
-        if (parsed != null && parsed.isNotEmpty()) datMap = parsed
-        return datMap
+        val parsed = runCatching { CoverNames.parseDat(f.readText()) }.getOrNull()
+        if (parsed != null && parsed.isNotEmpty()) datMaps[sys.id] = parsed
+        return datMaps[sys.id]
     }
 
     private fun crc32Of(f: File): Long {

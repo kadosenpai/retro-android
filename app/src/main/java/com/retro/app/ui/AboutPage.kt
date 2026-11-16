@@ -62,7 +62,7 @@ fun AboutPage(onBack: () -> Unit) {
 
     SectionTitle("Giấy phép")
     GroupCard {
-        ActionRow("mGBA $coreVersion", subtitle = "Lõi giả lập GBA · MPL 2.0 · mã nguồn gốc, không sửa đổi", chevron = true) { open(MGBA_URL) }
+        ActionRow("mGBA $coreVersion", subtitle = "Lõi giả lập GBA, Game Boy, Game Boy Color · MPL 2.0 · mã nguồn gốc, không sửa đổi", chevron = true) { open(MGBA_URL) }
         RowDivider(inset = 16.dp)
         ActionRow("Nội dung giấy phép MPL 2.0", chevron = true) { open(MPL_URL) }
         RowDivider(inset = 16.dp)

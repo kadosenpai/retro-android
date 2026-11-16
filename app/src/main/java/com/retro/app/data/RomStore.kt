@@ -20,6 +20,8 @@ data class RomInfo(
     val coverAt: Long = 0,
     /** Lần gần nhất đã thử tải ảnh bìa tự động (để không thử lại liên tục). */
     val coverTriedAt: Long = 0,
+    /** Id hệ máy (xem [GameSystem]); các băng cũ không có trường này nên mặc định là GBA. */
+    val system: String = "gba",
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -30,6 +32,7 @@ data class RomInfo(
         .put("fileBase", fileBase)
         .put("coverAt", coverAt)
         .put("coverTriedAt", coverTriedAt)
+        .put("system", system)
 
     companion object {
         fun fromJson(o: JSONObject) = RomInfo(
@@ -41,6 +44,7 @@ data class RomInfo(
             fileBase = o.optString("fileBase", ""),
             coverAt = o.optLong("coverAt", 0),
             coverTriedAt = o.optLong("coverTriedAt", 0),
+            system = o.optString("system", "gba"),
         )
     }
 }
@@ -161,9 +165,8 @@ class RomStore(private val ctx: Context) {
     fun import(uri: Uri): ImportResult {
         val displayName = queryName(uri) ?: "Game"
         val ext = displayName.substringAfterLast('.', "").lowercase()
-        if (ext !in ALLOWED_EXT) {
-            return ImportResult.Rejected("\"$displayName\": chỉ hỗ trợ file .gba (không nén .zip)")
-        }
+        val sys = GameSystem.fromExt(ext)
+            ?: return ImportResult.Rejected("\"$displayName\": chỉ hỗ trợ file .gba, .gb, .gbc (không nén .zip)")
         val tmp = File(romDir, "import-${System.nanoTime()}.tmp")
         try {
             val md = MessageDigest.getInstance("SHA-256")
@@ -181,7 +184,7 @@ class RomStore(private val ctx: Context) {
                     }
                 }
             }
-            if (total < 0x200) return ImportResult.Rejected("\"$displayName\" quá nhỏ, không phải ROM GBA")
+            if (total < sys.minRomSize) return ImportResult.Rejected("\"$displayName\" quá nhỏ, không phải ROM ${sys.label}")
             val id = md.digest().joinToString("") { "%02x".format(it) }.take(32)
             synchronized(lock) {
                 val list = readIndex()
@@ -191,7 +194,7 @@ class RomStore(private val ctx: Context) {
                 }
                 val now = System.currentTimeMillis()
                 val base = displayName.substringBeforeLast('.')
-                val info = RomInfo(id, base, total, now, 0L, fileBase = base)
+                val info = RomInfo(id, base, total, now, 0L, fileBase = base, system = sys.id)
                 writeIndex(list + info)
                 return ImportResult.Added(info)
             }
@@ -242,7 +245,7 @@ class RomStore(private val ctx: Context) {
     }
 
     /**
-     * Nhập file .sav từ Uri thành save của game. Kích thước hợp lệ của GBA: 512 B đến 128 KB
+     * Nhập file .sav từ Uri thành save của game. Kích thước hợp lệ (GBA, GB, GBC): 512 B đến 128 KB
      * (cho phép dư tối đa 64 byte vì vài trình giả lập ghi thêm dữ liệu đồng hồ).
      * Xoá luôn trạng thái tự động của game, nếu không lần mở sau sẽ nạp lại trạng thái cũ đè lên save vừa nhập.
      */
@@ -251,7 +254,7 @@ class RomStore(private val ctx: Context) {
             val data = ctx.contentResolver.openInputStream(uri).use { it?.readBytes() }
                 ?: return "Không đọc được file"
             if (data.size < 512 || data.size > 131072 + 64) {
-                return "File không phải save GBA hợp lệ (${data.size} byte)"
+                return "File không phải save hợp lệ (${data.size} byte)"
             }
             synchronized(lock) {
                 writeAtomic(savFile(id), data)
@@ -272,7 +275,7 @@ class RomStore(private val ctx: Context) {
     } ?: uri.lastPathSegment
 
     companion object {
-        val ALLOWED_EXT = setOf("gba", "agb", "bin")
+        val ALLOWED_EXT: Set<String> = GameSystem.values().flatMap { it.exts }.toSet()
 
         /** Ô 0 = tự động; ô 1..SLOT_COUNT = người chơi tự lưu. */
         const val AUTO_SLOT = 0

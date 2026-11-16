@@ -86,6 +86,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
+import com.retro.app.data.GameSystem
 import com.retro.app.data.RomInfo
 import com.retro.app.data.SortKey
 import java.util.Locale
@@ -139,9 +140,11 @@ fun LibraryScreen(model: AppModel) {
     }
 
     val sort = model.settings.sort
-    val shown = remember(model.roms, query, sort) {
+    val tab = model.settings.tab
+    val inTab = remember(model.roms, tab) { model.roms.filter { GameSystem.fromId(it.system).tab == tab } }
+    val shown = remember(inTab, query, sort) {
         val q = query.trim().lowercase()
-        val filtered = if (q.isEmpty()) model.roms else model.roms.filter { it.name.lowercase().contains(q) || it.id.startsWith(q) }
+        val filtered = if (q.isEmpty()) inTab else inTab.filter { it.name.lowercase().contains(q) || it.id.startsWith(q) }
         when (sort) {
             SortKey.RECENT -> filtered.sortedByDescending { maxOf(it.lastPlayedAt, it.addedAt) }
             SortKey.NAME -> filtered.sortedBy { it.name.lowercase() }
@@ -215,15 +218,7 @@ fun LibraryScreen(model: AppModel) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "KỆ BĂNG CỦA BẠN",
-                    color = Rc.Muted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.6.sp,
-                    maxLines = 1,
-                    softWrap = false,
-                )
+                SystemTabs(tab) { id -> model.update { it.copy(tab = id) } }
             }
             Box {
                 Row(
@@ -245,7 +240,7 @@ fun LibraryScreen(model: AppModel) {
         }
 
         if (shown.isEmpty()) {
-            EmptyState(hasAny = model.roms.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
+            EmptyState(hasAny = inTab.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(if (LocalConfiguration.current.screenHeightDp < 480) 104.dp else 150.dp),
@@ -507,6 +502,33 @@ private fun SortMenu(expanded: Boolean, onDismiss: () -> Unit, current: SortKey,
     }
 }
 
+/** Thanh tab hệ máy ở đầu danh sách: chọn tab nào thì chỉ hiện băng của hệ đó. */
+@Composable
+private fun SystemTabs(selected: String, onSelect: (String) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        GameSystem.TABS.forEach { (id, label) ->
+            val on = id == selected
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(if (on) Color.White else Rc.Glass)
+                    .border(BorderStroke(1.dp, if (on) Color.White else Rc.Stroke), RoundedCornerShape(18.dp))
+                    .clickable { onSelect(id) }
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    color = if (on) Color.Black else Rc.Text,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
     val cfg = LocalConfiguration.current
@@ -542,7 +564,7 @@ private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
             .clip(shape)
             .background(Rc.Glass)
             .border(BorderStroke(1.dp, Rc.Stroke), shape)
-        val desc = "Bấm dấu + để thêm file ROM .gba của bạn. Chỉ dùng ROM bạn sở hữu hợp pháp; dữ liệu nằm trên máy này."
+        val desc = "Bấm dấu + để thêm file ROM (.gba, .gb, .gbc) của bạn. Chỉ dùng ROM bạn sở hữu hợp pháp; dữ liệu nằm trên máy này."
         if (compact) {
             // Màn ngang thấp: thẻ gọn một hàng để nằm vừa màn hình, không phải vuốt.
             Row(cardMod.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {

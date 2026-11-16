@@ -16,6 +16,8 @@ data class Settings(
     /** Giữ nút: chạm một lần để giữ, chạm lần nữa để nhả. */
     val sticky: Boolean = false,
     val sort: SortKey = SortKey.RECENT,
+    /** Tab đang chọn trong thư viện (xem [GameSystem.TABS]). */
+    val tab: String = "gba",
 )
 
 class Prefs(ctx: Context) {
@@ -30,6 +32,7 @@ class Prefs(ctx: Context) {
             showStats = sp.getBoolean("showStats", d.showStats),
             sticky = sp.getBoolean("sticky", d.sticky),
             sort = enumOf(sp.getString("sort", null), d.sort),
+            tab = sp.getString("tab", null) ?: d.tab,
         )
     }
 
@@ -41,6 +44,7 @@ class Prefs(ctx: Context) {
             .putBoolean("showStats", s.showStats)
             .putBoolean("sticky", s.sticky)
             .putString("sort", s.sort.name)
+            .putString("tab", s.tab)
             .apply()
     }
 

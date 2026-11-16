@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
+import com.retro.app.data.GameSystem
 import com.retro.app.data.Settings
 
 /** Menu ▲ khi đang chơi: thanh trên (Thoát · Tạm dừng · Tiếp tục), lưới biểu tượng, vài cài đặt gọn. */
@@ -107,7 +108,10 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                     Row(Modifier.fillMaxWidth()) {
                         MenuTile("save", "Lưu", Modifier.weight(1f)) { page = 3 }
                         MenuTile("upload", "Nạp", Modifier.weight(1f)) { page = 4 }
-                        MenuTile("star", "Cheat", Modifier.weight(1f)) { page = 1 }
+                        MenuTile("star", "Cheat", Modifier.weight(1f)) {
+                            if (GameSystem.fromId(model.current?.system).hasCheats) page = 1
+                            else model.showToast("Chưa hỗ trợ cheat cho Game Boy / Game Boy Color")
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth()) {

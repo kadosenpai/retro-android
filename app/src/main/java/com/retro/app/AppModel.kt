@@ -15,6 +15,7 @@ import com.retro.app.data.CheatItem
 import com.retro.app.data.ControllerMap
 import com.retro.app.data.CoverService
 import com.retro.app.data.GbaButton
+import com.retro.app.data.GameSystem
 import com.retro.app.data.ImportResult
 import com.retro.app.data.Prefs
 import com.retro.app.data.RomInfo
@@ -98,6 +99,11 @@ class AppModel(private val app: Application) {
             val added = results.filterIsInstance<ImportResult.Added>()
             val dup = results.filterIsInstance<ImportResult.Duplicate>().size
             val rejected = results.filterIsInstance<ImportResult.Rejected>()
+            // Thêm băng của hệ nào thì chuyển sang tab của hệ đó.
+            added.lastOrNull()?.let { a ->
+                val tab = GameSystem.fromId(a.rom.system).tab
+                if (settings.tab != tab) update { it.copy(tab = tab) }
+            }
             toast = when {
                 rejected.isNotEmpty() -> rejected.first().reason
                 added.size == 1 -> "Đã thêm \"${added[0].rom.name}\". Chạm vào băng để chơi."
