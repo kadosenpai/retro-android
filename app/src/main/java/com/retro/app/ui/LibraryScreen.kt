@@ -4,6 +4,9 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.HorizontalPager
 import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -139,18 +142,21 @@ fun LibraryScreen(model: AppModel) {
         model.addRoms(uris)
     }
 
-    val sort = model.settings.sort
+    val tabs = GameSystem.TABS
     val tab = model.settings.tab
-    val inTab = remember(model.roms, tab) { model.roms.filter { GameSystem.fromId(it.system).tab == tab } }
-    val shown = remember(inTab, query, sort) {
-        val q = query.trim().lowercase()
-        val filtered = if (q.isEmpty()) inTab else inTab.filter { it.name.lowercase().contains(q) || it.id.startsWith(q) }
-        when (sort) {
-            SortKey.RECENT -> filtered.sortedByDescending { maxOf(it.lastPlayedAt, it.addedAt) }
-            SortKey.NAME -> filtered.sortedBy { it.name.lowercase() }
-            SortKey.ADDED -> filtered.sortedByDescending { it.addedAt }
+    // Vuốt trái/phải để chuyển giữa các hệ máy (mỗi hệ một trang).
+    val pagerState = rememberPagerState(initialPage = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0), pageCount = { tabs.size })
+    LaunchedEffect(tab) {
+        val i = tabs.indexOfFirst { it.first == tab }
+        if (i >= 0 && i != pagerState.currentPage) pagerState.animateScrollToPage(i)
+    }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect { p ->
+            val id = tabs[p].first
+            if (id != model.settings.tab) model.update { it.copy(tab = id) }
         }
     }
+    val sort = model.settings.sort
     // Màn đủ rộng thì hiện thêm số lượng băng và biểu tượng sắp xếp, như bản web.
     // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
     val behindSheet = settingsOpen
@@ -218,7 +224,15 @@ fun LibraryScreen(model: AppModel) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                SystemTabs(tab) { id -> model.update { it.copy(tab = id) } }
+                Text(
+                    tabTitle(tabs[pagerState.currentPage].first).uppercase(),
+                    color = Rc.Muted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.6.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                )
             }
             Box {
                 Row(
@@ -239,32 +253,66 @@ fun LibraryScreen(model: AppModel) {
         }
         }
 
-        if (shown.isEmpty()) {
-            EmptyState(hasAny = inTab.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(if (LocalConfiguration.current.screenHeightDp < 480) 104.dp else 150.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                items(shown, key = { it.id }) { rom ->
-                    // Giữ vị trí ô bằng biến thường (không phải state) để cuộn danh sách không bị recompose liên tục.
-                    val tileBounds = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
-                    Box(Modifier.onGloballyPositioned { tileBounds[0] = it.boundsInWindow() }) {
-                        RomTile(
-                            rom = rom,
-                            cover = rememberCover(model, rom),
-                            onOpen = { model.open(rom) },
-                            onMenu = {
-                                hideKeyboard()
-                                menuAnchor = tileBounds[0]
-                                gameMenu = rom
-                            },
-                        )
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            beyondViewportPageCount = 0,
+        ) { page ->
+            val pageTab = tabs[page].first
+            val inTab = remember(model.roms, pageTab) { model.roms.filter { GameSystem.fromId(it.system).tab == pageTab } }
+            val shown = remember(inTab, query, sort) {
+                val q = query.trim().lowercase()
+                val filtered = if (q.isEmpty()) inTab else inTab.filter { it.name.lowercase().contains(q) || it.id.startsWith(q) }
+                when (sort) {
+                    SortKey.RECENT -> filtered.sortedByDescending { maxOf(it.lastPlayedAt, it.addedAt) }
+                    SortKey.NAME -> filtered.sortedBy { it.name.lowercase() }
+                    SortKey.ADDED -> filtered.sortedByDescending { it.addedAt }
+                }
+            }
+            if (shown.isEmpty()) {
+                EmptyState(hasAny = inTab.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(if (LocalConfiguration.current.screenHeightDp < 480) 104.dp else 150.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    items(shown, key = { it.id }) { rom ->
+                        // Giữ vị trí ô bằng biến thường (không phải state) để cuộn danh sách không bị recompose liên tục.
+                        val tileBounds = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
+                        Box(Modifier.onGloballyPositioned { tileBounds[0] = it.boundsInWindow() }) {
+                            RomTile(
+                                rom = rom,
+                                cover = rememberCover(model, rom),
+                                onOpen = { model.open(rom) },
+                                onMenu = {
+                                    hideKeyboard()
+                                    menuAnchor = tileBounds[0]
+                                    gameMenu = rom
+                                },
+                            )
+                        }
                     }
                 }
+            }
+        }
+        // Chấm báo đang ở trang (hệ máy) nào.
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tabs.forEachIndexed { i, _ ->
+                val on = i == pagerState.currentPage
+                Box(
+                    Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(if (on) 8.dp else 6.dp)
+                        .clip(CircleShape)
+                        .background(if (on) Color.White else Rc.Faint),
+                )
             }
         }
     }
@@ -502,31 +550,11 @@ private fun SortMenu(expanded: Boolean, onDismiss: () -> Unit, current: SortKey,
     }
 }
 
-/** Thanh tab hệ máy ở đầu danh sách: chọn tab nào thì chỉ hiện băng của hệ đó. */
-@Composable
-private fun SystemTabs(selected: String, onSelect: (String) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        GameSystem.TABS.forEach { (id, label) ->
-            val on = id == selected
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(if (on) Color.White else Rc.Glass)
-                    .border(BorderStroke(1.dp, if (on) Color.White else Rc.Stroke), RoundedCornerShape(18.dp))
-                    .clickable { onSelect(id) }
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label,
-                    color = if (on) Color.Black else Rc.Text,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
+private fun tabTitle(id: String): String = when (id) {
+    "gba" -> "Game Boy Advance"
+    "gb" -> "Game Boy"
+    "gbc" -> "Game Boy Color"
+    else -> id
 }
 
 @Composable
