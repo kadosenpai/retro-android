@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -142,17 +143,24 @@ fun LibraryScreen(model: AppModel) {
         model.addRoms(uris)
     }
 
-    val tabs = GameSystem.TABS
     val tab = model.settings.tab
+    // Chỉ hệ máy nào đã có băng mới có trang riêng; thêm băng của hệ mới thì trang mới xuất hiện.
+    val tabs = remember(model.roms) {
+        GameSystem.TABS.filter { (id, _) -> model.roms.any { GameSystem.fromId(it.system).tab == id } }
+    }
+    val tabsNow = rememberUpdatedState(tabs)
     // Vuốt trái/phải để chuyển giữa các hệ máy (mỗi hệ một trang).
-    val pagerState = rememberPagerState(initialPage = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0), pageCount = { tabs.size })
-    LaunchedEffect(tab) {
+    val pagerState = rememberPagerState(
+        initialPage = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0),
+        pageCount = { tabsNow.value.size },
+    )
+    LaunchedEffect(tab, tabs) {
         val i = tabs.indexOfFirst { it.first == tab }
         if (i >= 0 && i != pagerState.currentPage) pagerState.animateScrollToPage(i)
     }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { p ->
-            val id = tabs[p].first
+            val id = tabsNow.value.getOrNull(p)?.first ?: return@collect
             if (id != model.settings.tab) model.update { it.copy(tab = id) }
         }
     }
@@ -225,7 +233,7 @@ fun LibraryScreen(model: AppModel) {
         ) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    tabTitle(tabs[pagerState.currentPage].first).uppercase(),
+                    tabTitle(tabs.getOrNull(pagerState.currentPage)?.first ?: tab).uppercase(),
                     color = Rc.Muted,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -253,12 +261,14 @@ fun LibraryScreen(model: AppModel) {
         }
         }
 
-        HorizontalPager(
+        if (tabs.isEmpty()) {
+            EmptyState(hasAny = false, onAdd = { picker.launch(arrayOf("*/*")) })
+        } else HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             beyondViewportPageCount = 0,
         ) { page ->
-            val pageTab = tabs[page].first
+            val pageTab = tabs.getOrNull(page)?.first ?: tab
             val inTab = remember(model.roms, pageTab) { model.roms.filter { GameSystem.fromId(it.system).tab == pageTab } }
             val shown = remember(inTab, query, sort) {
                 val q = query.trim().lowercase()
@@ -298,8 +308,8 @@ fun LibraryScreen(model: AppModel) {
                 }
             }
         }
-        // Chấm báo đang ở trang (hệ máy) nào.
-        Row(
+        // Chấm báo đang ở trang (hệ máy) nào (chỉ hiện khi có từ hai hệ máy trở lên).
+        if (tabs.size > 1) Row(
             Modifier.fillMaxWidth().padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
