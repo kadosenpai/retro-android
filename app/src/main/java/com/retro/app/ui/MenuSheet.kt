@@ -131,7 +131,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                     GroupCard {
                         ToggleRow("Âm thanh", st.sound, icon = "volume") { v -> model.update { it.copy(sound = v) } }
                         RowDivider()
-                        ToggleRow("Hiện nút ảo", st.showPad, icon = "pointer") { v -> model.update { it.copy(showPad = v) } }
+                        ToggleRow("Hiện nút ảo", st.showPad, icon = "dpad") { v -> model.update { it.copy(showPad = v) } }
                         RowDivider()
                         ActionRow("Tay cầm", icon = "gamepad", chevron = true) { page = 2 }
                         RowDivider()

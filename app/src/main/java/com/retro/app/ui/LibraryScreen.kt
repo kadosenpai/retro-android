@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -334,7 +337,7 @@ fun LibraryScreen(model: AppModel) {
                         PageHeader("Cảm ứng & rung") { settingsPage = 0 }
                         Spacer(Modifier.height(8.dp))
                         GroupCard {
-                            ToggleRow("Hiện nút ảo", st.showPad, icon = "pointer") { v -> model.update { it.copy(showPad = v) } }
+                            ToggleRow("Hiện nút ảo", st.showPad, icon = "dpad") { v -> model.update { it.copy(showPad = v) } }
                             RowDivider()
                             ToggleRow("Rung khi nhấn nút", st.haptics, icon = "phone") { v -> model.update { it.copy(haptics = v) } }
                         }
@@ -608,16 +611,18 @@ private fun GameMenuOverlay(
             val sh = with(density) { maxHeight.toPx() }
             val gap = with(density) { 12.dp.toPx() }
             val margin = with(density) { 12.dp.toPx() }
+            val insetTop = maxOf(WindowInsets.statusBars.getTop(density).toFloat(), with(density) { 24.dp.toPx() }) + margin
+            val insetBottom = maxOf(WindowInsets.navigationBars.getBottom(density).toFloat(), with(density) { 20.dp.toPx() }) + margin
             val a = anchor ?: androidx.compose.ui.geometry.Rect(sw / 2 - 90f, sh / 3, sw / 2 + 90f, sh / 3 + 180f)
             val coverW = a.width
             val menuW = with(density) { 260.dp.toPx() }
-            val menuH = with(density) { (actions.size * 48 + 40).dp.toPx() }
+            val menuH = with(density) { (actions.size * 44 + 34).dp.toPx() }.coerceAtMost(sh - insetTop - insetBottom)
             val coverBottom = a.top + coverW + coverW * 0.04f
             // Ưu tiên bảng nằm dưới băng; không đủ chỗ thì sang cạnh băng.
             var mx = a.left.coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
             var my = coverBottom + gap
-            if (my + menuH > sh - margin) {
-                my = (a.top).coerceIn(margin, (sh - menuH - margin).coerceAtLeast(margin))
+            if (my + menuH > sh - insetBottom) {
+                my = (a.top).coerceIn(insetTop, (sh - menuH - insetBottom).coerceAtLeast(insetTop))
                 mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
                 else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
             }
@@ -653,6 +658,7 @@ private fun GameMenuOverlay(
                 Modifier
                     .offset { androidx.compose.ui.unit.IntOffset(mx.toInt(), my.toInt()) }
                     .width(260.dp)
+                    .heightIn(max = with(density) { (sh - insetTop - insetBottom).toDp() })
                     .clip(RoundedCornerShape(18.dp))
                     .background(Rc.Sheet)
                     .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
@@ -660,7 +666,8 @@ private fun GameMenuOverlay(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null,
                         onClick = {},
-                    ),
+                    )
+                    .verticalScroll(rememberScrollState()),
             ) {
                 Text(
                     rom.name,
@@ -668,14 +675,14 @@ private fun GameMenuOverlay(
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
                 actions.forEach { act ->
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .clickable(onClick = act.onClick)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
