@@ -32,6 +32,9 @@ object EmulatorEngine {
     private var track: AudioTrack? = null
     private var av = DoubleArray(5)
     private var currentId: String? = null
+    private var romPath: String? = null
+    /** Đang có cheat nạp trong lõi (cần nạp lại game sạch để gỡ hẳn bản vá ROM của cheat). */
+    private var cheatsActive = false
     private var lastSramHash = 0
     private var lastSramSaveNs = 0L
 
@@ -117,6 +120,8 @@ object EmulatorEngine {
             lastSramHash = NativeCore.nativeGetSram()?.contentHashCode() ?: 0
             lastSramSaveNs = System.nanoTime()
             currentId = romId
+            romPath = rom.absolutePath
+            cheatsActive = false
             pushInput()
             startAudio(OUTPUT_RATE)
             loaded = true
@@ -172,8 +177,37 @@ object EmulatorEngine {
 
     fun setCheats(codes: List<String>) = call {
         if (loaded) {
+            // retro_cheat_reset của mGBA chỉ xoá danh sách mà không gỡ bản vá ROM/hook mà cheat đã đặt,
+            // nên cheat đã tắt vẫn còn tác dụng. Muốn tắt thật thì nạp lại game sạch rồi mới áp cheat mới.
+            if (cheatsActive) cleanReload()
             NativeCore.nativeCheatReset()
             codes.forEachIndexed { i, c -> NativeCore.nativeCheatSet(i, true, c) }
+            cheatsActive = codes.isNotEmpty()
+        }
+    }
+
+    /** Nạp lại game từ file ROM gốc nhưng giữ nguyên trạng thái đang chơi và SRAM. Gọi trên luồng giả lập. */
+    private fun cleanReload() {
+        val path = romPath ?: return
+        try {
+            saveSramNow()
+            val sram = NativeCore.nativeGetSram()
+            val state = NativeCore.nativeSerialize()
+            NativeCore.nativeUnloadGame()
+            val err = NativeCore.nativeLoadGame(path)
+            if (err != null) {
+                loaded = false
+                paused = true
+                return
+            }
+            if (sram != null && sram.isNotEmpty()) NativeCore.nativeSetSram(sram)
+            if (state != null) NativeCore.nativeUnserialize(state)
+            av = NativeCore.nativeAvInfo()
+            lastSramHash = NativeCore.nativeGetSram()?.contentHashCode() ?: 0
+            pushInput()
+            cheatsActive = false
+        } catch (e: Throwable) {
+            // giữ nguyên trạng thái hiện tại nếu có lỗi bất ngờ
         }
     }
 
