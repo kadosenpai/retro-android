@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.layout.offset
@@ -149,7 +150,7 @@ fun LibraryScreen(model: AppModel) {
     }
     // Màn đủ rộng thì hiện thêm số lượng băng và biểu tượng sắp xếp, như bản web.
     // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
-    val behindSheet = settingsOpen || gameMenu != null
+    val behindSheet = settingsOpen
     val blurRadius = if (behindSheet) 16.dp else 0.dp
 
     Column(
@@ -254,15 +255,16 @@ fun LibraryScreen(model: AppModel) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 items(shown, key = { it.id }) { rom ->
-                    var tileBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-                    Box(Modifier.onGloballyPositioned { tileBounds = it.boundsInWindow() }) {
+                    // Giữ vị trí ô bằng biến thường (không phải state) để cuộn danh sách không bị recompose liên tục.
+                    val tileBounds = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
+                    Box(Modifier.onGloballyPositioned { tileBounds[0] = it.boundsInWindow() }) {
                         RomTile(
                             rom = rom,
                             cover = rememberCover(model, rom),
                             onOpen = { model.open(rom) },
                             onMenu = {
                                 hideKeyboard()
-                                menuAnchor = tileBounds
+                                menuAnchor = tileBounds[0]
                                 gameMenu = rom
                             },
                         )
@@ -596,12 +598,25 @@ private fun GameMenuOverlay(
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         val density = androidx.compose.ui.platform.LocalDensity.current
+        // Tắt hiệu ứng mở cửa sổ mặc định của Dialog (nó phóng nhẹ từ giữa nên nội dung bị "trượt" sang trái).
+        val dialogView = androidx.compose.ui.platform.LocalView.current
+        androidx.compose.runtime.SideEffect {
+            (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.apply {
+                setWindowAnimations(-1)
+                setDimAmount(0f)
+            }
+        }
         val scale = remember { androidx.compose.animation.core.Animatable(1f) }
-        LaunchedEffect(Unit) { scale.animateTo(1.08f, androidx.compose.animation.core.tween(160)) }
+        val fade = remember { androidx.compose.animation.core.Animatable(0f) }
+        LaunchedEffect(Unit) {
+            launch { fade.animateTo(1f, androidx.compose.animation.core.tween(140)) }
+            scale.animateTo(1.08f, androidx.compose.animation.core.tween(160))
+        }
         BoxWithConstraints(
             Modifier
                 .fillMaxSize()
-                .background(Color(0x99000000))
+                .graphicsLayer { alpha = fade.value }
+                .background(Color(0xCC000000))
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
