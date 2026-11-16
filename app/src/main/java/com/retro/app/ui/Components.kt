@@ -259,7 +259,7 @@ fun SheetHeader(title: String, onClose: () -> Unit) {
 @Composable
 fun PageHeader(title: String, onBack: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+        Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

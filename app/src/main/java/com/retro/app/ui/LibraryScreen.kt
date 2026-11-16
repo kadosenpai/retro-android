@@ -337,13 +337,6 @@ fun LibraryScreen(model: AppModel) {
                             ToggleRow("Hiện nút ảo", st.showPad, icon = "pointer") { v -> model.update { it.copy(showPad = v) } }
                             RowDivider()
                             ToggleRow("Rung khi nhấn nút", st.haptics, icon = "phone") { v -> model.update { it.copy(haptics = v) } }
-                            RowDivider()
-                            ToggleRow(
-                                "Giữ nút",
-                                st.sticky,
-                                icon = "lock",
-                                subtitle = "Chạm một lần để giữ, chạm lần nữa để nhả",
-                            ) { v -> model.update { it.copy(sticky = v) } }
                         }
                     }
                     5 -> {
@@ -375,11 +368,11 @@ fun LibraryScreen(model: AppModel) {
                         }
                         SectionTitle("Dữ liệu")
                         GroupCard {
-                            ActionRow("Dữ liệu", icon = "trash", chevron = true) { settingsPage = 5 }
+                            ActionRow("Dữ liệu", icon = "database", chevron = true) { settingsPage = 5 }
                         }
                         SectionTitle("Khác")
                         GroupCard {
-                            ActionRow("Giới thiệu và giấy phép", icon = "info", chevron = true) { settingsPage = 2 }
+                            ActionRow("Giới thiệu và giấy phép", icon = "file-text", chevron = true) { settingsPage = 2 }
                         }
                     }
                 }

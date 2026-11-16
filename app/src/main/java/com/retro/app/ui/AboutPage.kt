@@ -2,8 +2,7 @@ package com.retro.app.ui
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -50,53 +49,31 @@ fun AboutPage(onBack: () -> Unit) {
     PageHeader("Giới thiệu", onBack)
 
     GroupCard {
-        Text(
-            "Retro $appVersion\nTrình chơi game retro. Chỉ dùng ROM bạn sở hữu hợp pháp; app không kèm sẵn game nào.",
-            color = Rc.Text,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-        )
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text("Retro $appVersion", color = Rc.Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Trình chơi game retro. Chỉ dùng ROM bạn sở hữu hợp pháp; app không kèm game nào.",
+                color = Rc.Muted,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
     }
 
-    SectionTitle("Phần mềm bên thứ ba")
+    SectionTitle("Giấy phép")
     GroupCard {
-        Text(
-            "mGBA — lõi giả lập Game Boy Advance\nPhiên bản: $coreVersion\n" +
-                "Giấy phép: Mozilla Public License 2.0 (MPL 2.0).\n" +
-                "Retro dùng mã nguồn mGBA gốc, không sửa đổi. Mã nguồn đầy đủ của đúng phiên bản này có tại " +
-                "kho mGBA chính thức (xem link bên dưới).",
-            color = Rc.Muted,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-        )
-        ActionRow("Mã nguồn mGBA", chevron = true) { open(MGBA_URL) }
+        ActionRow("mGBA $coreVersion", subtitle = "Lõi giả lập GBA · MPL 2.0 · mã nguồn gốc, không sửa đổi", chevron = true) { open(MGBA_URL) }
+        RowDivider(inset = 16.dp)
         ActionRow("Nội dung giấy phép MPL 2.0", chevron = true) { open(MPL_URL) }
+        RowDivider(inset = 16.dp)
+        ActionRow("libretro-thumbnails", subtitle = "Nguồn ảnh bìa", chevron = true) { open(THUMBS_URL) }
     }
-    GroupCard(Modifier.padding(top = 12.dp)) {
-        Text(
-            "Ảnh bìa lấy từ kho libretro-thumbnails và cơ sở dữ liệu libretro-database (do cộng đồng libretro duy trì). " +
-                "Thành phần giao diện dùng AndroidX / Jetpack Compose (Apache License 2.0). Phông chữ Inter (SIL Open Font License 1.1), biểu tượng theo bộ Lucide (ISC).",
-            color = Rc.Muted,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-        )
-        ActionRow("libretro-thumbnails", chevron = true) { open(THUMBS_URL) }
-    }
-    GroupCard(Modifier.padding(top = 12.dp)) {
-        Text(
-            "Giao diện nút ảo \"Xám trong suốt\": skin \"Atomic Advance – SmokeGray\" của Stanley Sy (starvingartist). " +
-                "Ảnh thuộc về tác giả; Retro chỉ dùng làm giao diện.",
-            color = Rc.Muted,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-        )
-    }
-    GroupCard(Modifier.padding(top = 12.dp)) {
-        Text(
-            "Game Boy Advance là nhãn hiệu của Nintendo. Retro không liên kết hay được Nintendo xác nhận.",
-            color = Rc.Faint,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-        )
-    }
+    Text(
+        "Giao diện: AndroidX / Jetpack Compose (Apache 2.0), phông Inter (SIL OFL 1.1), biểu tượng Lucide (ISC). " +
+            "Skin \"Atomic Advance – SmokeGray\" của Stanley Sy (starvingartist), ảnh thuộc về tác giả. " +
+            "Game Boy Advance là nhãn hiệu của Nintendo; Retro không liên kết với Nintendo.",
+        color = Rc.Faint,
+        fontSize = 12.sp,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+    )
 }

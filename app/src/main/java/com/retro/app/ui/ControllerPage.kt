@@ -104,29 +104,29 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
 
     GroupCard {
         Text(
-            if (pads.isEmpty()) "Chưa thấy tay cầm. Hãy kết nối (Bluetooth hoặc cáp) rồi bấm một nút trên tay cầm."
+            if (pads.isEmpty()) "Chưa thấy tay cầm. Kết nối Bluetooth hoặc cáp, rồi bấm một nút."
             else "Đang kết nối: " + pads.joinToString(", "),
             color = if (pads.isEmpty()) Rc.Muted else Rc.Text,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            fontSize = 14.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
     }
 
     SectionTitle("Gán nút")
     GroupCard {
         GbaButton.values().forEachIndexed { i, b ->
-            if (i > 0) RowDivider(inset = 18.dp)
+            if (i > 0) RowDivider(inset = 16.dp)
             val keys = model.controllerMap.keys[b].orEmpty().sorted()
             Row(
                 Modifier
                     .fillMaxWidth()
                     .clickable { capturing = b }
-                    .heightIn(min = 56.dp)
-                    .padding(horizontal = 18.dp),
+                    .heightIn(min = 48.dp)
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(b.label, color = Rc.Text, fontSize = 17.sp, modifier = Modifier.weight(1f))
+                Text(b.label, color = Rc.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
                 Text(
                     if (keys.isEmpty()) "Chưa gán" else keys.joinToString(", ") { keyName(it) },
                     color = Rc.Muted,
@@ -145,7 +145,7 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
     }
     GroupCard(Modifier.padding(top = 12.dp)) { ActionRow("Đặt lại mặc định") { model.resetControllerMap() } }
     Text(
-        "Cần analog trái luôn dùng làm hướng. Nút Mode/Home trên tay cầm dùng để mở menu và không gán lại được.",
+        "Cần analog trái luôn là hướng. Nút Mode/Home mở menu, không gán lại được.",
         color = Rc.Faint,
         fontSize = 12.sp,
         modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 10.dp),
