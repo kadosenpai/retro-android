@@ -42,11 +42,14 @@ fun GameBoyPage(model: AppModel, onBack: () -> Unit) {
     GroupCard {
         palettes.forEachIndexed { i, p ->
             if (i > 0) RowDivider(inset = 16.dp)
-            PaletteRow(p, selected = st.gbPalette == p.key) { model.update { it.copy(gbPalette = p.key) } }
+            PaletteRow(p, selected = st.gbPalette == p.key) {
+                model.update { it.copy(gbPalette = p.key) }
+                if (model.current != null) model.showToast("Reset game để áp dụng bảng màu")
+            }
         }
     }
     Text(
-        "Chỉ áp dụng cho game Game Boy đời đầu (đen trắng). Game Game Boy Color giữ màu gốc. Đổi bảng màu có hiệu lực ngay.",
+        "Chỉ áp dụng cho game Game Boy đời đầu (đen trắng). Game Game Boy Color giữ màu gốc. Cần reset game hoặc mở lại game để áp dụng bảng màu mới.",
         color = Rc.Faint,
         fontSize = 12.sp,
         modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 10.dp),

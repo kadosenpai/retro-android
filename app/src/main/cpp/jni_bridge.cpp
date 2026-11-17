@@ -112,8 +112,10 @@ JNI(void, nativeSetOption)(JNIEnv* env, jobject, jstring key, jstring value) {
 
 JNI(void, nativeCheatReset)(JNIEnv*, jobject) { retro::CheatReset(); }
 
-JNI(void, nativeCheatSet)(JNIEnv* env, jobject, jint index, jboolean enabled, jstring code) {
-  retro::CheatSet(static_cast<unsigned>(index), enabled == JNI_TRUE, Str(env, code));
+JNI(jboolean, nativeCheatSet)(JNIEnv* env, jobject, jint index, jboolean enabled, jstring code) {
+  return retro::CheatSet(static_cast<unsigned>(index), enabled == JNI_TRUE, Str(env, code)) ? JNI_TRUE : JNI_FALSE;
 }
+
+JNI(jboolean, nativeCheatsPatched)(JNIEnv*, jobject) { return retro::CheatsPatched() ? JNI_TRUE : JNI_FALSE; }
 
 }  // extern "C"

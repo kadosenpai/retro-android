@@ -175,15 +175,17 @@ object EmulatorEngine {
     fun saveState(): ByteArray? = call { if (loaded) NativeCore.nativeSerialize() else null }
     fun loadState(data: ByteArray): Boolean = call { loaded && NativeCore.nativeUnserialize(data) }
 
-    fun setCheats(codes: List<String>) = call {
-        if (loaded) {
-            // retro_cheat_reset của mGBA chỉ xoá danh sách mà không gỡ bản vá ROM/hook mà cheat đã đặt,
-            // nên cheat đã tắt vẫn còn tác dụng. Muốn tắt thật thì nạp lại game sạch rồi mới áp cheat mới.
-            if (cheatsActive) cleanReload()
-            NativeCore.nativeCheatReset()
-            codes.forEachIndexed { i, c -> NativeCore.nativeCheatSet(i, true, c) }
-            cheatsActive = codes.isNotEmpty()
-        }
+    /**
+     * Áp danh sách cheat; trả về từng mã có được lõi nhận hay không (rỗng nếu chưa có game).
+     * Lõi đã vá gỡ cheat cũ ngay; lõi gốc không gỡ bản vá ROM nên phải nạp lại game sạch.
+     */
+    fun setCheats(codes: List<String>): List<Boolean> = call {
+        if (!loaded) return@call emptyList<Boolean>()
+        if (cheatsActive && !NativeCore.nativeCheatsPatched()) cleanReload()
+        NativeCore.nativeCheatReset()
+        val accepted = codes.mapIndexed { i, c -> NativeCore.nativeCheatSet(i, true, c) }
+        cheatsActive = codes.isNotEmpty()
+        accepted
     }
 
     /** Nạp lại game từ file ROM gốc nhưng giữ nguyên trạng thái đang chơi và SRAM. Gọi trên luồng giả lập. */

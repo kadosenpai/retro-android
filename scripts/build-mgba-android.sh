@@ -27,6 +27,7 @@ fi
 git -C "$SRC" fetch -q --depth 1 origin "$MGBA_REF"
 git -C "$SRC" checkout -q --force FETCH_HEAD
 COMMIT="$(git -C "$SRC" rev-parse HEAD)"
+python3 "$ROOT/scripts/patch-mgba-cheats.py" "$SRC/src/platform/libretro/libretro.c"
 echo "mGBA commit: $COMMIT"
 
 cmake -S "$SRC" -B "$BUILD" -G Ninja \

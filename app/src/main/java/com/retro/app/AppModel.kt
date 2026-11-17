@@ -165,20 +165,32 @@ class AppModel(private val app: Application) {
 
     // ---------- Cheat ----------
     /** Đưa các cheat đang bật vào lõi. Gọi trên luồng IO. */
-    private fun applyCheatList(list: List<CheatItem>, rom: RomInfo) {
+    private fun applyCheatList(list: List<CheatItem>, rom: RomInfo): Set<String> {
         val gb = GameSystem.fromId(rom.system).isGameBoy
-        val codes = list.filter { it.enabled }.map { CheatCodes.normalize(it.code, gb) }.filter { it.isNotEmpty() }
-        EmulatorEngine.setCheats(codes)
+        val items = list.filter { it.enabled }.map { it to CheatCodes.normalize(it.code, gb) }.filter { it.second.isNotEmpty() }
+        val accepted = EmulatorEngine.setCheats(items.map { it.second })
+        // Trả về id các cheat mà lõi không đọc được.
+        return items.filterIndexed { i, _ -> !(accepted.getOrNull(i) ?: true) }.map { it.first.id }.toSet()
     }
 
     private fun commitCheats(list: List<CheatItem>) {
         val rom = current ?: return
         cheats = list
         scope.launch {
-            withContext(Dispatchers.IO) {
-                runCatching { store.writeCheats(rom.id, list) }
-                applyCheatList(list, rom)
+            val rejected = withContext(Dispatchers.IO) { applyCheatList(list, rom) }
+            if (rejected.isEmpty()) {
+                withContext(Dispatchers.IO) { runCatching { store.writeCheats(rom.id, list) } }
+                return@launch
             }
+            // Lõi không nhận mã: bỏ khỏi danh sách và báo cho người dùng.
+            val names = list.filter { it.id in rejected }.joinToString { "\"${it.name}\"" }
+            val keep = list.filter { it.id !in rejected }
+            cheats = keep
+            withContext(Dispatchers.IO) {
+                runCatching { store.writeCheats(rom.id, keep) }
+                applyCheatList(keep, rom)
+            }
+            toast = "Lõi không nhận mã $names. Kiểm tra lại loại mã (GameShark, Action Replay, Game Genie…)"
         }
     }
 

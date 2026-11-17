@@ -46,6 +46,8 @@ struct CoreApi {
   bool (*retro_unserialize)(const void*, size_t) = nullptr;
   void (*retro_cheat_reset)(void) = nullptr;
   void (*retro_cheat_set)(unsigned, bool, const char*) = nullptr;
+  // Chỉ có ở lõi đã vá (scripts/patch-mgba-cheats.py): trả 1 nếu mã vừa nạp bị từ chối.
+  int (*mgba_host_cheat_failed)(void) = nullptr;
   bool (*retro_load_game)(const struct retro_game_info*) = nullptr;
   void (*retro_unload_game)(void) = nullptr;
   void* (*retro_get_memory_data)(unsigned) = nullptr;
@@ -255,6 +257,7 @@ std::string InitCore(const std::string& corePath, const std::string& systemDir, 
             Sym(h, "retro_unload_game", &api.retro_unload_game) &&
             Sym(h, "retro_get_memory_data", &api.retro_get_memory_data) &&
             Sym(h, "retro_get_memory_size", &api.retro_get_memory_size);
+  Sym(h, "mgba_host_cheat_failed", &api.mgba_host_cheat_failed);  // tuỳ chọn
   if (!ok) {
     dlclose(h);
     return "Lõi thiếu hàm libretro bắt buộc";
@@ -431,8 +434,12 @@ void CheatReset() {
   if (g_initialized && g_gameLoaded) g.retro_cheat_reset();
 }
 
-void CheatSet(unsigned index, bool enabled, const std::string& code) {
-  if (g_initialized && g_gameLoaded) g.retro_cheat_set(index, enabled, code.c_str());
+bool CheatSet(unsigned index, bool enabled, const std::string& code) {
+  if (!(g_initialized && g_gameLoaded)) return true;
+  g.retro_cheat_set(index, enabled, code.c_str());
+  return g.mgba_host_cheat_failed ? g.mgba_host_cheat_failed() == 0 : true;
 }
+
+bool CheatsPatched() { return g_initialized && g.mgba_host_cheat_failed != nullptr; }
 
 }  // namespace retro

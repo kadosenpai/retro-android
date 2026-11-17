@@ -32,7 +32,9 @@ object NativeCore {
     external fun nativeUnserialize(data: ByteArray): Boolean
     external fun nativeSetOption(key: String, value: String)
     external fun nativeCheatReset()
-    external fun nativeCheatSet(index: Int, enabled: Boolean, code: String)
+    /** false nếu lõi không đọc được mã (chỉ báo được với lõi đã vá). */
+    external fun nativeCheatSet(index: Int, enabled: Boolean, code: String): Boolean
+    external fun nativeCheatsPatched(): Boolean
 }
 
 /** Số bit của tay cầm libretro (RetroPad). */

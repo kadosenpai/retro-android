@@ -91,8 +91,8 @@ fun CheatsPage(model: AppModel, onBack: () -> Unit) {
     }
     val gb = GameSystem.fromId(model.current?.system).isGameBoy
     Text(
-        if (gb) "Mã GameShark (8 ký tự, vd. 01FF16D1) hoặc Game Genie (XXX-XXX-XXX) cho Game Boy / Game Boy Color. Nhiều mã cách nhau bằng dòng mới hoặc dấu cách. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử."
-        else "Mã GameShark / Action Replay cho GBA: mỗi dòng 12 hoặc 16 ký tự (0-9, A-F). Một số mã cần đúng loại mới chạy được. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử.",
+        if (gb) "Mã GameShark (8 ký tự, vd. 01FF16D1) hoặc Game Genie (XXX-XXX-XXX) cho Game Boy / Game Boy Color. Nhiều mã cách nhau bằng dòng mới hoặc dấu cách. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử.\n\nApp chỉ biết lõi có đọc được mã hay không, không biết mã có tác dụng trong game này."
+        else "Mã GameShark / Action Replay cho GBA: mỗi dòng 12 hoặc 16 ký tự (0-9, A-F). Một số mã cần đúng loại mới chạy được. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử.\n\nApp chỉ biết lõi có đọc được mã hay không, không biết mã có tác dụng trong game này.",
         color = Rc.Faint,
         fontSize = 12.sp,
         modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 10.dp),
