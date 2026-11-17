@@ -1,9 +1,12 @@
 // Cầu nối JNI cho lớp Kotlin com.retro.app.core.NativeCore.
 #include <jni.h>
 
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
+#include "gen3_text.h"
 #include "retro_host.h"
 
 namespace {
@@ -117,5 +120,22 @@ JNI(jboolean, nativeCheatSet)(JNIEnv* env, jobject, jint index, jboolean enabled
 }
 
 JNI(jboolean, nativeCheatsPatched)(JNIEnv*, jobject) { return retro::CheatsPatched() ? JNI_TRUE : JNI_FALSE; }
+
+// Lấy chữ tiếng Anh từ ROM Pokémon thế hệ 3. Mỗi dòng: "vị_trí<TAB>độ_dài<TAB>chữ". null nếu không đọc được file.
+JNI(jstring, nativeExtractGen3Text)(JNIEnv* env, jobject, jstring path) {
+  std::ifstream f(Str(env, path), std::ios::binary);
+  if (!f) return nullptr;
+  std::vector<uint8_t> rom((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+  std::string out;
+  for (const auto& e : gen3::ExtractEnglish(rom.data(), rom.size())) {
+    out += std::to_string(e.offset);
+    out += '\t';
+    out += std::to_string(e.length);
+    out += '\t';
+    out += e.text;
+    out += '\n';
+  }
+  return env->NewStringUTF(out.c_str());
+}
 
 }  // extern "C"

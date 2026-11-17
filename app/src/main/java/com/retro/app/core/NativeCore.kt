@@ -30,6 +30,8 @@ object NativeCore {
     external fun nativeSetSram(data: ByteArray)
     external fun nativeSerialize(): ByteArray?
     external fun nativeUnserialize(data: ByteArray): Boolean
+    /** Lấy chữ từ ROM Pokémon gen 3: mỗi dòng "vị_trí\tđộ_dài\tchữ". */
+    external fun nativeExtractGen3Text(path: String): String?
     external fun nativeSetOption(key: String, value: String)
     external fun nativeCheatReset()
     /** false nếu lõi không đọc được mã (chỉ báo được với lõi đã vá). */

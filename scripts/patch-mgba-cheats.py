@@ -29,6 +29,25 @@ __attribute__((visibility("default"))) int mgba_host_cheat_failed(void) {
 	return failed;
 }
 
+#ifdef M_CORE_GBA
+/* Cho app đọc RAM của GBA (region 0 = EWRAM, 1 = IWRAM). Trả NULL nếu không phải GBA. */
+__attribute__((visibility("default"))) const void* mgba_host_gba_mem(int region, size_t* size) {
+	if (!core || core->platform(core) != mPLATFORM_GBA) {
+		return NULL;
+	}
+	struct GBA* gba = (struct GBA*) core->board;
+	if (region == 0) {
+		*size = GBA_SIZE_EWRAM;
+		return gba->memory.wram;
+	}
+	if (region == 1) {
+		*size = GBA_SIZE_IWRAM;
+		return gba->memory.iwram;
+	}
+	return NULL;
+}
+#endif
+
 void retro_cheat_reset(void) {
 	struct mCheatDevice* device = core->cheatDevice(core);
 	size_t i;
