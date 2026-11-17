@@ -26,9 +26,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.retro.app.AppModel
 import com.retro.app.core.EmulatorEngine
-import com.retro.app.render.FilterMode
 import com.retro.app.render.GameGLView
-import com.retro.app.render.ScaleMode
 
 @Composable
 fun PlayScreen(model: AppModel) {
@@ -63,14 +61,14 @@ fun PlayScreen(model: AppModel) {
                 onMenu = { model.menuOpen = true },
                 onQuickSave = { model.saveSlot(1) },
                 onQuickLoad = { model.loadSlot(1) },
-                game = { m -> GameSurface(model, m) },
+                game = { m -> GameSurface(m) },
                 modifier = Modifier.background(androidx.compose.ui.graphics.Color.Black),
             )
         } else if (landscape) {
-            GameSurface(model, Modifier.fillMaxSize())
+            GameSurface(Modifier.fillMaxSize())
         } else {
             Column(Modifier.fillMaxSize()) {
-                GameSurface(model, Modifier.fillMaxWidth().weight(1f).windowInsetsPadding(WindowInsets.safeDrawing))
+                GameSurface(Modifier.fillMaxWidth().weight(1f).windowInsetsPadding(WindowInsets.safeDrawing))
             }
         }
 
@@ -106,14 +104,9 @@ fun PlayScreen(model: AppModel) {
 }
 
 @Composable
-private fun GameSurface(model: AppModel, modifier: Modifier) {
+private fun GameSurface(modifier: Modifier) {
     AndroidView(
         factory = { ctx -> GameGLView(ctx) },
         modifier = modifier,
-        update = { v ->
-            // Cố định như mặc định cũ: co giãn nguyên số, bộ lọc Thô; không còn tuỳ chọn trong menu.
-            v.renderer.scale = ScaleMode.INTEGER
-            v.renderer.filter = FilterMode.SHARP
-        },
     )
 }

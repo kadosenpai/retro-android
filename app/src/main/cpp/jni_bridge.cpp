@@ -42,7 +42,6 @@ JNI(jstring, nativeLoadGame)(JNIEnv* env, jobject, jstring rom) {
 }
 
 JNI(void, nativeUnloadGame)(JNIEnv*, jobject) { retro::UnloadGame(); }
-JNI(void, nativeShutdown)(JNIEnv*, jobject) { retro::Shutdown(); }
 JNI(void, nativeRunFrame)(JNIEnv*, jobject) { retro::RunFrame(); }
 JNI(void, nativeReset)(JNIEnv*, jobject) { retro::Reset(); }
 JNI(void, nativeSetInput)(JNIEnv*, jobject, jint mask) { retro::SetInput(static_cast<uint32_t>(mask)); }

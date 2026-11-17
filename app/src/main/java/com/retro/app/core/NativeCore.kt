@@ -12,7 +12,6 @@ object NativeCore {
     external fun nativeInit(corePath: String, systemDir: String, saveDir: String): String?
     external fun nativeLoadGame(romPath: String): String?
     external fun nativeUnloadGame()
-    external fun nativeShutdown()
     external fun nativeRunFrame()
     external fun nativeReset()
     external fun nativeSetInput(mask: Int)

@@ -15,4 +15,3 @@ Bám sát bản web Retro. Chỉ dùng ROM bạn sở hữu hợp pháp.
 - `app/src/main/cpp`: máy chủ libretro (C++), nạp lõi bằng `dlopen`, cầu nối JNI.
 - `scripts/build-mgba-android.sh`: biên dịch mGBA libretro cho arm64 bằng NDK.
 - `app/src/main/java/com/retro/app`: giao diện + động cơ (Kotlin).
-- `tools/host_test.cpp`: kiểm thử máy chủ libretro trên máy tính.
