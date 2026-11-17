@@ -62,6 +62,7 @@ fun PlayScreen(model: AppModel) {
                 onQuickSave = { model.saveSlot(1) },
                 onQuickLoad = { model.loadSlot(1) },
                 game = { m -> GameSurface(m) },
+                hud = { m -> if (s.showStats) StatusHud(model.fps, model.coreMs, m) },
                 modifier = Modifier.background(androidx.compose.ui.graphics.Color.Black),
             )
         } else if (landscape) {
@@ -87,7 +88,7 @@ fun PlayScreen(model: AppModel) {
             }
         }
 
-        if (s.showStats) {
+        if (s.showStats && !s.showPad) {
             Text(
                 "%.1f fps · lõi %.1f ms".format(model.fps, model.coreMs),
                 color = Rc.Muted,

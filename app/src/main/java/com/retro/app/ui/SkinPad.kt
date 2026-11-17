@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,8 @@ private class SkinDef(
     val asset: String,
     val mw: Float, val mh: Float,
     val sx: Float, val sy: Float, val sw: Float, val sh: Float,
+    /** Hàng thông tin (HUD): toạ độ y trong vùng đen phía trên game. */
+    val hy: Float,
     val items: List<SkinItem>,
 )
 
@@ -62,6 +65,7 @@ private val PORTRAIT = SkinDef(
     asset = "skin/portrait.png",
     mw = 414f, mh = 898f,
     sx = 14f, sy = 135f, sw = 386f, sh = 260f,
+    hy = 92f,
     items = listOf(
         SkinItem(Ctl.DPAD, 35f, 612f, 142f, 142f, 12f, 12f, 12f, 12f),
         SkinItem(Ctl.A, 306f, 611f, 72f, 72f, 10f, 12f, 12f, 10f),
@@ -80,6 +84,7 @@ private val LANDSCAPE = SkinDef(
     asset = "skin/landscape.png",
     mw = 898f, mh = 414f,
     sx = 234f, sy = 48f, sw = 430f, sh = 290f,
+    hy = 28f,
     items = listOf(
         SkinItem(Ctl.DPAD, 62f, 119f, 132f, 132f, 14f, 14f, 14f, 14f),
         SkinItem(Ctl.A, 772f, 110f, 68f, 68f, 10f, 20f, 20f, 10f),
@@ -122,6 +127,7 @@ fun SkinPad(
     onQuickSave: () -> Unit,
     onQuickLoad: () -> Unit,
     game: @Composable (Modifier) -> Unit,
+    hud: @Composable (Modifier) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val ctx = LocalContext.current
@@ -161,6 +167,13 @@ fun SkinPad(
         )
 
         bmp?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds) }
+
+        // Hàng thông tin nằm trong vùng đen phía trên game, trên lớp skin.
+        hud(
+            Modifier
+                .offset { IntOffset((def.sx * kx).roundToInt(), (def.hy * ky).roundToInt()) }
+                .width(with(density) { (def.sw * kx).toDp() }),
+        )
 
         val dpad = def.items.first { it.c == Ctl.DPAD }
         fun frame(i: SkinItem) = Rect(i.x * kx, i.y * ky, (i.x + i.w) * kx, (i.y + i.h) * ky)
