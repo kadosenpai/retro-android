@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
@@ -15,8 +14,6 @@ import com.retro.app.data.CheatCodes
 import com.retro.app.data.CheatItem
 import com.retro.app.data.ControllerMap
 import com.retro.app.data.CoverService
-import com.retro.app.data.DEFAULT_GEMINI_MODEL
-import com.retro.app.data.GameTranslator
 import com.retro.app.data.GbaButton
 import com.retro.app.data.GameSystem
 import com.retro.app.data.ImportResult
@@ -37,11 +34,6 @@ enum class Screen { LIBRARY, PLAY }
 /** Một ô trạng thái hiển thị trong menu. savedAt = 0 nghĩa là ô trống. */
 class SlotView(val slot: Int, val savedAt: Long, val thumb: ImageBitmap?)
 
-/** Tiến trình dịch một game: đã xử lý / tổng số đoạn chữ; note là ghi chú tạm (vd. đang đợi hạn mức). */
-class TranslateState(val done: Int, val total: Int, val note: String? = null) {
-    val fraction: Float get() = if (total <= 0) 0f else (done.toFloat() / total).coerceIn(0f, 1f)
-}
-
 /** Trạng thái toàn ứng dụng. Sống ở mức Application nên không mất khi xoay màn hình. */
 class AppModel(private val app: Application) {
     val store = RomStore(app)
@@ -49,11 +41,6 @@ class AppModel(private val app: Application) {
     private val covers = CoverService(app, store)
     private var coverJob: Job? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val translator = GameTranslator(store)
-    private val translateJobs = HashMap<String, Job>()
-
-    /** Các game đang được dịch (khoá = id băng) cùng tiến trình. */
-    val translating = mutableStateMapOf<String, TranslateState>()
 
     var roms by mutableStateOf<List<RomInfo>>(emptyList())
         private set
@@ -110,50 +97,6 @@ class AppModel(private val app: Application) {
         toast = msg
     }
 
-    // ---------- Dịch game ----------
-    /** Game này có hỗ trợ dịch không (hiện chỉ Pokémon Emerald bản Mỹ). */
-    fun canTranslate(rom: RomInfo): Boolean = translator.supports(rom)
-
-    /** Bắt đầu dịch, hoặc dừng nếu đang dịch. */
-    fun toggleTranslate(rom: RomInfo) {
-        if (translating.containsKey(rom.id)) {
-            cancelTranslate(rom.id, announce = true)
-            return
-        }
-        val key = settings.geminiKey.trim()
-        if (key.isEmpty()) {
-            toast = "Chưa có API key Gemini. Vào Cài đặt → Dịch game để dán key."
-            return
-        }
-        val model = settings.geminiModel.trim().ifEmpty { DEFAULT_GEMINI_MODEL }
-        translating[rom.id] = TranslateState(0, 0)
-        toast = "Bắt đầu dịch \"${rom.name}\". Hãy để app mở cho tới khi xong."
-        translateJobs[rom.id] = scope.launch {
-            val res = try {
-                translator.run(rom, key, model) { d, t, note -> translating[rom.id] = TranslateState(d, t, note) }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                GameTranslator.Result(0, 0, 0, "Lỗi: ${e.message}")
-            }
-            translating.remove(rom.id)
-            translateJobs.remove(rom.id)
-            toast = when {
-                res.error != null -> "Dừng dịch: ${res.error} (phần đã dịch được giữ, bấm dịch lại để tiếp tục)"
-                res.failed > 0 -> "Dịch xong, còn ${res.failed} đoạn lỗi. Bấm dịch lại để thử tiếp."
-                res.translated == 0 -> "Game này đã được dịch xong trước đó"
-                else -> "Đã dịch xong ${res.translated} đoạn chữ"
-            }
-        }
-    }
-
-    private fun cancelTranslate(id: String, announce: Boolean) {
-        val job = translateJobs.remove(id)
-        job?.cancel()
-        translating.remove(id)
-        if (announce && job != null) toast = "Đã dừng dịch (phần đã dịch được giữ)"
-    }
-
     // ---------- Thư viện ----------
     fun addRoms(uris: List<Uri>) {
         if (uris.isEmpty()) return
@@ -189,7 +132,6 @@ class AppModel(private val app: Application) {
     }
 
     fun delete(rom: RomInfo) {
-        cancelTranslate(rom.id, announce = false)
         scope.launch {
             if (current?.id == rom.id) leaveGame()
             withContext(Dispatchers.IO) { store.delete(rom.id) }
@@ -200,7 +142,6 @@ class AppModel(private val app: Application) {
 
     /** Xoá toàn bộ game cùng ảnh bìa, cheat, Save State và .sav. */
     fun deleteAll() {
-        translateJobs.keys.toList().forEach { cancelTranslate(it, announce = false) }
         scope.launch {
             if (current != null) leaveGame()
             withContext(Dispatchers.IO) {

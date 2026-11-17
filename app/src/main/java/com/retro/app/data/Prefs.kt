@@ -22,13 +22,7 @@ data class Settings(
     val gbPalette: String = "Grayscale",
     /** Hiện viền Super Game Boy (áp dụng khi mở lại game). */
     val sgbBorder: Boolean = true,
-    /** API key Gemini do người dùng tự dán; chỉ lưu trên máy này. */
-    val geminiKey: String = "",
-    /** Tên model Gemini dùng để dịch (có thể đổi vì Google đổi tên model theo thời gian). */
-    val geminiModel: String = DEFAULT_GEMINI_MODEL,
 )
-
-const val DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 class Prefs(ctx: Context) {
     private val sp = ctx.getSharedPreferences("retro-settings", Context.MODE_PRIVATE)
@@ -45,8 +39,6 @@ class Prefs(ctx: Context) {
             tab = sp.getString("tab", null) ?: d.tab,
             gbPalette = sp.getString("gbPalette", null) ?: d.gbPalette,
             sgbBorder = sp.getBoolean("sgbBorder", d.sgbBorder),
-            geminiKey = sp.getString("geminiKey", null) ?: d.geminiKey,
-            geminiModel = sp.getString("geminiModel", null) ?: d.geminiModel,
         )
     }
 
@@ -61,8 +53,6 @@ class Prefs(ctx: Context) {
             .putString("tab", s.tab)
             .putString("gbPalette", s.gbPalette)
             .putBoolean("sgbBorder", s.sgbBorder)
-            .putString("geminiKey", s.geminiKey)
-            .putString("geminiModel", s.geminiModel)
             .apply()
     }
 

@@ -63,7 +63,6 @@ class RomStore(private val ctx: Context) {
     private val coverDir = File(ctx.filesDir, "covers").apply { mkdirs() }
     private val cheatDir = File(ctx.filesDir, "cheats").apply { mkdirs() }
     private val stateDir = File(ctx.filesDir, "states").apply { mkdirs() }
-    private val translateDir = File(ctx.filesDir, "translations").apply { mkdirs() }
     private val indexFile = File(ctx.filesDir, "library.json")
 
     fun romFile(id: String) = File(romDir, "$id.rom")
@@ -71,49 +70,6 @@ class RomStore(private val ctx: Context) {
 
     // ---------- Cheat ----------
     private fun cheatFile(id: String) = File(cheatDir, "$id.json")
-    private fun translationFile(id: String) = File(translateDir, "$id.jsonl")
-
-    /** Mã game 4 ký tự trong tiêu đề ROM GBA (vd. BPEE = Pokémon Emerald bản Mỹ); rỗng nếu không đọc được. */
-    fun gbaGameCode(id: String): String = try {
-        java.io.RandomAccessFile(romFile(id), "r").use { f ->
-            val b = ByteArray(4)
-            f.seek(0xAC)
-            f.readFully(b)
-            String(b, Charsets.US_ASCII)
-        }
-    } catch (e: Exception) {
-        ""
-    }
-
-    /** Bản dịch đã có của game: chữ gốc (đã chuẩn hoá) -> chữ tiếng Việt. */
-    fun readTranslations(id: String): Map<String, String> {
-        val f = translationFile(id)
-        if (!f.exists()) return emptyMap()
-        val out = HashMap<String, String>()
-        f.forEachLine { line ->
-            if (line.isNotBlank()) {
-                try {
-                    val o = JSONObject(line)
-                    out[o.getString("s")] = o.getString("t")
-                } catch (e: Exception) {
-                    // bỏ qua dòng hỏng (vd. máy tắt giữa lúc ghi)
-                }
-            }
-        }
-        return out
-    }
-
-    /** Ghi thêm các bản dịch mới vào cuối file (không ghi lại cả file). */
-    fun appendTranslations(id: String, pairs: List<Pair<String, String>>) {
-        if (pairs.isEmpty()) return
-        val sb = StringBuilder()
-        for ((s, t) in pairs) sb.append(JSONObject().put("s", s).put("t", t).toString()).append('\n')
-        translationFile(id).appendText(sb.toString(), Charsets.UTF_8)
-    }
-
-    fun translationCount(id: String): Int = translationFile(id).let { f ->
-        if (!f.exists()) 0 else f.useLines { it.count { l -> l.isNotBlank() } }
-    }
 
     fun readCheats(id: String): List<CheatItem> {
         val f = cheatFile(id)
@@ -264,7 +220,6 @@ class RomStore(private val ctx: Context) {
         savFile(id).delete()
         coverFile(id).delete()
         cheatFile(id).delete()
-        translationFile(id).delete()
         for (slot in 0..SLOT_COUNT) deleteState(id, slot)
     }
 

@@ -56,7 +56,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -91,7 +90,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
-import com.retro.app.TranslateState
 import com.retro.app.data.GameSystem
 import com.retro.app.data.RomInfo
 import com.retro.app.data.SortKey
@@ -298,7 +296,6 @@ fun LibraryScreen(model: AppModel) {
                             RomTile(
                                 rom = rom,
                                 cover = rememberCover(model, rom),
-                                translate = model.translating[rom.id],
                                 onOpen = { model.open(rom) },
                                 onMenu = {
                                     hideKeyboard()
@@ -332,13 +329,12 @@ fun LibraryScreen(model: AppModel) {
 
     // Giữ lâu vào một băng: băng phóng to ở giữa, bảng thao tác nằm dưới, phần còn lại mờ đi.
     gameMenu?.let { rom ->
-        val canTranslate = remember(rom.id) { model.canTranslate(rom) }
         GameMenuOverlay(
             rom = rom,
             anchor = menuAnchor,
             cover = rememberCover(model, rom),
             onDismiss = { gameMenu = null },
-            actions = listOfNotNull(
+            actions = listOf(
                 GameAction("Đổi tên", "pencil") { gameMenu = null; renameTarget = rom },
                 GameAction("Tải ảnh bìa gốc", "image") { gameMenu = null; model.fetchCoverNow(rom) },
                 GameAction("Chọn ảnh bìa từ máy", "image") {
@@ -352,12 +348,6 @@ fun LibraryScreen(model: AppModel) {
                     exportLauncher.launch("${rom.name}.sav")
                 },
                 GameAction("Nhập file .sav", "upload") { gameMenu = null; importConfirm = rom },
-                if (canTranslate) {
-                    GameAction(
-                        if (model.translating.containsKey(rom.id)) "Dừng dịch" else "Dịch sang tiếng Việt",
-                        "languages",
-                    ) { gameMenu = null; model.toggleTranslate(rom) }
-                } else null,
                 GameAction("Xoá băng (kèm save)", "trash", danger = true) { gameMenu = null; deleteTarget = rom },
             ),
         )
@@ -386,14 +376,13 @@ fun LibraryScreen(model: AppModel) {
                     .navigationBarsPadding()
                     .padding(top = 12.dp, bottom = 24.dp),
             ) {
-                // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy, 7 = Dịch game
+                // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy
                 var settingsPage by remember { mutableStateOf(0) }
                 val st = model.settings
                 when (settingsPage) {
                     1 -> ControllerPage(model) { settingsPage = 0 }
                     2 -> AboutPage { settingsPage = 0 }
                     6 -> GameBoyPage(model) { settingsPage = 0 }
-                    7 -> TranslatePage(model) { settingsPage = 0 }
                     3 -> {
                         PageHeader("Âm thanh") { settingsPage = 0 }
                         Spacer(Modifier.height(8.dp))
@@ -438,8 +427,6 @@ fun LibraryScreen(model: AppModel) {
                             ActionRow("Âm thanh", icon = "volume", chevron = true) { settingsPage = 3 }
                             RowDivider()
                             ActionRow("Game Boy", icon = "image", chevron = true) { settingsPage = 6 }
-                            RowDivider()
-                            ActionRow("Dịch game", icon = "languages", chevron = true) { settingsPage = 7 }
                         }
                         SectionTitle("Dữ liệu")
                         GroupCard {
@@ -802,7 +789,6 @@ private fun GameMenuOverlay(
 private fun RomTile(
     rom: RomInfo,
     cover: ImageBitmap?,
-    translate: TranslateState?,
     onOpen: () -> Unit,
     onMenu: () -> Unit,
 ) {
@@ -841,32 +827,6 @@ private fun RomTile(
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                 )
-            }
-            // Thanh tiến trình khi đang dịch game sang tiếng Việt.
-            if (translate != null) {
-                Column(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(Color(0xCC000000))
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                ) {
-                    Text(
-                        translate.note ?: if (translate.total <= 0) "Đang chuẩn bị…" else "Đang dịch ${(translate.fraction * 100).toInt()}%",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { translate.fraction },
-                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-                        color = Color.White,
-                        trackColor = Color(0x44FFFFFF),
-                    )
-                }
             }
         }
         Spacer(Modifier.height(8.dp))
