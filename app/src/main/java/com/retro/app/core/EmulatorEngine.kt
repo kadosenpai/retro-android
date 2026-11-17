@@ -61,8 +61,6 @@ object EmulatorEngine {
     @Volatile private var touchMask = 0
     @Volatile private var hwMask = 0
 
-    val isLoaded: Boolean get() = loaded
-
     // ---------- Đầu vào ----------
     fun setTouchMask(mask: Int) {
         touchMask = mask

@@ -22,7 +22,6 @@ import com.retro.app.R
 object Rc {
     val Bg = Color(0xFF08090C)
     /** Kính: trắng 7% (như --glass của web). */
-    val Card = Color(0x12FFFFFF)
     val Glass = Color(0x12FFFFFF)
     /** Kính đậm: trắng 14% (như --glass-strong). */
     val GlassStrong = Color(0x24FFFFFF)

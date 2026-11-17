@@ -33,8 +33,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -161,17 +159,6 @@ fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
                 .background(if (checked) Color.Black else Color.White),
         )
     }
-}
-
-@Composable
-fun SmallLabel(text: String) {
-    Text(
-        text,
-        color = Rc.Muted,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 18.dp, top = 8.dp, bottom = 2.dp),
-    )
 }
 
 /** Nút tròn kính đậm có biểu tượng ✕ (đóng bảng). */

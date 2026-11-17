@@ -227,8 +227,6 @@ class RomStore(private val ctx: Context) {
 
     fun writeSram(id: String, data: ByteArray) = writeAtomic(savFile(id), data)
 
-    fun hasSram(id: String): Boolean = savFile(id).let { it.exists() && it.length() > 0 }
-
     /** Ghi file .sav của game ra Uri người dùng chọn. Trả về thông báo lỗi, hoặc null nếu thành công. */
     fun exportSram(id: String, uri: Uri): String? {
         val src = savFile(id)
@@ -275,8 +273,6 @@ class RomStore(private val ctx: Context) {
     } ?: uri.lastPathSegment
 
     companion object {
-        val ALLOWED_EXT: Set<String> = GameSystem.values().flatMap { it.exts }.toSet()
-
         /** Ô 0 = tự động; ô 1..SLOT_COUNT = người chơi tự lưu. */
         const val AUTO_SLOT = 0
         const val SLOT_COUNT = 4
