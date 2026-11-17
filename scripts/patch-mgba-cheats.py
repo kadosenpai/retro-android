@@ -37,11 +37,11 @@ __attribute__((visibility("default"))) const void* mgba_host_gba_mem(int region,
 	}
 	struct GBA* gba = (struct GBA*) core->board;
 	if (region == 0) {
-		*size = GBA_SIZE_EWRAM;
+		*size = 0x40000; /* EWRAM 256 KB */
 		return gba->memory.wram;
 	}
 	if (region == 1) {
-		*size = GBA_SIZE_IWRAM;
+		*size = 0x8000; /* IWRAM 32 KB */
 		return gba->memory.iwram;
 	}
 	return NULL;
