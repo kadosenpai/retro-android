@@ -272,11 +272,14 @@ fun LibraryScreen(model: AppModel) {
             if (shown.isEmpty()) {
                 EmptyState(hasAny = inTab.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
             } else {
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                // Màn ngang: cỡ bìa tính theo chiều cao còn lại để cả bìa, tên 2 dòng và ngày chơi luôn nằm gọn trong một hàng.
+                val coverSize = maxOf(90.dp, minOf(170.dp, maxHeight - 84.dp))
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(if (compact) 140.dp else 150.dp),
+                    columns = if (compact) GridCells.FixedSize(coverSize) else GridCells.Adaptive(150.dp),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.Start),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     items(shown, key = { it.id }) { rom ->
@@ -295,6 +298,7 @@ fun LibraryScreen(model: AppModel) {
                             )
                         }
                     }
+                }
                 }
             }
         }
@@ -694,7 +698,7 @@ private fun GameMenuOverlay(
                 setDimAmount(0f)
                 if (blurOk && android.os.Build.VERSION.SDK_INT >= 31) {
                     addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-                    attributes = attributes.also { it.blurBehindRadius = 60 }
+                    attributes = attributes.also { it.blurBehindRadius = 150 }
                 }
             }
         }
@@ -708,7 +712,7 @@ private fun GameMenuOverlay(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = fade.value }
-                .background(if (blurOk) Color(0x80000000) else Color(0xCC000000))
+                .background(if (blurOk) Color(0x55000000) else Color(0xCC000000))
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
