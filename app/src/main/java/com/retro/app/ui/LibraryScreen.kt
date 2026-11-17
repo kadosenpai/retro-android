@@ -162,6 +162,8 @@ fun LibraryScreen(model: AppModel) {
         }
     }
     val sort = model.settings.sort
+    // Màn ngang (thấp): gộp thanh trên cùng thành một hàng và bỏ bớt khoảng trống để băng + tên hiện to, đủ.
+    val compact = LocalConfiguration.current.screenHeightDp < 480
     // Màn đủ rộng thì hiện thêm số lượng băng và biểu tượng sắp xếp, như bản web.
     // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
     val behindSheet = settingsOpen
@@ -174,58 +176,49 @@ fun LibraryScreen(model: AppModel) {
             .retroBackground()
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
-        // Thanh tiêu đề
-        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (LocalConfiguration.current.screenHeightDp < 480) 2.dp else 8.dp)) {
-            Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
-                IconBtn("settings", "Cài đặt") {
+        if (compact) {
+            // Một hàng duy nhất: cài đặt, ô tìm kiếm, thêm băng.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconBtn("settings", "Cài đặt", small = true) {
                     hideKeyboard()
                     settingsOpen = true
                 }
+                Spacer(Modifier.width(8.dp))
+                SearchBox(query, { query = it }, 36.dp, Modifier.weight(1f))
+                Spacer(Modifier.width(8.dp))
+                IconBtn("plus", "Thêm băng", small = true) { picker.launch(arrayOf("*/*")) }
             }
-            Text(
-                "Thư viện",
-                modifier = Modifier.align(Alignment.Center),
-                color = Rc.Text,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            IconBtn("plus", "Thêm băng", Modifier.align(Alignment.CenterEnd)) { picker.launch(arrayOf("*/*")) }
-        }
-
-        // Ô tìm kiếm
-        Row(
-            Modifier
-                .padding(horizontal = 16.dp)
-                .fillMaxWidth()
-                .height(42.dp)
-                .clip(RoundedCornerShape(21.dp))
-                .background(Rc.Glass)
-                .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RetroIcon("search", size = 20.dp, tint = Rc.Muted)
-            Spacer(Modifier.size(10.dp))
-            BasicTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                textStyle = TextStyle(color = Rc.Text, fontSize = 15.sp, fontFamily = InterFamily),
-                cursorBrush = SolidColor(Color.White),
-                modifier = Modifier.weight(1f),
-                decorationBox = { inner ->
-                    Box(contentAlignment = Alignment.CenterStart) {
-                        if (query.isEmpty()) Text("Tìm tên ROM hoặc mã ID...", color = Rc.Faint, fontSize = 15.sp)
-                        inner()
+        } else {
+            // Thanh tiêu đề
+            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+                    IconBtn("settings", "Cài đặt") {
+                        hideKeyboard()
+                        settingsOpen = true
                     }
-                },
-            )
+                }
+                Text(
+                    "Thư viện",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Rc.Text,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                IconBtn("plus", "Thêm băng", Modifier.align(Alignment.CenterEnd)) { picker.launch(arrayOf("*/*")) }
+            }
+
+            // Ô tìm kiếm
+            SearchBox(query, { query = it }, 42.dp, Modifier.padding(horizontal = 16.dp).fillMaxWidth())
         }
 
         // Tiêu đề mục + sắp xếp
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(if (compact) 2.dp else 8.dp))
         if (model.roms.isNotEmpty()) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 18.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+            Modifier.fillMaxWidth().padding(start = 18.dp, end = 16.dp, top = if (compact) 0.dp else 4.dp, bottom = if (compact) 4.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -246,7 +239,7 @@ fun LibraryScreen(model: AppModel) {
                         .background(Rc.Glass)
                         .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
                         .clickable { sortPill = true }
-                        .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                        .padding(start = 12.dp, end = 6.dp, top = if (compact) 3.dp else 6.dp, bottom = if (compact) 3.dp else 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(sort.label, color = Rc.Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -280,9 +273,9 @@ fun LibraryScreen(model: AppModel) {
                 EmptyState(hasAny = inTab.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(if (LocalConfiguration.current.screenHeightDp < 480) 104.dp else 150.dp),
+                    columns = GridCells.Adaptive(if (compact) 140.dp else 150.dp),
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
@@ -307,7 +300,7 @@ fun LibraryScreen(model: AppModel) {
         }
         // Chấm báo đang ở trang (hệ máy) nào (chỉ hiện khi có từ hai hệ máy trở lên).
         if (tabs.size > 1) Row(
-            Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            Modifier.fillMaxWidth().padding(vertical = if (compact) 4.dp else 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -531,15 +524,45 @@ private fun rememberCover(model: AppModel, rom: RomInfo): ImageBitmap? {
 
 /** Nút tròn có biểu tượng (cài đặt, sắp xếp, thêm băng). */
 @Composable
-private fun IconBtn(icon: String, desc: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun IconBtn(icon: String, desc: String, modifier: Modifier = Modifier, small: Boolean = false, onClick: () -> Unit) {
     Box(
         modifier
-            .size(44.dp)
+            .size(if (small) 36.dp else 44.dp)
             .clip(CircleShape)
             .clickable(role = Role.Button, onClickLabel = desc, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        RetroIcon(icon, size = 26.dp, tint = Rc.Text)
+        RetroIcon(icon, size = if (small) 22.dp else 26.dp, tint = Rc.Text)
+    }
+}
+
+/** Ô tìm kiếm dạng viên thuốc. */
+@Composable
+private fun SearchBox(query: String, onChange: (String) -> Unit, height: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .height(height)
+            .clip(RoundedCornerShape(height / 2))
+            .background(Rc.Glass)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RetroIcon("search", size = 20.dp, tint = Rc.Muted)
+        Spacer(Modifier.size(10.dp))
+        BasicTextField(
+            value = query,
+            onValueChange = onChange,
+            singleLine = true,
+            textStyle = TextStyle(color = Rc.Text, fontSize = 15.sp, fontFamily = InterFamily),
+            cursorBrush = SolidColor(Color.White),
+            modifier = Modifier.weight(1f),
+            decorationBox = { inner ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (query.isEmpty()) Text("Tìm tên ROM hoặc mã ID...", color = Rc.Faint, fontSize = 15.sp)
+                    inner()
+                }
+            },
+        )
     }
 }
 
@@ -660,10 +683,19 @@ private fun GameMenuOverlay(
         val density = androidx.compose.ui.platform.LocalDensity.current
         // Tắt hiệu ứng mở cửa sổ mặc định của Dialog (nó phóng nhẹ từ giữa nên nội dung bị "trượt" sang trái).
         val dialogView = androidx.compose.ui.platform.LocalView.current
+        // Làm mờ phần phía sau bằng hiệu ứng mờ cửa sổ của hệ điều hành (Android 12+, nếu máy bật); không có thì chỉ tối nền.
+        val blurOk = remember {
+            android.os.Build.VERSION.SDK_INT >= 31 &&
+                dialogView.context.getSystemService(android.view.WindowManager::class.java)?.isCrossWindowBlurEnabled == true
+        }
         androidx.compose.runtime.SideEffect {
             (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.apply {
                 setWindowAnimations(-1)
                 setDimAmount(0f)
+                if (blurOk && android.os.Build.VERSION.SDK_INT >= 31) {
+                    addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                    attributes = attributes.also { it.blurBehindRadius = 60 }
+                }
             }
         }
         val scale = remember { androidx.compose.animation.core.Animatable(1f) }
@@ -676,7 +708,7 @@ private fun GameMenuOverlay(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = fade.value }
-                .background(Color(0xCC000000))
+                .background(if (blurOk) Color(0x80000000) else Color(0xCC000000))
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
