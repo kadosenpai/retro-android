@@ -27,12 +27,12 @@ git -C "$SRC" checkout -q --force FETCH_HEAD
 COMMIT="$(git -C "$SRC" rev-parse HEAD)"
 echo "Snes9x commit: $COMMIT"
 
-rm -rf "$SRC/libs" "$SRC/obj"
+rm -rf "$SRC/libretro/libs" "$SRC/libretro/obj"
 # libretro/jni/Android.mk của Snes9x tạo module "retro" (libretro.so); ghi đè ABI và API trên dòng lệnh.
-"$NDK/ndk-build" -C "$SRC/libretro/jni" -j"$(nproc)" APP_ABI="$ABI" APP_PLATFORM="android-$API" NDK_PROJECT_PATH="$SRC"
+"$NDK/ndk-build" -C "$SRC/libretro/jni" -j"$(nproc)" APP_ABI="$ABI" APP_PLATFORM="android-$API" NDK_PROJECT_PATH="$SRC/libretro" APP_BUILD_SCRIPT="$SRC/libretro/jni/Android.mk" NDK_APPLICATION_MK="$SRC/libretro/jni/Application.mk"
 
 mkdir -p "$OUT"
-cp "$SRC/libs/$ABI/libretro.so" "$OUT/libsnes9x_libretro.so"
+cp "$SRC/libretro/libs/$ABI/libretro.so" "$OUT/libsnes9x_libretro.so"
 "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" --strip-unneeded "$OUT/libsnes9x_libretro.so" || true
 mkdir -p "$ROOT/app/src/main/assets"
 echo "${COMMIT:0:8}" > "$ROOT/app/src/main/assets/snes9x-version.txt"
