@@ -69,6 +69,10 @@ private class SkinDef(
     val cross: Boolean = true,
     /** Thụt vào hai bên của hàng thông tin (đơn vị skin). */
     val hi: Float = 0f,
+    /** Màu chữ hàng thông tin (null = trắng mờ, hợp nền đen). */
+    val hudColor: Color? = null,
+    /** Cỡ chữ hàng thông tin (sp). */
+    val hudSp: Float = 12f,
     /** Ảnh núm joycon (png, vẽ đè lên D-pad và trượt theo ngón tay). */
     val knob: String? = null,
 )
@@ -139,8 +143,11 @@ private val SNES_LANDSCAPE = SkinDef(
     asset = "skin/snes_landscape.png",
     mw = 812f, mh = 375f,
     sx = 198f, sy = 21f, sw = 416f, sh = 312f,
-    hy = 9f,
-    hi = 26f,
+    // Hàng thông tin vắt qua mép trên màn hình (dải xám mỏng + viền đen), chữ nhỏ, trắng có bóng.
+    hy = 2f,
+    hi = 27f,
+    hudColor = Color(0xF2FFFFFF),
+    hudSp = 9f,
     cross = false,
     knob = "skin/snes_knob.png",
     items = listOf(
@@ -192,7 +199,7 @@ fun SkinPad(
     /** true = skin SNES (có nút X/Y). */
     snes: Boolean = false,
     game: @Composable (Modifier) -> Unit,
-    hud: @Composable (Modifier) -> Unit = {},
+    hud: @Composable (Modifier, Color, Float) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val ctx = LocalContext.current
@@ -251,6 +258,8 @@ fun SkinPad(
             Modifier
                 .offset { IntOffset(((def.sx + def.hi) * kx).roundToInt(), (def.hy * ky).roundToInt()) }
                 .width(with(density) { ((def.sw - 2f * def.hi) * kx).toDp() }),
+            def.hudColor ?: Color(0xCCFFFFFF),
+            def.hudSp,
         )
 
         val dpad = def.items.first { it.c == Ctl.DPAD }

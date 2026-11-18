@@ -70,7 +70,7 @@ fun PlayScreen(model: AppModel) {
                 onQuickLoad = { model.loadSlot(1) },
                 snes = model.current?.system == "snes",
                 game = { m -> GameSurface(m) },
-                hud = { m -> if (s.showStats) StatusHud(model.fps, model.coreMs, m) },
+                hud = { m, c, sp -> if (s.showStats) StatusHud(model.fps, model.coreMs, m, c, sp) },
                 modifier = Modifier.background(androidx.compose.ui.graphics.Color.Black),
             )
         } else if (landscape) {

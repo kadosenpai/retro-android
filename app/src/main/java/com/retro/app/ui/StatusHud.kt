@@ -26,6 +26,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -34,6 +36,9 @@ import androidx.core.content.ContextCompat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** Bóng đen nhẹ để chữ trắng vẫn đọc được khi đè lên phần sáng của skin. */
+private val HudStyle = TextStyle(shadow = Shadow(Color.Black, Offset.Zero, 6f))
 
 private val HudColor = Color.White.copy(alpha = 0.8f)
 
@@ -48,7 +53,7 @@ private fun batteryPercent(i: Intent?): Int {
  * bên trái là fps và thời gian lõi, bên phải là giờ và phần trăm pin.
  */
 @Composable
-fun StatusHud(fps: Float, coreMs: Float, modifier: Modifier = Modifier) {
+fun StatusHud(fps: Float, coreMs: Float, modifier: Modifier = Modifier, color: Color = HudColor, textSp: Float = 12f) {
     val ctx = LocalContext.current
     val fmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     var time by remember { mutableStateOf(fmt.format(Date())) }
@@ -81,35 +86,35 @@ fun StatusHud(fps: Float, coreMs: Float, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("%.1f fps · lõi %.1f ms".format(fps, coreMs), color = HudColor, fontSize = 12.sp)
+        Text("%.1f fps · lõi %.1f ms".format(fps, coreMs), color = color, fontSize = textSp.sp, style = HudStyle)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(time, color = HudColor, fontSize = 12.sp)
+            Text(time, color = color, fontSize = textSp.sp, style = HudStyle)
             if (pct >= 0) {
                 Spacer(Modifier.width(10.dp))
-                BatteryIcon(pct)
+                BatteryIcon(pct, color, textSp / 12f)
                 Spacer(Modifier.width(4.dp))
-                Text("$pct%", color = HudColor, fontSize = 12.sp)
+                Text("$pct%", color = color, fontSize = textSp.sp, style = HudStyle)
             }
         }
     }
 }
 
 @Composable
-private fun BatteryIcon(pct: Int) {
-    Canvas(Modifier.size(width = 20.dp, height = 10.dp)) {
+private fun BatteryIcon(pct: Int, color: Color, scale: Float) {
+    Canvas(Modifier.size(width = (20f * scale).dp, height = (10f * scale).dp)) {
         val stroke = 1.2.dp.toPx()
         val nub = 2.dp.toPx()
         val bodyW = size.width - nub
         val r = CornerRadius(2.5.dp.toPx())
-        drawRoundRect(HudColor, Offset(stroke / 2, stroke / 2), Size(bodyW - stroke, size.height - stroke), r, Stroke(stroke))
+        drawRoundRect(color, Offset(stroke / 2, stroke / 2), Size(bodyW - stroke, size.height - stroke), r, Stroke(stroke))
         drawRoundRect(
-            HudColor,
+            color,
             Offset(bodyW, size.height * 0.3f),
             Size(nub, size.height * 0.4f),
             CornerRadius(nub / 2),
         )
         val pad = stroke + 1.dp.toPx()
         val fw = (bodyW - 2 * pad) * pct / 100f
-        if (fw > 0f) drawRoundRect(HudColor, Offset(pad, pad), Size(fw, size.height - 2 * pad), CornerRadius(1.dp.toPx()))
+        if (fw > 0f) drawRoundRect(color, Offset(pad, pad), Size(fw, size.height - 2 * pad), CornerRadius(1.dp.toPx()))
     }
 }
