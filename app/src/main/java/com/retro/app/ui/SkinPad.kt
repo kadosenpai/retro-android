@@ -31,7 +31,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import com.retro.app.core.Pad
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -65,6 +67,10 @@ private class SkinDef(
     val items: List<SkinItem>,
     /** D-pad hình chữ thập (vẽ sáng từng cánh); false = cần xoay tròn (joycon), chỉ vẽ chấm theo hướng. */
     val cross: Boolean = true,
+    /** Thụt vào hai bên của hàng thông tin (đơn vị skin). */
+    val hi: Float = 0f,
+    /** Ảnh núm joycon (png, vẽ đè lên D-pad và trượt theo ngón tay). */
+    val knob: String? = null,
 )
 
 private val PORTRAIT = SkinDef(
@@ -112,6 +118,7 @@ private val SNES_PORTRAIT = SkinDef(
     sx = 13f, sy = 126f, sw = 348f, sh = 261f,
     hy = 96f,
     cross = false,
+    knob = "skin/snes_knob.png",
     items = listOf(
         SkinItem(Ctl.DPAD, 25f, 558f, 121f, 121f, 20f, 20f, 20f, 20f),
         SkinItem(Ctl.X, 240f, 535f, 73f, 73f, 6f, 8f, 6f, 0f),
@@ -132,8 +139,10 @@ private val SNES_LANDSCAPE = SkinDef(
     asset = "skin/snes_landscape.png",
     mw = 812f, mh = 375f,
     sx = 198f, sy = 21f, sw = 416f, sh = 312f,
-    hy = 6f,
+    hy = 9f,
+    hi = 26f,
     cross = false,
+    knob = "skin/snes_knob.png",
     items = listOf(
         SkinItem(Ctl.DPAD, 52f, 123f, 121f, 121f, 20f, 20f, 20f, 20f),
         SkinItem(Ctl.X, 676f, 98f, 73f, 73f, 6f, 8f, 6f, 0f),
@@ -198,6 +207,7 @@ fun SkinPad(
 
     var pressed by remember { mutableStateOf(emptySet<Ctl>()) }
     var dir by remember { mutableStateOf(0) }
+    var knobOff by remember { mutableStateOf(Offset.Zero) }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wPx = constraints.maxWidth.toFloat()
@@ -216,6 +226,17 @@ fun SkinPad(
             }
         }
 
+        val knobBmp by produceState<ImageBitmap?>(null, def.knob) {
+            val name = def.knob
+            value = if (name == null) null else withContext(Dispatchers.IO) {
+                try {
+                    ctx.assets.open(name).use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+                } catch (_: Throwable) {
+                    null
+                }
+            }
+        }
+
         // Màn hình game nằm đúng khung trong skin.
         game(
             Modifier
@@ -228,8 +249,8 @@ fun SkinPad(
         // Hàng thông tin nằm trong vùng đen phía trên game, trên lớp skin.
         hud(
             Modifier
-                .offset { IntOffset((def.sx * kx).roundToInt(), (def.hy * ky).roundToInt()) }
-                .width(with(density) { (def.sw * kx).toDp() }),
+                .offset { IntOffset(((def.sx + def.hi) * kx).roundToInt(), (def.hy * ky).roundToInt()) }
+                .width(with(density) { ((def.sw - 2f * def.hi) * kx).toDp() }),
         )
 
         val dpad = def.items.first { it.c == Ctl.DPAD }
@@ -315,13 +336,21 @@ fun SkinPad(
                                 menuId = null
                                 menuFired = false
                             }
-                            if (dpadId == id) dpadId = null
+                            if (dpadId == id) {
+                                dpadId = null
+                                knobOff = Offset.Zero
+                            }
                             ch.consume()
                             continue
                         }
                         if (dpadId == null && !ch.previousPressed && dHit.contains(ch.position)) dpadId = id
                         if (dpadId == id) {
                             stickMask = stickMask or dirBits(ch.position)
+                            // Núm joycon trượt theo ngón, tối đa 30% bề rộng khung.
+                            val kd = ch.position - dFrame.center
+                            val kl = len(kd.x, kd.y)
+                            val kmax = dFrame.width * 0.3f
+                            knobOff = if (kl > kmax) kd * (kmax / kl) else kd
                             owner[id] = null
                         } else {
                             val c = hit(ch.position)
@@ -378,7 +407,17 @@ fun SkinPad(
                     else -> {}
                 }
             }
-            if (dir != 0 && !def.cross) {
+            val kb = knobBmp
+            if (!def.cross && kb != null) {
+                // Núm joycon: ảnh 380x400 ứng với 190x200 đơn vị skin, tâm đĩa tại (188, 189) px.
+                val c = dFrame.center + knobOff
+                drawImage(
+                    kb,
+                    dstOffset = IntOffset((c.x - 94f * kx).roundToInt(), (c.y - 94.7f * kx).roundToInt()),
+                    dstSize = IntSize((190f * kx).roundToInt(), (200f * kx).roundToInt()),
+                    filterQuality = FilterQuality.High,
+                )
+            } else if (dir != 0 && !def.cross) {
                 // Joycon: chấm sáng ở phía ngón đang đẩy.
                 val c = dFrame.center
                 val half = dFrame.width / 2f
