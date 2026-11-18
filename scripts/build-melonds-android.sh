@@ -27,6 +27,10 @@ git -C "$SRC" checkout -q --force FETCH_HEAD
 COMMIT="$(git -C "$SRC" rev-parse HEAD)"
 echo "melonDS commit: $COMMIT"
 
+# Android (bionic, bật _GNU_SOURCE) dùng bản strerror_r kiểu GNU trả về con trỏ; mã gốc chỉ nhận ra glibc.
+sed -i 's/^#if defined(__GLIBC__) && (_GNU_SOURCE.*$/#if 1/' "$SRC/src/dolphin/CommonFuncs.cpp"
+grep -n '^#if 1' "$SRC/src/dolphin/CommonFuncs.cpp" || { echo "Không vá được CommonFuncs.cpp"; exit 1; }
+
 rm -rf "$SRC/libs" "$SRC/obj"
 # jni/Android.mk của melonDS tạo module "retro" (libretro.so); ghi đè ABI và API trên dòng lệnh.
 "$NDK/ndk-build" -C "$SRC/jni" -j"$(nproc)" APP_ABI="$ABI" APP_PLATFORM="android-$API" NDK_PROJECT_PATH="$SRC" APP_BUILD_SCRIPT="$SRC/jni/Android.mk" NDK_APPLICATION_MK="$SRC/jni/Application.mk"
