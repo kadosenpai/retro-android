@@ -27,11 +27,13 @@ class CoverService(private val ctx: Context, private val store: RomStore) {
     suspend fun fetchBoxArt(rom: RomInfo): Boolean = withContext(Dispatchers.IO) {
         mutex.withLock {
             val sys = GameSystem.fromId(rom.system)
-            val crc = crc32Of(store.romFile(rom.id))
+            val file = store.romFile(rom.id)
             val names = LinkedHashSet<String>()
-            lookup(sys, crc)?.let { names.add(it) }
+            for (crc in romCrcs(sys, file)) lookup(sys, crc)?.let { names.add(it) }
             val base = rom.fileBase.ifEmpty { rom.name }
             if (base.isNotEmpty()) names.add(base)
+            // Không khớp mã ROM (bản dịch, bản lạ, tên kiểu GoodTools...): thử tên chuẩn gần đúng.
+            fuzzyNames(sys, listOf(base, rom.name))?.let { names.addAll(it) }
             for (n in names) {
                 val png = httpGet(CoverNames.boxArtUrl(sys, n)) ?: continue
                 val jpeg = toCoverJpeg(png) ?: continue
@@ -40,6 +42,25 @@ class CoverService(private val ctx: Context, private val store: RomStore) {
             }
             false
         }
+    }
+
+    private val keyIndexes = HashMap<String, Map<String, List<String>>>()
+
+    private fun fuzzyNames(sys: GameSystem, raws: List<String>): List<String>? {
+        val map = datMaps[sys.id] ?: loadDat(sys, refresh = false) ?: return null
+        val idx = keyIndexes.getOrPut(sys.id) { CoverNames.buildKeyIndex(map.values) }
+        return CoverNames.fuzzyCandidates(idx, raws.filter { it.isNotEmpty() })
+    }
+
+    /** CRC32 của ROM; NES có thêm CRC không tính 16 byte đầu (DAT No-Intro thường tính không có header). */
+    private fun romCrcs(sys: GameSystem, f: File): List<Long> {
+        if (!f.exists()) return listOf(-1L)
+        val full = crc32Of(f, 0)
+        if (sys != GameSystem.NES) return listOf(full)
+        val head = ByteArray(4)
+        val isInes = runCatching { f.inputStream().use { it.read(head) == 4 } }.getOrDefault(false) &&
+            head[0] == 'N'.code.toByte() && head[1] == 'E'.code.toByte() && head[2] == 'S'.code.toByte() && head[3] == 0x1A.toByte()
+        return if (isInes) listOf(crc32Of(f, 16), full) else listOf(full)
     }
 
     private fun lookup(sys: GameSystem, crc: Long): String? {
@@ -67,10 +88,11 @@ class CoverService(private val ctx: Context, private val store: RomStore) {
         return datMaps[sys.id]
     }
 
-    private fun crc32Of(f: File): Long {
+    private fun crc32Of(f: File, skip: Long): Long {
         if (!f.exists()) return -1
         val c = CRC32()
         f.inputStream().use { input ->
+            if (skip > 0) input.skip(skip)
             val buf = ByteArray(256 * 1024)
             while (true) {
                 val n = input.read(buf)

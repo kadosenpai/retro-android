@@ -7,6 +7,8 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.media.PlaybackParams
 import android.os.Process
+import com.retro.app.data.Core
+import com.retro.app.data.GameSystem
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.concurrent.Callable
@@ -27,7 +29,8 @@ object EmulatorEngine {
     @Volatile var paused = true
         private set
     @Volatile private var loaded = false
-    private var coreReady = false
+    /** Lõi đang nạp trong host (null nếu chưa nạp). */
+    @Volatile private var loadedCore: Core? = null
 
     private var track: AudioTrack? = null
     private var av = DoubleArray(5)
@@ -73,7 +76,7 @@ object EmulatorEngine {
     }
 
     private fun pushInput() {
-        if (coreReady) NativeCore.nativeSetInput(touchMask or hwMask)
+        if (loadedCore != null) NativeCore.nativeSetInput(touchMask or hwMask)
     }
 
     // ---------- Chạy việc trên luồng giả lập ----------
@@ -100,16 +103,18 @@ object EmulatorEngine {
 
     // ---------- Nạp / gỡ game ----------
     /** Trả về null nếu thành công, ngược lại là thông báo lỗi. */
-    fun load(ctx: Context, rom: File, romId: String, sram: ByteArray?): String? = call {
+    fun load(ctx: Context, rom: File, romId: String, sram: ByteArray?, sys: GameSystem): String? = call {
         try {
             if (loaded) unloadInternal()
-            if (!coreReady) {
-                val corePath = ctx.applicationInfo.nativeLibraryDir + "/libmgba_libretro.so"
-                val sys = File(ctx.filesDir, "system").apply { mkdirs() }.absolutePath
+            if (loadedCore != sys.core) {
+                // Hệ máy khác lõi thì nạp lõi mới (host tự gỡ lõi cũ).
+                loadedCore = null
+                val corePath = ctx.applicationInfo.nativeLibraryDir + "/" + sys.core.libName
+                val sysDir = File(ctx.filesDir, "system").apply { mkdirs() }.absolutePath
                 val save = File(ctx.filesDir, "core-saves").apply { mkdirs() }.absolutePath
-                val err = NativeCore.nativeInit(corePath, sys, save)
+                val err = NativeCore.nativeInit(corePath, sysDir, save)
                 if (err != null) return@call err
-                coreReady = true
+                loadedCore = sys.core
             }
             val err = NativeCore.nativeLoadGame(rom.absolutePath)
             if (err != null) return@call err
@@ -179,7 +184,7 @@ object EmulatorEngine {
      */
     fun setCheats(codes: List<String>): List<Boolean> = call {
         if (!loaded) return@call emptyList<Boolean>()
-        if (cheatsActive && !NativeCore.nativeCheatsPatched()) cleanReload()
+        if (cheatsActive && loadedCore == Core.MGBA && !NativeCore.nativeCheatsPatched()) cleanReload()
         NativeCore.nativeCheatReset()
         val accepted = codes.mapIndexed { i, c -> NativeCore.nativeCheatSet(i, true, c) }
         cheatsActive = codes.isNotEmpty()

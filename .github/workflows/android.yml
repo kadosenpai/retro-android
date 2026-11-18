@@ -42,6 +42,9 @@ jobs:
       - name: Build lõi mGBA cho Android
         run: ./scripts/build-mgba-android.sh
 
+      - name: Build lõi FCEUmm (NES) cho Android
+        run: bash ./scripts/build-fceumm-android.sh
+
       - name: Chuẩn bị khoá ký
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

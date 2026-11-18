@@ -26,6 +26,48 @@ object CoverNames {
         return map
     }
 
+    /**
+     * Khoá so sánh gần đúng giữa tên file ROM và tên chuẩn: bỏ phần trong ngoặc ( ) [ ], bỏ dấu, chữ thường,
+     * chỉ giữ chữ-số, bỏ mạo từ "the". Vd. "Legend of Zelda, The - Link's Awakening DX (USA)" và
+     * "Legend of Zelda The Link's Awakening DX [!]" cùng ra "legend of zelda link s awakening dx".
+     */
+    fun normalizeKey(name: String): String {
+        var s = name.replace(Regex("""\s*[(\[][^)\]]*[)\]]"""), " ")
+        s = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replace(Regex("""\p{M}+"""), "")
+        return s.lowercase().split(Regex("""[^a-z0-9]+""")).filter { it.isNotEmpty() && it != "the" }.joinToString(" ")
+    }
+
+    private fun candidateRank(n: String): Int {
+        var r = when {
+            "(World" in n -> 0
+            "(USA" in n -> 1
+            "(Europe" in n -> 2
+            "(Japan" in n -> 3
+            else -> 4
+        }
+        if (Regex("""\((Beta|Proto|Demo|Sample|Unl|Pirate|Hack)""").containsMatchIn(n)) r += 10
+        return r
+    }
+
+    /** Dựng chỉ mục khoá gần đúng -> các tên chuẩn (đã xếp theo vùng: World, USA, Europe, Japan...). */
+    fun buildKeyIndex(names: Collection<String>): Map<String, List<String>> {
+        val idx = HashMap<String, MutableList<String>>(names.size * 2)
+        for (n in names.toSet()) idx.getOrPut(normalizeKey(n)) { ArrayList() }.add(n)
+        for (list in idx.values) list.sortWith(compareBy({ candidateRank(it) }, { it.length }))
+        return idx
+    }
+
+    /** Các tên chuẩn gần đúng với [rawNames] (tối đa [limit]). */
+    fun fuzzyCandidates(index: Map<String, List<String>>, rawNames: List<String>, limit: Int = 3): List<String> {
+        val out = LinkedHashSet<String>()
+        for (raw in rawNames) {
+            val key = normalizeKey(raw)
+            if (key.isEmpty()) continue
+            index[key]?.let { out.addAll(it) }
+        }
+        return out.take(limit)
+    }
+
     /** libretro đổi các ký tự không hợp lệ trong tên file thành "_". */
     fun thumbFileName(name: String): String = name.replace(Regex("""[&*/:`<>?\\|]"""), "_")
 

@@ -87,10 +87,16 @@ class AppModel(private val app: Application) {
         applyCoreOptions()
     }
 
-    /** Đẩy các tuỳ chọn Game Boy vào lõi (bảng màu đổi ngay; viền SGB có hiệu lực khi mở lại game). */
+    /** Đẩy các tuỳ chọn vào lõi (Game Boy, NES) (bảng màu đổi ngay; viền SGB có hiệu lực khi mở lại game). */
     private fun applyCoreOptions() {
         EmulatorEngine.setOption("mgba_gb_colors", settings.gbPalette)
         EmulatorEngine.setOption("mgba_sgb_borders", if (settings.sgbBorder) "ON" else "OFF")
+        // NES (FCEUmm): cắt 8 hàng trên/dưới như màn hình TV (256x224), giữ nguyên hai bên.
+        EmulatorEngine.setOption("fceumm_overscan", "disabled")
+        EmulatorEngine.setOption("fceumm_overscan_h_left", "0")
+        EmulatorEngine.setOption("fceumm_overscan_h_right", "0")
+        EmulatorEngine.setOption("fceumm_overscan_v_top", "8")
+        EmulatorEngine.setOption("fceumm_overscan_v_bottom", "8")
     }
 
     fun showToast(msg: String) {
@@ -166,8 +172,8 @@ class AppModel(private val app: Application) {
     // ---------- Cheat ----------
     /** Đưa các cheat đang bật vào lõi. Gọi trên luồng IO. */
     private fun applyCheatList(list: List<CheatItem>, rom: RomInfo): Set<String> {
-        val gb = GameSystem.fromId(rom.system).isGameBoy
-        val items = list.filter { it.enabled }.map { it to CheatCodes.normalize(it.code, gb) }.filter { it.second.isNotEmpty() }
+        val kind = GameSystem.fromId(rom.system).cheatKind
+        val items = list.filter { it.enabled }.map { it to CheatCodes.normalize(it.code, kind) }.filter { it.second.isNotEmpty() }
         val accepted = EmulatorEngine.setCheats(items.map { it.second })
         // Trả về id các cheat mà lõi không đọc được.
         return items.filterIndexed { i, _ -> !(accepted.getOrNull(i) ?: true) }.map { it.first.id }.toSet()
@@ -196,7 +202,7 @@ class AppModel(private val app: Application) {
 
     /** Thêm cheat; trả về thông báo lỗi nếu mã không hợp lệ, null nếu đã thêm. */
     fun addCheat(name: String, code: String): String? {
-        CheatCodes.validate(code, GameSystem.fromId(current?.system).isGameBoy)?.let { return it }
+        CheatCodes.validate(code, GameSystem.fromId(current?.system).cheatKind)?.let { return it }
         val n = name.trim().ifEmpty { "Cheat ${cheats.size + 1}" }
         commitCheats(cheats + CheatItem(java.util.UUID.randomUUID().toString(), n, code.trim(), true))
         return null
@@ -276,7 +282,7 @@ class AppModel(private val app: Application) {
             var loadedCheats: List<CheatItem> = emptyList()
             val err = withContext(Dispatchers.IO) {
                 val sram = store.readSram(rom.id)
-                val e = EmulatorEngine.load(app, store.romFile(rom.id), rom.id, sram)
+                val e = EmulatorEngine.load(app, store.romFile(rom.id), rom.id, sram, GameSystem.fromId(rom.system))
                 if (e == null) {
                     loadedCheats = store.readCheats(rom.id)
                     applyCheatList(loadedCheats, rom)
