@@ -45,7 +45,7 @@ import kotlinx.coroutines.withContext
  */
 
 /** Giữ nút nhà/góc menu đủ thời gian này thì thoát thẳng về thư viện. */
-const val EXIT_HOLD_MS = 600L
+const val EXIT_HOLD_MS = 400L
 
 private enum class Ctl { DPAD, A, B, L, R, START, SELECT, MENU, QSAVE, QLOAD }
 
@@ -120,7 +120,7 @@ private fun len(x: Float, y: Float): Float = sqrt(x * x + y * y)
 /**
  * Màn chơi có skin: [game] được đặt đúng khung màn hình của skin, ảnh skin phủ lên trên,
  * cảm ứng đa điểm xử lý trực tiếp trên ảnh (D-pad trượt được, trượt ngón giữa các nút vẫn nhận,
- * nhả ngón trên nút nhà thì mở menu (giữ 0,6 giây thì thoát về thư viện), chạm Lưu/Nạp thì lưu/nạp vào ô 1).
+ * nhả ngón trên nút nhà thì mở menu (giữ 0,4 giây thì thoát về thư viện), chạm Lưu/Nạp thì lưu/nạp vào ô 1).
  */
 @Composable
 fun SkinPad(
