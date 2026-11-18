@@ -87,11 +87,17 @@ class AppModel(private val app: Application) {
         applyCoreOptions()
     }
 
-    /** Đẩy các tuỳ chọn vào lõi (Game Boy, NES) (bảng màu đổi ngay; viền SGB có hiệu lực khi mở lại game). */
+    /** Đẩy các tuỳ chọn vào lõi (Game Boy, NES, NDS) (bảng màu đổi ngay; viền SGB có hiệu lực khi mở lại game). */
     private fun applyCoreOptions() {
         EmulatorEngine.setOption("mgba_gb_colors", settings.gbPalette)
         EmulatorEngine.setOption("mgba_sgb_borders", if (settings.sgbBorder) "ON" else "OFF")
         // NES (FCEUmm): cắt 8 hàng trên/dưới như màn hình TV (256x224), giữ nguyên hai bên.
+        // NDS (melonDS): ghép hai màn dọc, không khe hở; cảm ứng kiểu chạm; chỉ dùng bộ vẽ phần mềm.
+        EmulatorEngine.setOption("melonds_touch_mode", "Touch")
+        EmulatorEngine.setOption("melonds_screen_layout", "Top/Bottom")
+        EmulatorEngine.setOption("melonds_screen_gap", "0")
+        EmulatorEngine.setOption("melonds_opengl_renderer", "disabled")
+        EmulatorEngine.setOption("melonds_boot_directly", "enabled")
         EmulatorEngine.setOption("fceumm_overscan", "disabled")
         EmulatorEngine.setOption("fceumm_overscan_h_left", "0")
         EmulatorEngine.setOption("fceumm_overscan_h_right", "0")

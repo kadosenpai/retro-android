@@ -16,6 +16,9 @@ object NativeCore {
     external fun nativeReset()
     external fun nativeSetInput(mask: Int)
 
+    /** Cảm ứng màn dưới NDS: x, y chuẩn hoá -32768..32767 theo toàn khung hình. */
+    external fun nativeSetTouch(x: Int, y: Int, down: Boolean)
+
     /** [fps, sampleRate, width, height, pixelFormat] */
     external fun nativeAvInfo(): DoubleArray
 

@@ -591,6 +591,7 @@ private fun tabTitle(id: String): String = when (id) {
     "gba" -> "Game Boy Advance"
     "nes" -> "NES"
     "snes" -> "SNES"
+    "nds" -> "NDS"
     "gb" -> "Game Boy"
     "gbc" -> "Game Boy Color"
     else -> id

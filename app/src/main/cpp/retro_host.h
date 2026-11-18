@@ -27,6 +27,8 @@ void Shutdown();
 void RunFrame();
 void Reset();
 void SetInput(uint32_t mask);
+/** Cảm ứng: x, y chuẩn hoá -0x8000..0x7FFF trên toàn khung hình; [down] = đang chạm. */
+void SetTouch(int x, int y, bool down);
 
 AvInfo GetAvInfo();
 int PixelFormatCode();

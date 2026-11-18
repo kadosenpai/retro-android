@@ -70,6 +70,11 @@ object EmulatorEngine {
         pushInput()
     }
 
+    /** Chạm màn hình cảm ứng (NDS). x, y chuẩn hoá -32768..32767 theo toàn khung hình. */
+    fun setTouch(x: Int, y: Int, down: Boolean) {
+        if (loadedCore != null) NativeCore.nativeSetTouch(x, y, down)
+    }
+
     fun setHardwareMask(mask: Int) {
         hwMask = mask
         pushInput()

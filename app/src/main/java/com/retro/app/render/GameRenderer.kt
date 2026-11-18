@@ -28,9 +28,12 @@ precision mediump float;
 varying vec2 vUv;
 uniform sampler2D uTex;
 uniform float uBgr;
+uniform vec2 uVr;     // dải dọc của khung được vẽ (0..1)
+uniform float uHalf;  // nửa texel theo chiều dọc, tránh lẹm sang nửa kia khi lọc mượt
 
 void main() {
-  vec3 c = texture2D(uTex, vUv).rgb;
+  float v = clamp(uVr.x + vUv.y * (uVr.y - uVr.x), uVr.x + uHalf, uVr.y - uHalf);
+  vec3 c = texture2D(uTex, vec2(vUv.x, v)).rgb;
   gl_FragColor = vec4(uBgr > 0.5 ? c.bgr : c, 1.0);
 }
 """
@@ -40,6 +43,9 @@ class GameRenderer : GLSurfaceView.Renderer {
     private var tex = 0
     private var uTex = 0
     private var uBgr = 0
+    private var uVr = 0
+    private var uHalf = 0
+    private var linear = false
     private var aPos = 0
 
     private val quad: FloatBuffer =
@@ -63,6 +69,9 @@ class GameRenderer : GLSurfaceView.Renderer {
         aPos = GLES20.glGetAttribLocation(program, "aPos")
         uTex = GLES20.glGetUniformLocation(program, "uTex")
         uBgr = GLES20.glGetUniformLocation(program, "uBgr")
+        uVr = GLES20.glGetUniformLocation(program, "uVr")
+        uHalf = GLES20.glGetUniformLocation(program, "uHalf")
+        linear = false
 
         val t = IntArray(1)
         GLES20.glGenTextures(1, t, 0)
@@ -116,16 +125,42 @@ class GameRenderer : GLSurfaceView.Renderer {
             lastSerial = serial
         }
 
-        val vp = computeViewport(surfW, surfH, w, h)
-        if (vp.width <= 0 || vp.height <= 0) return
-        GLES20.glViewport(vp.x, surfH - vp.y - vp.height, vp.width, vp.height)
+        val quads = DsLayout.quads
+        // NDS: lọc mượt khi phóng không nguyên số; hệ thường: lấy mẫu gần nhất.
+        val wantLinear = quads != null
+        if (wantLinear != linear) {
+            val f = if (wantLinear) GLES20.GL_LINEAR else GLES20.GL_NEAREST
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, f)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, f)
+            linear = wantLinear
+        }
         GLES20.glUseProgram(program)
         GLES20.glUniform1i(uTex, 0)
         GLES20.glUniform1f(uBgr, if (is565) 0f else 1f)
         quad.position(0)
         GLES20.glEnableVertexAttribArray(aPos)
         GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quad)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        if (quads == null) {
+            val vp = computeViewport(surfW, surfH, w, h)
+            if (vp.width > 0 && vp.height > 0) {
+                GLES20.glViewport(vp.x, surfH - vp.y - vp.height, vp.width, vp.height)
+                GLES20.glUniform2f(uVr, 0f, 1f)
+                GLES20.glUniform1f(uHalf, 0f)
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+            }
+        } else {
+            for (q in quads) {
+                val x = Math.round(q.x0 * surfW)
+                val y = Math.round(q.y0 * surfH)
+                val qw = Math.round((q.x1 - q.x0) * surfW)
+                val qh = Math.round((q.y1 - q.y0) * surfH)
+                if (qw <= 0 || qh <= 0) continue
+                GLES20.glViewport(x, surfH - y - qh, qw, qh)
+                GLES20.glUniform2f(uVr, q.v0, q.v1)
+                GLES20.glUniform1f(uHalf, 0.5f / h)
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+            }
+        }
         GLES20.glDisableVertexAttribArray(aPos)
     }
 

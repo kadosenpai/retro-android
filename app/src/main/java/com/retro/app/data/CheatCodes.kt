@@ -7,10 +7,11 @@ data class CheatItem(val id: String, val name: String, val code: String, val ena
  * Kiểm tra và chuẩn hoá mã cheat.
  * GBA: GameShark/Action Replay, mỗi dòng 12 hoặc 16 ký tự hex.
  * Game Boy/GBC: GameShark 8 ký tự hex (vd. 01FF16D1) hoặc Game Genie (XXX-XXX hoặc XXX-XXX-XXX).
+ * NDS: Action Replay, các nhóm 8 ký tự hex (hai nhóm một dòng, vd. 94000130 FCFF0000).
  * SNES: Game Genie XXXX-XXXX (0-9, A-F) hoặc Pro Action Replay 8 ký tự hex (vd. 7E0DBE05).
  * NES: Game Genie 6 hoặc 8 chữ cái (APZLGITYEOXUKSVN), hoặc mã thô AAAA:VV / AAAA?CC:VV (hex).
  */
-enum class CheatKind { GBA, GB, NES, SNES }
+enum class CheatKind { GBA, GB, NES, SNES, NDS }
 
 object CheatCodes {
     private val nesGenie = Regex("^[APZLGITYEOXUKSVN]{6}([APZLGITYEOXUKSVN]{2})?$")
@@ -28,6 +29,7 @@ object CheatCodes {
         CheatKind.GB -> validateGb(code)
         CheatKind.NES -> validateNes(code)
         CheatKind.SNES -> validateSnes(code)
+        CheatKind.NDS -> validateNds(code)
         CheatKind.GBA -> validateGba(code)
     }
 
@@ -36,6 +38,7 @@ object CheatCodes {
         CheatKind.GB -> gbTokens(code).joinToString("+")
         CheatKind.NES -> nesTokens(code).joinToString("+")
         CheatKind.SNES -> snesTokens(code).joinToString("+")
+        CheatKind.NDS -> ndsTokens(code).joinToString("+")
         CheatKind.GBA -> code.uppercase().replace('-', ' ').split(Regex("[\\s+]+")).filter { it.isNotEmpty() }.joinToString("+")
     }
 
@@ -65,6 +68,20 @@ object CheatCodes {
                 return "Mã SNES: Game Genie XXXX-XXXX (có dấu gạch) hoặc Pro Action Replay 8 ký tự (vd. 7E0DBE05)"
             }
         }
+        return null
+    }
+
+    /** Mã Action Replay NDS: các nhóm 8 ký tự hex, tổng số nhóm chẵn (mỗi lệnh gồm hai nhóm). */
+    private fun ndsTokens(code: String): List<String> =
+        code.uppercase().split(Regex("[\\s+,;-]+")).filter { it.isNotEmpty() }
+
+    private fun validateNds(code: String): String? {
+        val tokens = ndsTokens(code)
+        if (tokens.isEmpty()) return "Chưa nhập mã"
+        for (t in tokens) {
+            if (!snesPar.matches(t)) return "Mã NDS: các nhóm 8 ký tự hex (0-9, A-F), vd. 94000130 FCFF0000"
+        }
+        if (tokens.size % 2 != 0) return "Mã NDS gồm từng cặp hai nhóm 8 ký tự; đang thiếu một nhóm"
         return null
     }
 

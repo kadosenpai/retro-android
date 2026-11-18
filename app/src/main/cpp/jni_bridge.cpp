@@ -44,6 +44,7 @@ JNI(jstring, nativeLoadGame)(JNIEnv* env, jobject, jstring rom) {
 JNI(void, nativeUnloadGame)(JNIEnv*, jobject) { retro::UnloadGame(); }
 JNI(void, nativeRunFrame)(JNIEnv*, jobject) { retro::RunFrame(); }
 JNI(void, nativeReset)(JNIEnv*, jobject) { retro::Reset(); }
+JNI(void, nativeSetTouch)(JNIEnv*, jobject, jint x, jint y, jboolean down) { retro::SetTouch(x, y, down == JNI_TRUE); }
 JNI(void, nativeSetInput)(JNIEnv*, jobject, jint mask) { retro::SetInput(static_cast<uint32_t>(mask)); }
 
 // [fps, sampleRate, width, height, pixelFormat]

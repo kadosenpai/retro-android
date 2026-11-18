@@ -23,6 +23,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Offset
+import com.retro.app.render.computeViewport
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -39,6 +41,7 @@ fun PlayScreen(model: AppModel) {
     val cfg = LocalConfiguration.current
     val landscape = cfg.screenWidthDp > cfg.screenHeightDp
     val s = model.settings
+    val isNds = model.current?.system == "nds"
 
     // Toàn màn hình khi chơi.
     val view = LocalView.current
@@ -68,16 +71,19 @@ fun PlayScreen(model: AppModel) {
                 onExit = { model.exitToLibrary() },
                 onQuickSave = { model.saveSlot(1) },
                 onQuickLoad = { model.loadSlot(1) },
-                snes = model.current?.system == "snes",
+                skin = when (model.current?.system) { "snes" -> "snes"; "nds" -> "nds"; else -> "smoke" },
+                onTouch = { x, y, down -> EmulatorEngine.setTouch(x, y, down) },
                 game = { m -> GameSurface(m) },
                 hud = { m, c, sp -> if (s.showStats) StatusHud(model.fps, model.coreMs, m, c, sp) },
                 modifier = Modifier.background(androidx.compose.ui.graphics.Color.Black),
             )
         } else if (landscape) {
-            GameSurface(Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize().dsTouch(isNds)) { GameSurface(Modifier.fillMaxSize()) }
         } else {
             Column(Modifier.fillMaxSize()) {
-                GameSurface(Modifier.fillMaxWidth().weight(1f).windowInsetsPadding(WindowInsets.safeDrawing))
+                Box(Modifier.fillMaxWidth().weight(1f).windowInsetsPadding(WindowInsets.safeDrawing).dsTouch(isNds)) {
+                    GameSurface(Modifier.fillMaxSize())
+                }
             }
         }
 
@@ -132,4 +138,41 @@ private fun GameSurface(modifier: Modifier) {
         factory = { ctx -> GameGLView(ctx) },
         modifier = modifier,
     )
+}
+
+/**
+ * NDS khi ẩn phím ảo: khung hình (256x384) hiển thị nguyên cả hai màn; chạm vào nửa dưới thì gửi cảm ứng cho lõi.
+ */
+private fun Modifier.dsTouch(enabled: Boolean): Modifier = if (!enabled) this else pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val vp = computeViewport(size.width, size.height, 256, 384)
+
+        fun send(p: Offset, pressed: Boolean) {
+            if (vp.width <= 0 || vp.height <= 0) return
+            val fx = ((p.x - vp.x) / vp.width).coerceIn(0f, 1f)
+            val fy = ((p.y - vp.y) / vp.height).coerceIn(0.5f, 1f)
+            EmulatorEngine.setTouch(
+                (fx * 65535f - 32768f).toInt().coerceIn(-32768, 32767),
+                (fy * 65535f - 32768f).toInt().coerceIn(-32768, 32767),
+                pressed,
+            )
+        }
+
+        // Chỉ nhận khi ngón đặt xuống ở nửa dưới của khung hình.
+        val startsOnBottom = vp.height > 0 && down.position.y >= vp.y + vp.height / 2f
+        if (!startsOnBottom) return@awaitEachGesture
+        send(down.position, true)
+        while (true) {
+            val ev = awaitPointerEvent()
+            val c = ev.changes.firstOrNull { it.id == down.id } ?: break
+            if (!c.pressed) {
+                send(c.position, false)
+                return@awaitEachGesture
+            }
+            send(c.position, true)
+            c.consume()
+        }
+        EmulatorEngine.setTouch(0, 0, false)
+    }
 }

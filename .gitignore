@@ -11,6 +11,8 @@ app/src/main/jniLibs/
 .mgba-build-*/
 .fceumm-src/
 .snes9x-src/
+.melonds-src/
+app/src/main/assets/melonds-version.txt
 app/src/main/assets/snes9x-version.txt
 app/src/main/assets/fceumm-version.txt
 app/src/main/assets/mgba-version.txt

@@ -166,7 +166,7 @@ class RomStore(private val ctx: Context) {
         val displayName = queryName(uri) ?: "Game"
         val ext = displayName.substringAfterLast('.', "").lowercase()
         val sys = GameSystem.fromExt(ext)
-            ?: return ImportResult.Rejected("\"$displayName\": chỉ hỗ trợ file .gba, .gb, .gbc, .nes, .sfc, .smc (không nén .zip)")
+            ?: return ImportResult.Rejected("\"$displayName\": chỉ hỗ trợ file .gba, .gb, .gbc, .nes, .sfc, .smc, .nds (không nén .zip)")
         val tmp = File(romDir, "import-${System.nanoTime()}.tmp")
         try {
             val md = MessageDigest.getInstance("SHA-256")

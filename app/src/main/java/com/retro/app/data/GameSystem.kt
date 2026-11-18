@@ -4,7 +4,8 @@ package com.retro.app.data
 enum class Core(val id: String) {
     MGBA("mgba"),
     FCEUMM("fceumm"),
-    SNES9X("snes9x");
+    SNES9X("snes9x"),
+    MELONDS("melonds");
 
     val libName: String get() = "lib${id}_libretro.so"
 }
@@ -27,7 +28,8 @@ enum class GameSystem(
     GB("gb", "Game Boy", "gb", setOf("gb"), "Nintendo - Game Boy", "Nintendo_-_Game_Boy", 0x150, Core.MGBA, CheatKind.GB),
     GBC("gbc", "Game Boy Color", "gbc", setOf("gbc", "cgb"), "Nintendo - Game Boy Color", "Nintendo_-_Game_Boy_Color", 0x150, Core.MGBA, CheatKind.GB),
     NES("nes", "NES", "nes", setOf("nes", "unf", "unif"), "Nintendo - Nintendo Entertainment System", "Nintendo_-_Nintendo_Entertainment_System", 0x2010, Core.FCEUMM, CheatKind.NES),
-    SNES("snes", "SNES", "snes", setOf("sfc", "smc", "swc", "fig"), "Nintendo - Super Nintendo Entertainment System", "Nintendo_-_Super_Nintendo_Entertainment_System", 0x8000, Core.SNES9X, CheatKind.SNES);
+    SNES("snes", "SNES", "snes", setOf("sfc", "smc", "swc", "fig"), "Nintendo - Super Nintendo Entertainment System", "Nintendo_-_Super_Nintendo_Entertainment_System", 0x8000, Core.SNES9X, CheatKind.SNES),
+    NDS("nds", "NDS", "nds", setOf("nds", "dsi", "ids"), "Nintendo - Nintendo DS", "Nintendo_-_Nintendo_DS", 0x200, Core.MELONDS, CheatKind.NDS);
 
     companion object {
         fun fromId(id: String?): GameSystem = values().firstOrNull { it.id == id } ?: GBA
@@ -35,6 +37,6 @@ enum class GameSystem(
         fun fromExt(ext: String): GameSystem? = values().firstOrNull { ext in it.exts }
 
         /** Các tab theo thứ tự hiển thị: (id, nhãn). */
-        val TABS: List<Pair<String, String>> = listOf("gba" to "GBA", "gb" to "GB", "gbc" to "GBC", "nes" to "NES", "snes" to "SNES")
+        val TABS: List<Pair<String, String>> = listOf("gba" to "GBA", "gb" to "GB", "gbc" to "GBC", "nes" to "NES", "snes" to "SNES", "nds" to "NDS")
     }
 }

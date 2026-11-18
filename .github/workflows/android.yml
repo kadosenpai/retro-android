@@ -48,6 +48,9 @@ jobs:
       - name: Build lõi Snes9x (SNES) cho Android
         run: bash ./scripts/build-snes9x-android.sh
 
+      - name: Build lõi melonDS (Nintendo DS) cho Android
+        run: bash ./scripts/build-melonds-android.sh
+
       - name: Chuẩn bị khoá ký
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
