@@ -68,6 +68,7 @@ fun PlayScreen(model: AppModel) {
                 onExit = { model.exitToLibrary() },
                 onQuickSave = { model.saveSlot(1) },
                 onQuickLoad = { model.loadSlot(1) },
+                snes = model.current?.system == "snes",
                 game = { m -> GameSurface(m) },
                 hud = { m -> if (s.showStats) StatusHud(model.fps, model.coreMs, m) },
                 modifier = Modifier.background(androidx.compose.ui.graphics.Color.Black),

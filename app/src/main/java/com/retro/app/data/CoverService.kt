@@ -52,10 +52,14 @@ class CoverService(private val ctx: Context, private val store: RomStore) {
         return CoverNames.fuzzyCandidates(idx, raws.filter { it.isNotEmpty() })
     }
 
-    /** CRC32 của ROM; NES có thêm CRC không tính 16 byte đầu (DAT No-Intro thường tính không có header). */
+    /** CRC32 của ROM; NES (16 byte đầu) và SNES (512 byte đầu của máy copy) có thêm CRC không tính phần header (DAT No-Intro thường tính không có header). */
     private fun romCrcs(sys: GameSystem, f: File): List<Long> {
         if (!f.exists()) return listOf(-1L)
         val full = crc32Of(f, 0)
+        if (sys == GameSystem.SNES) {
+            // Một số ROM SNES có thêm 512 byte đầu của máy copy; DAT No-Intro tính không có phần này.
+            return if (f.length() % 1024L == 512L) listOf(crc32Of(f, 512), full) else listOf(full)
+        }
         if (sys != GameSystem.NES) return listOf(full)
         val head = ByteArray(4)
         val isInes = runCatching { f.inputStream().use { it.read(head) == 4 } }.getOrDefault(false) &&

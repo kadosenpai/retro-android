@@ -91,7 +91,8 @@ fun CheatsPage(model: AppModel, onBack: () -> Unit) {
     }
     val kind = GameSystem.fromId(model.current?.system).cheatKind
     Text(
-        if (kind == CheatKind.NES) "Mã Game Genie NES (6 hoặc 8 chữ cái, vd. SXIOPO) hoặc mã thô dạng 0075:09 (địa chỉ:giá trị). Nhiều mã cách nhau bằng dòng mới hoặc dấu cách. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử.\n\nApp chỉ biết lõi có đọc được mã hay không, không biết mã có tác dụng trong game này."
+        if (kind == CheatKind.SNES) "Mã SNES: Game Genie XXXX-XXXX (có dấu gạch) hoặc Pro Action Replay 8 ký tự hex (vd. 7E0DBE05). Nhiều mã cách nhau bằng dòng mới hoặc dấu cách. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử.\n\nApp chỉ biết lõi có đọc được mã hay không, không biết mã có tác dụng trong game này."
+        else if (kind == CheatKind.NES) "Mã Game Genie NES (6 hoặc 8 chữ cái, vd. SXIOPO) hoặc mã thô dạng 0075:09 (địa chỉ:giá trị). Nhiều mã cách nhau bằng dòng mới hoặc dấu cách. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử.\n\nApp chỉ biết lõi có đọc được mã hay không, không biết mã có tác dụng trong game này."
         else if (kind == CheatKind.GB) "Mã GameShark (8 ký tự, vd. 01FF16D1) hoặc Game Genie (XXX-XXX-XXX) cho Game Boy / Game Boy Color. Nhiều mã cách nhau bằng dòng mới hoặc dấu cách. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử.\n\nApp chỉ biết lõi có đọc được mã hay không, không biết mã có tác dụng trong game này."
         else "Mã GameShark / Action Replay cho GBA: mỗi dòng 12 hoặc 16 ký tự (0-9, A-F). Một số mã cần đúng loại mới chạy được. Cheat có thể làm game lỗi, hãy lưu trạng thái trước khi thử.\n\nApp chỉ biết lõi có đọc được mã hay không, không biết mã có tác dụng trong game này.",
         color = Rc.Faint,

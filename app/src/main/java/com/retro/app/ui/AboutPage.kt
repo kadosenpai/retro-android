@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private const val MGBA_URL = "https://github.com/mgba-emu/mgba"
+private const val SNES9X_URL = "https://github.com/libretro/snes9x"
 private const val FCEUMM_URL = "https://github.com/libretro/libretro-fceumm"
 private const val GPL_URL = "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
 private const val MPL_URL = "https://www.mozilla.org/en-US/MPL/2.0/"
@@ -41,6 +42,13 @@ fun AboutPage(onBack: () -> Unit) {
     val nesVersion = remember {
         try {
             ctx.assets.open("fceumm-version.txt").bufferedReader().use { it.readText().trim() }
+        } catch (_: Exception) {
+            "không rõ"
+        }
+    }
+    val snesVersion = remember {
+        try {
+            ctx.assets.open("snes9x-version.txt").bufferedReader().use { it.readText().trim() }
         } catch (_: Exception) {
             "không rõ"
         }
@@ -74,14 +82,17 @@ fun AboutPage(onBack: () -> Unit) {
         RowDivider(inset = 16.dp)
         ActionRow("FCEUmm $nesVersion", subtitle = "Lõi giả lập NES · GPL 2.0 · mã nguồn gốc, không sửa đổi", chevron = true) { open(FCEUMM_URL) }
         RowDivider(inset = 16.dp)
+        RowDivider(inset = 16.dp)
+        ActionRow("Snes9x $snesVersion", subtitle = "Lõi giả lập SNES · giấy phép phi thương mại của Snes9x · mã nguồn gốc, không sửa đổi", chevron = true) { open(SNES9X_URL) }
+        RowDivider(inset = 16.dp)
         ActionRow("Nội dung giấy phép GPL 2.0", chevron = true) { open(GPL_URL) }
         RowDivider(inset = 16.dp)
         ActionRow("libretro-thumbnails", subtitle = "Nguồn ảnh bìa", chevron = true) { open(THUMBS_URL) }
     }
     Text(
         "Giao diện: AndroidX / Jetpack Compose (Apache 2.0), phông Inter (SIL OFL 1.1), biểu tượng Lucide (ISC). " +
-            "Skin \"Atomic Advance – SmokeGray\" của Stanley Sy (starvingartist), ảnh thuộc về tác giả. " +
-            "Game Boy Advance, Game Boy và NES là nhãn hiệu của Nintendo; Retro không liên kết với Nintendo.",
+            "Skin \"Atomic Advance – SmokeGray\" và \"SNES Pocket (JoyCon)\" của Stanley Sy (starvingartist), ảnh thuộc về tác giả. " +
+            "Game Boy Advance, Game Boy, NES và Super Nintendo là nhãn hiệu của Nintendo; Retro không liên kết với Nintendo.",
         color = Rc.Faint,
         fontSize = 12.sp,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),

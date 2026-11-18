@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
 /** Giữ nút nhà/góc menu đủ thời gian này thì thoát thẳng về thư viện. */
 const val EXIT_HOLD_MS = 400L
 
-private enum class Ctl { DPAD, A, B, L, R, START, SELECT, MENU, QSAVE, QLOAD }
+private enum class Ctl { DPAD, A, B, X, Y, L, R, START, SELECT, MENU, QSAVE, QLOAD }
 
 /** Một nút: khung (đơn vị của ảnh skin) và phần mở rộng vùng chạm mỗi cạnh. */
 private class SkinItem(
@@ -63,6 +63,8 @@ private class SkinDef(
     /** Hàng thông tin (HUD): toạ độ y trong vùng đen phía trên game. */
     val hy: Float,
     val items: List<SkinItem>,
+    /** D-pad hình chữ thập (vẽ sáng từng cánh); false = cần xoay tròn (joycon), chỉ vẽ chấm theo hướng. */
+    val cross: Boolean = true,
 )
 
 private val PORTRAIT = SkinDef(
@@ -103,9 +105,56 @@ private val LANDSCAPE = SkinDef(
     ),
 )
 
+/** Skin "SNES Pocket (JoyCon)": toạ độ theo đơn vị mapping của file Delta (375x812 và 812x375). */
+private val SNES_PORTRAIT = SkinDef(
+    asset = "skin/snes_portrait.png",
+    mw = 375f, mh = 812f,
+    sx = 13f, sy = 126f, sw = 348f, sh = 261f,
+    hy = 96f,
+    cross = false,
+    items = listOf(
+        SkinItem(Ctl.DPAD, 25f, 558f, 121f, 121f, 20f, 20f, 20f, 20f),
+        SkinItem(Ctl.X, 240f, 535f, 73f, 73f, 6f, 8f, 6f, 0f),
+        SkinItem(Ctl.A, 294f, 581f, 73f, 73f, 0f, 6f, 8f, 6f),
+        SkinItem(Ctl.B, 239f, 627f, 73f, 73f, 6f, 0f, 6f, 8f),
+        SkinItem(Ctl.Y, 186f, 581f, 73f, 73f, 8f, 6f, 0f, 6f),
+        SkinItem(Ctl.L, 10f, 477f, 126f, 34f, 10f, 10f, 10f, 10f),
+        SkinItem(Ctl.R, 238f, 477f, 126f, 34f, 10f, 10f, 10f, 10f),
+        SkinItem(Ctl.SELECT, 130f, 713f, 48f, 43f, 8f, 8f, 8f, 14f),
+        SkinItem(Ctl.START, 195f, 713f, 48f, 43f, 8f, 8f, 8f, 14f),
+        SkinItem(Ctl.QSAVE, 40f, 426f, 50f, 19f, 10f, 6f, 10f, 6f),
+        SkinItem(Ctl.QLOAD, 285f, 426f, 50f, 19f, 10f, 6f, 10f, 6f),
+        SkinItem(Ctl.MENU, 170f, 422f, 33f, 32f, 5f, 5f, 5f, 5f),
+    ),
+)
+
+private val SNES_LANDSCAPE = SkinDef(
+    asset = "skin/snes_landscape.png",
+    mw = 812f, mh = 375f,
+    sx = 198f, sy = 21f, sw = 416f, sh = 312f,
+    hy = 6f,
+    cross = false,
+    items = listOf(
+        SkinItem(Ctl.DPAD, 52f, 123f, 121f, 121f, 20f, 20f, 20f, 20f),
+        SkinItem(Ctl.X, 676f, 98f, 73f, 73f, 6f, 8f, 6f, 0f),
+        SkinItem(Ctl.A, 729f, 145f, 73f, 73f, 0f, 6f, 8f, 6f),
+        SkinItem(Ctl.B, 674f, 192f, 73f, 73f, 6f, 0f, 6f, 8f),
+        SkinItem(Ctl.Y, 621f, 145f, 73f, 73f, 8f, 6f, 0f, 6f),
+        SkinItem(Ctl.L, 27f, 26f, 126f, 34f, 10f, 10f, 10f, 10f),
+        SkinItem(Ctl.R, 658f, 26f, 126f, 34f, 10f, 10f, 10f, 10f),
+        SkinItem(Ctl.SELECT, 136f, 295f, 48f, 43f, 8f, 8f, 8f, 8f),
+        SkinItem(Ctl.START, 633f, 295f, 48f, 43f, 8f, 8f, 8f, 8f),
+        SkinItem(Ctl.QSAVE, 286f, 342f, 50f, 19f, 10f, 6f, 10f, 6f),
+        SkinItem(Ctl.QLOAD, 477f, 342f, 50f, 19f, 10f, 6f, 10f, 6f),
+        SkinItem(Ctl.MENU, 32f, 311f, 34f, 35f, 5f, 5f, 5f, 5f),
+    ),
+)
+
 private fun bitOf(c: Ctl): Int = when (c) {
     Ctl.A -> Pad.A
     Ctl.B -> Pad.B
+    Ctl.X -> Pad.X
+    Ctl.Y -> Pad.Y
     Ctl.L -> Pad.L
     Ctl.R -> Pad.R
     Ctl.START -> Pad.START
@@ -113,7 +162,7 @@ private fun bitOf(c: Ctl): Int = when (c) {
     else -> 0
 }
 
-private val LATCHABLE = listOf(Ctl.A, Ctl.B, Ctl.L, Ctl.R, Ctl.START, Ctl.SELECT)
+private val LATCHABLE = listOf(Ctl.A, Ctl.B, Ctl.X, Ctl.Y, Ctl.L, Ctl.R, Ctl.START, Ctl.SELECT)
 
 private fun len(x: Float, y: Float): Float = sqrt(x * x + y * y)
 
@@ -131,6 +180,8 @@ fun SkinPad(
     onExit: () -> Unit,
     onQuickSave: () -> Unit,
     onQuickLoad: () -> Unit,
+    /** true = skin SNES (có nút X/Y). */
+    snes: Boolean = false,
     game: @Composable (Modifier) -> Unit,
     hud: @Composable (Modifier) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -151,7 +202,7 @@ fun SkinPad(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wPx = constraints.maxWidth.toFloat()
         val hPx = constraints.maxHeight.toFloat()
-        val def = if (wPx > hPx) LANDSCAPE else PORTRAIT
+        val def = if (snes) (if (wPx > hPx) SNES_LANDSCAPE else SNES_PORTRAIT) else (if (wPx > hPx) LANDSCAPE else PORTRAIT)
         val kx = wPx / def.mw
         val ky = hPx / def.mh
 
@@ -320,14 +371,26 @@ fun SkinPad(
                 if (i.c !in pressed) continue
                 val f = frame(i)
                 when (i.c) {
-                    Ctl.A, Ctl.B, Ctl.START, Ctl.SELECT ->
+                    Ctl.A, Ctl.B, Ctl.X, Ctl.Y, Ctl.START, Ctl.SELECT ->
                         drawCircle(tint, radius = minOf(f.width, f.height) / 2f, center = f.center)
                     Ctl.QSAVE, Ctl.QLOAD, Ctl.L, Ctl.R, Ctl.MENU ->
                         drawRoundRect(tint, f.topLeft, Size(f.width, f.height), CornerRadius(f.height / 2f, f.height / 2f))
                     else -> {}
                 }
             }
-            if (dir != 0) {
+            if (dir != 0 && !def.cross) {
+                // Joycon: chấm sáng ở phía ngón đang đẩy.
+                val c = dFrame.center
+                val half = dFrame.width / 2f
+                var ox = 0f
+                var oy = 0f
+                if (dir and Pad.UP != 0) oy -= 1f
+                if (dir and Pad.DOWN != 0) oy += 1f
+                if (dir and Pad.LEFT != 0) ox -= 1f
+                if (dir and Pad.RIGHT != 0) ox += 1f
+                val l = len(ox, oy)
+                if (l > 0f) drawCircle(tint, radius = half * 0.3f, center = Offset(c.x + ox / l * half * 0.4f, c.y + oy / l * half * 0.4f))
+            } else if (dir != 0) {
                 val c = dFrame.center
                 val half = dFrame.width / 2f
                 val t = half * 0.32f

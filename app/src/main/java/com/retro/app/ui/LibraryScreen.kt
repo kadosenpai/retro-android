@@ -590,6 +590,7 @@ private fun SortMenu(expanded: Boolean, onDismiss: () -> Unit, current: SortKey,
 private fun tabTitle(id: String): String = when (id) {
     "gba" -> "Game Boy Advance"
     "nes" -> "NES"
+    "snes" -> "SNES"
     "gb" -> "Game Boy"
     "gbc" -> "Game Boy Color"
     else -> id

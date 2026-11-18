@@ -22,5 +22,6 @@ Trình chơi game retro cho Android: GBA, Game Boy, Game Boy Color và NES. Giao
 - `app/src/main/cpp`: máy chủ libretro (C++), nạp lõi bằng `dlopen`, cầu nối JNI.
 - `scripts/build-mgba-android.sh`: biên dịch mGBA libretro cho arm64 bằng NDK.
 - `scripts/build-fceumm-android.sh`: biên dịch lõi FCEUmm (NES) bằng ndk-build.
+- `scripts/build-snes9x-android.sh`: biên dịch lõi Snes9x (SNES) bằng ndk-build.
 - `scripts/patch-mgba-cheats.py`: vá mGBA để tắt cheat gỡ được bản vá ROM (chạy tự động trong script trên).
 - `app/src/main/java/com/retro/app`: giao diện + động cơ (Kotlin).

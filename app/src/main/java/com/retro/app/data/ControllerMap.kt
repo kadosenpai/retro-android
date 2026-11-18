@@ -10,6 +10,8 @@ enum class GbaButton(val label: String, val bit: Int) {
     RIGHT("Phải", Pad.RIGHT),
     A("A", Pad.A),
     B("B", Pad.B),
+    X("X (SNES)", Pad.X),
+    Y("Y (SNES)", Pad.Y),
     L("L", Pad.L),
     R("R", Pad.R),
     START("Start", Pad.START),
@@ -52,6 +54,9 @@ class ControllerMap(val keys: Map<GbaButton, Set<Int>>) {
                 // Nút dưới (A kiểu Xbox) = B của GBA, nút phải = A của GBA.
                 GbaButton.A to setOf(97),
                 GbaButton.B to setOf(96),
+                // Bố cục Nintendo: nút trên (Y kiểu Xbox) = X, nút trái (X kiểu Xbox) = Y.
+                GbaButton.X to setOf(100),
+                GbaButton.Y to setOf(99),
                 GbaButton.L to setOf(102, 104),
                 GbaButton.R to setOf(103, 105),
                 GbaButton.START to setOf(108),

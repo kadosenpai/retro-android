@@ -10,6 +10,8 @@ app/src/main/jniLibs/
 .mgba-src/
 .mgba-build-*/
 .fceumm-src/
+.snes9x-src/
+app/src/main/assets/snes9x-version.txt
 app/src/main/assets/fceumm-version.txt
 app/src/main/assets/mgba-version.txt
 *.jks
