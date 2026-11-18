@@ -1,8 +1,13 @@
 package com.retro.app.ui
 
 import android.app.Activity
+import android.os.SystemClock
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -59,6 +65,7 @@ fun PlayScreen(model: AppModel) {
                 sticky = s.sticky,
                 onMask = { EmulatorEngine.setTouchMask(it) },
                 onMenu = { model.menuOpen = true },
+                onExit = { model.exitToLibrary() },
                 onQuickSave = { model.saveSlot(1) },
                 onQuickLoad = { model.loadSlot(1) },
                 game = { m -> GameSurface(m) },
@@ -81,7 +88,21 @@ fun PlayScreen(model: AppModel) {
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(8.dp)
                     .background(Rc.Solid.copy(alpha = 0.7f), RoundedCornerShape(20.dp))
-                    .clickableNoRipple { model.menuOpen = true }
+                    .pointerInput(Unit) {
+                        // Chạm nhanh mở menu; giữ đủ lâu thì thoát thẳng về thư viện.
+                        awaitEachGesture {
+                            awaitFirstDown()
+                            val t0 = SystemClock.uptimeMillis()
+                            val up = withTimeoutOrNull(EXIT_HOLD_MS) { waitForUpOrCancellation() }
+                            if (up != null) {
+                                model.menuOpen = true
+                            } else if (SystemClock.uptimeMillis() - t0 >= EXIT_HOLD_MS - 20) {
+                                if (s.haptics) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                model.exitToLibrary()
+                                waitForUpOrCancellation()
+                            }
+                        }
+                    }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 Text("▲", color = Rc.Text, fontSize = 16.sp)

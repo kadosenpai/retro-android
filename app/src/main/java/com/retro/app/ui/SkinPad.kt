@@ -1,6 +1,7 @@
 package com.retro.app.ui
 
 import android.graphics.BitmapFactory
+import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -42,6 +43,9 @@ import kotlinx.coroutines.withContext
  * mỗi nút là một vùng chạm trong suốt nằm đúng chỗ trên ảnh.
  * Skin: "Atomic Advance - SmokeGray" của Stanley Sy (starvingartist).
  */
+
+/** Giữ nút nhà/góc menu đủ thời gian này thì thoát thẳng về thư viện. */
+const val EXIT_HOLD_MS = 800L
 
 private enum class Ctl { DPAD, A, B, L, R, START, SELECT, MENU, QSAVE, QLOAD }
 
@@ -116,7 +120,7 @@ private fun len(x: Float, y: Float): Float = sqrt(x * x + y * y)
 /**
  * Màn chơi có skin: [game] được đặt đúng khung màn hình của skin, ảnh skin phủ lên trên,
  * cảm ứng đa điểm xử lý trực tiếp trên ảnh (D-pad trượt được, trượt ngón giữa các nút vẫn nhận,
- * nhả ngón trên nút nhà thì mở menu, chạm Lưu/Nạp thì lưu/nạp vào ô 1).
+ * nhả ngón trên nút nhà thì mở menu (giữ 0,8 giây thì thoát về thư viện), chạm Lưu/Nạp thì lưu/nạp vào ô 1).
  */
 @Composable
 fun SkinPad(
@@ -124,6 +128,7 @@ fun SkinPad(
     sticky: Boolean,
     onMask: (Int) -> Unit,
     onMenu: () -> Unit,
+    onExit: () -> Unit,
     onQuickSave: () -> Unit,
     onQuickLoad: () -> Unit,
     game: @Composable (Modifier) -> Unit,
@@ -136,6 +141,7 @@ fun SkinPad(
     val hapticsNow by rememberUpdatedState(haptics)
     val onMaskNow by rememberUpdatedState(onMask)
     val onMenuNow by rememberUpdatedState(onMenu)
+    val onExitNow by rememberUpdatedState(onExit)
     val onSaveNow by rememberUpdatedState(onQuickSave)
     val onLoadNow by rememberUpdatedState(onQuickLoad)
 
@@ -217,12 +223,27 @@ fun SkinPad(
             var lastMask = 0
             var latched = 0 // các nút đang được "giữ" (khi bật Giữ nút)
             var touchedPrev = 0
+            var menuId: PointerId? = null // ngón đang đặt trên nút nhà
+            var menuDownAt = 0L
+            var menuFired = false // đã giữ đủ lâu và đã thoát
             onMaskNow(0)
             pressed = emptySet()
             dir = 0
             awaitPointerEventScope {
                 while (true) {
-                    val event = awaitPointerEvent()
+                    val event = if (menuId != null && !menuFired) {
+                        val remaining = EXIT_HOLD_MS - (SystemClock.uptimeMillis() - menuDownAt)
+                        withTimeoutOrNull(maxOf(1L, remaining)) { awaitPointerEvent() }
+                    } else {
+                        awaitPointerEvent()
+                    }
+                    if (event == null) {
+                        // Giữ nút nhà đủ lâu: thoát thẳng về thư viện.
+                        menuFired = true
+                        if (hapticsNow) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        onExitNow()
+                        continue
+                    }
                     val now = HashSet<Ctl>()
                     var stickMask = 0
                     var btnMask = 0
@@ -233,12 +254,16 @@ fun SkinPad(
                         val id = ch.id
                         if (!ch.pressed) {
                             when (owner[id]) {
-                                Ctl.MENU -> doMenu = true
+                                Ctl.MENU -> if (!(menuId == id && menuFired)) doMenu = true
                                 Ctl.QSAVE -> doSave = true
                                 Ctl.QLOAD -> doLoad = true
                                 else -> {}
                             }
                             owner.remove(id)
+                            if (menuId == id) {
+                                menuId = null
+                                menuFired = false
+                            }
                             if (dpadId == id) dpadId = null
                             ch.consume()
                             continue
@@ -250,6 +275,15 @@ fun SkinPad(
                         } else {
                             val c = hit(ch.position)
                             owner[id] = c
+                            if (c == Ctl.MENU) {
+                                if (menuId == null) {
+                                    menuId = id
+                                    menuDownAt = ch.uptimeMillis
+                                    menuFired = false
+                                }
+                            } else if (menuId == id) {
+                                menuId = null // trượt ngón ra khỏi nút nhà thì huỷ
+                            }
                             if (c != null) {
                                 now.add(c)
                                 btnMask = btnMask or bitOf(c)
