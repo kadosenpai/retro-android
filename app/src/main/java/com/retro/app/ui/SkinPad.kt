@@ -162,7 +162,7 @@ private val SNES_LANDSCAPE = SkinDef(
     mw = 812f, mh = 375f,
     sx = 198f, sy = 21f, sw = 416f, sh = 312f,
     // Hàng thông tin vắt qua mép trên màn hình (dải xám mỏng + viền đen), chữ nhỏ, trắng có bóng.
-    hy = 2f,
+    hy = 9f,
     hi = 27f,
     hudColor = Color(0xF2FFFFFF),
     hudSp = 9f,
