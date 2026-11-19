@@ -246,7 +246,7 @@ fun LibraryScreen(model: AppModel) {
         ) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    tabTitle(tabs.getOrNull(pagerState.currentPage)?.first ?: tab).uppercase(),
+                    GameSystem.fromId(tabs.getOrNull(pagerState.currentPage)?.first ?: tab).label.uppercase(),
                     color = Rc.Muted,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -618,16 +618,6 @@ private fun SortMenu(expanded: Boolean, onDismiss: () -> Unit, current: SortKey,
             )
         }
     }
-}
-
-private fun tabTitle(id: String): String = when (id) {
-    "gba" -> "Game Boy Advance"
-    "nes" -> "NES"
-    "snes" -> "SNES"
-    "nds" -> "NDS"
-    "gb" -> "Game Boy"
-    "gbc" -> "Game Boy Color"
-    else -> id
 }
 
 @Composable

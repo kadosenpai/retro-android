@@ -13,6 +13,7 @@ enum class Core(val id: String) {
 /** Hệ máy được hỗ trợ. Mỗi hệ có đuôi file ROM, tên DAT/thư mục ảnh bìa của libretro và tab hiển thị trong thư viện. */
 enum class GameSystem(
     val id: String,
+    /** Tên đầy đủ (hiện ở tiêu đề thư viện và thông báo). */
     val label: String,
     /** Id của tab trong thư viện (mỗi hệ một tab riêng). */
     val tab: String,
@@ -24,7 +25,7 @@ enum class GameSystem(
     /** Loại mã cheat hệ này dùng. */
     val cheatKind: CheatKind,
 ) {
-    GBA("gba", "GBA", "gba", setOf("gba", "agb", "bin"), "Nintendo - Game Boy Advance", "Nintendo_-_Game_Boy_Advance", 0x200, Core.MGBA, CheatKind.GBA),
+    GBA("gba", "Game Boy Advance", "gba", setOf("gba", "agb", "bin"), "Nintendo - Game Boy Advance", "Nintendo_-_Game_Boy_Advance", 0x200, Core.MGBA, CheatKind.GBA),
     GB("gb", "Game Boy", "gb", setOf("gb"), "Nintendo - Game Boy", "Nintendo_-_Game_Boy", 0x150, Core.MGBA, CheatKind.GB),
     GBC("gbc", "Game Boy Color", "gbc", setOf("gbc", "cgb"), "Nintendo - Game Boy Color", "Nintendo_-_Game_Boy_Color", 0x150, Core.MGBA, CheatKind.GB),
     NES("nes", "NES", "nes", setOf("nes", "unf", "unif"), "Nintendo - Nintendo Entertainment System", "Nintendo_-_Nintendo_Entertainment_System", 0x2010, Core.FCEUMM, CheatKind.NES),
