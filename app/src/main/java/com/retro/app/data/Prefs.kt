@@ -56,6 +56,15 @@ class Prefs(ctx: Context) {
             .apply()
     }
 
+    /** Thư mục game đã chọn (Uri cây tài liệu) và tên hiển thị của nó; null = chưa chọn. */
+    fun gameFolder(): String? = sp.getString("gameFolder", null)
+
+    fun gameFolderName(): String? = sp.getString("gameFolderName", null)
+
+    fun saveGameFolder(uri: String, name: String) {
+        sp.edit().putString("gameFolder", uri).putString("gameFolderName", name).apply()
+    }
+
     fun loadPadMap(): ControllerMap = ControllerMap.decode(sp.getString("padmap", null))
 
     fun savePadMap(m: ControllerMap) {

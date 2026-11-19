@@ -140,6 +140,29 @@ fun LibraryScreen(model: AppModel) {
         model.addRoms(uris)
     }
 
+    // Chọn thư mục game; nếu bấm quét khi chưa chọn thì chọn xong sẽ quét luôn.
+    var scanAfterPick by remember { mutableStateOf(false) }
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        val scan = scanAfterPick
+        scanAfterPick = false
+        if (uri != null) {
+            model.setGameFolder(uri)
+            if (scan) model.scanGameFolder()
+        }
+    }
+    // Chưa có game nào: dấu cộng (thêm ROM). Đã có game: nút quét lại thư mục game.
+    val hasAnyRom = model.roms.isNotEmpty()
+    val addOrScan: () -> Unit = {
+        if (!hasAnyRom) {
+            picker.launch(arrayOf("*/*"))
+        } else if (model.gameFolder == null) {
+            scanAfterPick = true
+            folderPicker.launch(null)
+        } else {
+            model.scanGameFolder()
+        }
+    }
+
     val tab = model.settings.tab
     // Chỉ hệ máy nào đã có băng mới có trang riêng; thêm băng của hệ mới thì trang mới xuất hiện.
     val tabs = remember(model.roms) {
@@ -189,7 +212,7 @@ fun LibraryScreen(model: AppModel) {
                 Spacer(Modifier.width(8.dp))
                 SearchBox(query, { query = it }, 36.dp, Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
-                IconBtn("plus", "Thêm băng", small = true) { picker.launch(arrayOf("*/*")) }
+                IconBtn(if (hasAnyRom) "refresh" else "plus", if (hasAnyRom) "Quét lại thư mục game" else "Thêm băng", small = true) { addOrScan() }
             }
         } else {
             // Thanh tiêu đề
@@ -207,7 +230,7 @@ fun LibraryScreen(model: AppModel) {
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                IconBtn("plus", "Thêm băng", Modifier.align(Alignment.CenterEnd)) { picker.launch(arrayOf("*/*")) }
+                IconBtn(if (hasAnyRom) "refresh" else "plus", if (hasAnyRom) "Quét lại thư mục game" else "Thêm băng", Modifier.align(Alignment.CenterEnd)) { addOrScan() }
             }
 
             // Ô tìm kiếm
@@ -424,6 +447,16 @@ fun LibraryScreen(model: AppModel) {
                         }
                         SectionTitle("Dữ liệu")
                         GroupCard {
+                            ActionRow(
+                                "Thư mục game",
+                                icon = "folder",
+                                subtitle = model.gameFolderName ?: "Chưa chọn. Quét thư mục để thêm game vào thư viện",
+                                chevron = true,
+                            ) {
+                                scanAfterPick = false
+                                folderPicker.launch(null)
+                            }
+                            RowDivider()
                             ActionRow("Dữ liệu", icon = "database", chevron = true) { settingsPage = 5 }
                         }
                         SectionTitle("Khác")

@@ -65,6 +65,12 @@ class AppModel(private val app: Application) {
         private set
     var controllerMap by mutableStateOf(prefs.loadPadMap())
         private set
+    var gameFolder by mutableStateOf(prefs.gameFolder())
+        private set
+    var gameFolderName by mutableStateOf(prefs.gameFolderName())
+        private set
+    var scanning by mutableStateOf(false)
+        private set
 
     init {
         EmulatorEngine.sramSink = { id, data -> runCatching { store.writeSram(id, data) } }
@@ -110,6 +116,50 @@ class AppModel(private val app: Application) {
     }
 
     // ---------- Thư viện ----------
+    /** Lưu thư mục game người dùng vừa chọn (giữ quyền đọc qua các lần mở app). */
+    fun setGameFolder(uri: Uri) {
+        try {
+            app.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (_: Exception) {
+        }
+        val id = try {
+            android.provider.DocumentsContract.getTreeDocumentId(uri)
+        } catch (_: Exception) {
+            uri.lastPathSegment ?: "Thư mục game"
+        }
+        val name = id.substringAfter(':', id).ifEmpty { "Bộ nhớ trong" }
+        prefs.saveGameFolder(uri.toString(), name)
+        gameFolder = uri.toString()
+        gameFolderName = name
+    }
+
+    /** Quét thư mục game, chép mọi ROM mới vào thư viện. */
+    fun scanGameFolder() {
+        val tree = gameFolder ?: return
+        if (scanning) return
+        scanning = true
+        toast = "Đang quét thư mục game…"
+        scope.launch {
+            val added = try {
+                withContext(Dispatchers.IO) { store.scanTree(Uri.parse(tree)) }
+            } catch (_: Exception) {
+                null
+            }
+            scanning = false
+            if (added == null) {
+                toast = "Không đọc được thư mục game. Hãy chọn lại thư mục trong Cài đặt."
+                return@launch
+            }
+            refresh()
+            autoCoverMissing()
+            added.lastOrNull()?.let { a ->
+                val tab = GameSystem.fromId(a.system).tab
+                if (settings.tab != tab) update { it.copy(tab = tab) }
+            }
+            toast = "Đã thêm ${added.size} game"
+        }
+    }
+
     fun addRoms(uris: List<Uri>) {
         if (uris.isEmpty()) return
         scope.launch {

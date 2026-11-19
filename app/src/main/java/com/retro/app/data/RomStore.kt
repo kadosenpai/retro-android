@@ -2,6 +2,7 @@ package com.retro.app.data
 
 import android.content.Context
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import org.json.JSONArray
 import org.json.JSONObject
@@ -203,6 +204,69 @@ class RomStore(private val ctx: Context) {
         } finally {
             tmp.delete()
         }
+    }
+
+    /**
+     * Quét thư mục game (cây tài liệu do người dùng chọn), thêm mọi ROM mới tìm thấy (có quét cả thư mục con).
+     * Mỗi file đã xử lý được nhớ theo (id tài liệu, kích thước, ngày sửa) nên lần quét sau không đọc lại file cũ,
+     * trừ khi game đó đã bị xoá khỏi thư viện.
+     */
+    fun scanTree(tree: Uri): List<RomInfo> {
+        val prefs = ctx.getSharedPreferences("retro-scan", Context.MODE_PRIVATE)
+        // "khoá tệp\tid game"
+        val known = HashMap<String, String>()
+        for (e in prefs.getStringSet("known", emptySet()).orEmpty()) {
+            val i = e.lastIndexOf('\t')
+            if (i > 0) known[e.substring(0, i)] = e.substring(i + 1)
+        }
+        val liveIds = synchronized(lock) { readIndex().map { it.id }.toHashSet() }
+        val added = ArrayList<RomInfo>()
+        val cols = arrayOf(
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+            DocumentsContract.Document.COLUMN_SIZE,
+            DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+        )
+        val stack = ArrayDeque<String>()
+        stack.add(DocumentsContract.getTreeDocumentId(tree))
+        while (stack.isNotEmpty()) {
+            val dirId = stack.removeLast()
+            val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, dirId)
+            val files = ArrayList<Array<String>>()
+            try {
+                ctx.contentResolver.query(children, cols, null, null, null)?.use { c ->
+                    while (c.moveToNext()) {
+                        val docId = c.getString(0) ?: continue
+                        val name = c.getString(1) ?: continue
+                        if (c.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR) {
+                            stack.add(docId)
+                        } else {
+                            files.add(arrayOf(docId, name, c.getLong(3).toString(), c.getLong(4).toString()))
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                continue
+            }
+            for (f in files) {
+                val ext = f[1].substringAfterLast('.', "").lowercase()
+                if (GameSystem.fromExt(ext) == null) continue
+                val key = "${f[0]}|${f[2]}|${f[3]}"
+                val old = known[key]
+                if (old != null && old in liveIds) continue
+                when (val r = import(DocumentsContract.buildDocumentUriUsingTree(tree, f[0]))) {
+                    is ImportResult.Added -> {
+                        known[key] = r.rom.id
+                        added.add(r.rom)
+                    }
+                    is ImportResult.Duplicate -> known[key] = r.rom.id
+                    is ImportResult.Rejected -> {}
+                }
+            }
+        }
+        prefs.edit().putStringSet("known", known.map { "${it.key}\t${it.value}" }.toSet()).apply()
+        return added
     }
 
     fun rename(id: String, name: String) = synchronized(lock) {
