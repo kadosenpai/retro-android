@@ -126,8 +126,8 @@ class GameRenderer : GLSurfaceView.Renderer {
         }
 
         val quads = DsLayout.quads
-        // NDS: lọc mượt khi phóng không nguyên số; hệ thường: lấy mẫu gần nhất.
-        val wantLinear = quads != null
+        // NDS và hệ ép tỉ lệ (PlayStation, Mega Drive): lọc mượt khi phóng không nguyên số; hệ thường: lấy mẫu gần nhất.
+        val wantLinear = quads != null || DisplayAspect.value > 0f
         if (wantLinear != linear) {
             val f = if (wantLinear) GLES20.GL_LINEAR else GLES20.GL_NEAREST
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, f)
@@ -141,7 +141,7 @@ class GameRenderer : GLSurfaceView.Renderer {
         GLES20.glEnableVertexAttribArray(aPos)
         GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quad)
         if (quads == null) {
-            val vp = computeViewport(surfW, surfH, w, h)
+            val vp = computeViewport(surfW, surfH, w, h, DisplayAspect.value)
             if (vp.width > 0 && vp.height > 0) {
                 GLES20.glViewport(vp.x, surfH - vp.y - vp.height, vp.width, vp.height)
                 GLES20.glUniform2f(uVr, 0f, 1f)

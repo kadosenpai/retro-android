@@ -55,6 +55,8 @@ class CoverService(private val ctx: Context, private val store: RomStore) {
     /** CRC32 của ROM; NES (16 byte đầu) và SNES (512 byte đầu của máy copy) có thêm CRC không tính phần header (DAT No-Intro thường tính không có header). */
     private fun romCrcs(sys: GameSystem, f: File): List<Long> {
         if (!f.exists()) return listOf(-1L)
+        // Ảnh đĩa PlayStation vài trăm MB và CRC của CHD không trùng DAT: bỏ qua, tìm bìa theo tên file.
+        if (sys == GameSystem.PSX) return listOf(-1L)
         val full = crc32Of(f, 0)
         if (sys == GameSystem.SNES) {
             // Một số ROM SNES có thêm 512 byte đầu của máy copy; DAT No-Intro tính không có phần này.

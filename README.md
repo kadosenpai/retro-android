@@ -1,6 +1,6 @@
 # Retro (Android)
 
-Trình chơi game retro cho Android: GBA, Game Boy, Game Boy Color, NES, SNES và Nintendo DS. Giao diện Kotlin (Jetpack Compose) + lõi libretro qua NDK. Chỉ dùng ROM bạn sở hữu hợp pháp.
+Trình chơi game retro cho Android: GBA, Game Boy, Game Boy Color, NES, SNES, Nintendo DS, Mega Drive và PlayStation. Giao diện Kotlin (Jetpack Compose) + lõi libretro qua NDK. Chỉ dùng ROM bạn sở hữu hợp pháp.
 
 | Hệ máy | Lõi | Định dạng ROM |
 | --- | --- | --- |
@@ -8,6 +8,8 @@ Trình chơi game retro cho Android: GBA, Game Boy, Game Boy Color, NES, SNES v�
 | NES | FCEUmm | `.nes` |
 | SNES | Snes9x | `.sfc` `.smc` `.swc` `.fig` |
 | Nintendo DS | melonDS | `.nds` `.dsi` `.ids` |
+| Mega Drive | Genesis Plus GX | `.md` `.gen` `.smd` |
+| PlayStation | PCSX ReARMed | `.chd` `.pbp` `.iso` (một file) |
 
 ROM nén `.zip` chưa được hỗ trợ.
 
@@ -30,7 +32,7 @@ ROM nén `.zip` chưa được hỗ trợ.
 - Tay cầm ảo theo skin kiểu Delta, hỗ trợ tay cầm thật và gán lại nút, rung phản hồi, chế độ giữ nút.
 - Bấm **menu** trên skin để mở menu; **giữ nút menu** để thoát thẳng về thư viện.
 - Hiện thông số (fps, thời gian xử lý của lõi, giờ, pin) nằm trong khung của skin.
-- Cheat cho GBA (GameShark/Action Replay), GB/GBC (GameShark, Game Genie), NES (Game Genie, mã thô), SNES (Game Genie, Pro Action Replay) và NDS (Action Replay); tắt cheat có hiệu lực ngay, mã sai loại sẽ báo.
+- Cheat cho GBA (GameShark/Action Replay), GB/GBC (GameShark, Game Genie), NES (Game Genie, mã thô), SNES (Game Genie, Pro Action Replay) NDS (Action Replay), Mega Drive (Game Genie, Pro Action Replay) và PlayStation (GameShark); tắt cheat có hiệu lực ngay, mã sai loại sẽ báo.
 - Game Boy/GBC: chọn bảng màu và viền Super Game Boy (áp dụng khi mở lại game).
 - Nintendo DS: cảm ứng màn dưới; skin dọc xếp hai màn trên/dưới, skin ngang có màn lớn và màn nhỏ, chạm vào màn nhỏ để đổi chỗ hai màn.
 
@@ -43,11 +45,11 @@ ROM nén `.zip` chưa được hỗ trợ.
 
 - `app/src/main/cpp`: máy chủ libretro (C++), nạp lõi bằng `dlopen`, cầu nối JNI, nhận cảm ứng cho NDS.
 - `scripts/build-mgba-android.sh`: biên dịch mGBA libretro cho arm64 bằng NDK.
-- `scripts/build-fceumm-android.sh`, `scripts/build-snes9x-android.sh`, `scripts/build-melonds-android.sh`: biên dịch lõi FCEUmm, Snes9x, melonDS bằng ndk-build (có vá nhỏ cho melonDS khi build Android).
+- `scripts/common.sh` (hàm dùng chung: tải đúng commit, ndk-build, đặt lõi vào jniLibs) và `scripts/build-<lõi>-android.sh` cho từng lõi (mGBA, FCEUmm, Snes9x, melonDS, Genesis Plus GX, PCSX ReARMed; có vá nhỏ cho melonDS và mGBA).
 - `scripts/patch-mgba-cheats.py`: vá mGBA để tắt cheat gỡ được bản vá ROM (chạy tự động trong script mGBA).
 - `app/src/main/java/com/retro/app`: giao diện + động cơ (Kotlin). `data/` lưu thư viện, hệ máy, cheat; `core/` nối với lõi; `render/` vẽ khung hình (một màn hình hoặc hai màn hình NDS); `ui/` các màn hình và skin.
 - `app/src/main/assets/skin`: ảnh skin và ảnh nút.
 
 ## Giấy phép các lõi
 
-mGBA: MPL 2.0. FCEUmm: GPL 2.0. melonDS: GPL 3.0. Snes9x: giấy phép phi thương mại riêng của Snes9x (dùng cá nhân thì được, không dùng bán lại). Trang Giới thiệu trong app có liên kết tới từng lõi.
+mGBA: MPL 2.0. FCEUmm: GPL 2.0. melonDS: GPL 3.0. PCSX ReARMed: GPL 2.0. Genesis Plus GX: giấy phép phi thương mại riêng. Snes9x: giấy phép phi thương mại riêng của Snes9x (dùng cá nhân thì được, không dùng bán lại). Trang Giới thiệu trong app có liên kết tới từng lõi.

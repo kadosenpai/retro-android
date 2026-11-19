@@ -51,6 +51,12 @@ jobs:
       - name: Build lõi melonDS (Nintendo DS) cho Android
         run: bash ./scripts/build-melonds-android.sh
 
+      - name: Build lõi Genesis Plus GX (Mega Drive) cho Android
+        run: bash ./scripts/build-genesis-android.sh
+
+      - name: Build lõi PCSX ReARMed (PlayStation) cho Android
+        run: bash ./scripts/build-pcsx-android.sh
+
       - name: Chuẩn bị khoá ký
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

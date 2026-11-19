@@ -106,6 +106,30 @@ object EmulatorEngine {
         }
     }
 
+    /**
+     * Đường dẫn đưa cho lõi. PlayStation nhận dạng ảnh đĩa theo đuôi file (.chd/.pbp/.iso) mà ROM trong thư viện
+     * lưu với đuôi ".rom", nên tạo liên kết mềm có đúng đuôi (đoán theo nội dung) trong thư mục cache.
+     */
+    private fun playPath(ctx: Context, rom: File, sys: GameSystem): String {
+        if (sys.core != Core.PCSX) return rom.absolutePath
+        return try {
+            val head = ByteArray(8)
+            rom.inputStream().use { it.read(head) }
+            val ext = when {
+                String(head, Charsets.ISO_8859_1) == "MComprHD" -> "chd"
+                head[0].toInt() == 0 && String(head, 1, 3, Charsets.ISO_8859_1) == "PBP" -> "pbp"
+                else -> "iso"
+            }
+            val dir = File(ctx.cacheDir, "play").apply { mkdirs() }
+            dir.listFiles()?.forEach { it.delete() }
+            val link = File(dir, rom.nameWithoutExtension + "." + ext)
+            java.nio.file.Files.createSymbolicLink(link.toPath(), rom.toPath())
+            link.absolutePath
+        } catch (e: Exception) {
+            rom.absolutePath
+        }
+    }
+
     // ---------- Nạp / gỡ game ----------
     /** Trả về null nếu thành công, ngược lại là thông báo lỗi. */
     fun load(ctx: Context, rom: File, romId: String, sram: ByteArray?, sys: GameSystem): String? = call {
@@ -121,14 +145,15 @@ object EmulatorEngine {
                 if (err != null) return@call err
                 loadedCore = sys.core
             }
-            val err = NativeCore.nativeLoadGame(rom.absolutePath)
+            val path = playPath(ctx, rom, sys)
+            val err = NativeCore.nativeLoadGame(path)
             if (err != null) return@call err
             if (sram != null && sram.isNotEmpty()) NativeCore.nativeSetSram(sram)
             av = NativeCore.nativeAvInfo()
             lastSramHash = NativeCore.nativeGetSram()?.contentHashCode() ?: 0
             lastSramSaveNs = System.nanoTime()
             currentId = romId
-            romPath = rom.absolutePath
+            romPath = path
             cheatsActive = false
             pushInput()
             startAudio(OUTPUT_RATE)

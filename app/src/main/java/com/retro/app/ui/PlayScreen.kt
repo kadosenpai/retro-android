@@ -34,6 +34,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.retro.app.AppModel
 import com.retro.app.core.EmulatorEngine
+import com.retro.app.data.GameSystem
+import com.retro.app.render.DisplayAspect
 import com.retro.app.render.GameGLView
 
 @Composable
@@ -51,6 +53,13 @@ fun PlayScreen(model: AppModel) {
         ctrl?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         ctrl?.hide(WindowInsetsCompat.Type.systemBars())
         onDispose { ctrl?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
+
+    // Hệ có tỉ lệ khung riêng (PlayStation, Mega Drive) thì ép tỉ lệ khi vẽ.
+    val aspect = GameSystem.fromId(model.current?.system).aspect
+    DisposableEffect(aspect) {
+        DisplayAspect.value = aspect
+        onDispose { DisplayAspect.value = 0f }
     }
 
     // Mở menu thì tạm dừng game; xong thì chạy tiếp.

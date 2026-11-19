@@ -11,7 +11,7 @@ data class CheatItem(val id: String, val name: String, val code: String, val ena
  * SNES: Game Genie XXXX-XXXX (0-9, A-F) hoặc Pro Action Replay 8 ký tự hex (vd. 7E0DBE05).
  * NES: Game Genie 6 hoặc 8 chữ cái (APZLGITYEOXUKSVN), hoặc mã thô AAAA:VV / AAAA?CC:VV (hex).
  */
-enum class CheatKind { GBA, GB, NES, SNES, NDS }
+enum class CheatKind { GBA, GB, NES, SNES, NDS, MD, PSX }
 
 object CheatCodes {
     private val nesGenie = Regex("^[APZLGITYEOXUKSVN]{6}([APZLGITYEOXUKSVN]{2})?$")
@@ -30,6 +30,8 @@ object CheatCodes {
         CheatKind.NES -> validateNes(code)
         CheatKind.SNES -> validateSnes(code)
         CheatKind.NDS -> validateNds(code)
+        CheatKind.MD -> validateMd(code)
+        CheatKind.PSX -> validatePsx(code)
         CheatKind.GBA -> validateGba(code)
     }
 
@@ -39,6 +41,8 @@ object CheatCodes {
         CheatKind.NES -> nesTokens(code).joinToString("+")
         CheatKind.SNES -> snesTokens(code).joinToString("+")
         CheatKind.NDS -> ndsTokens(code).joinToString("+")
+        CheatKind.MD -> mdTokens(code).joinToString("+")
+        CheatKind.PSX -> psxCodes(code).joinToString("+")
         CheatKind.GBA -> code.uppercase().replace('-', ' ').split(Regex("[\\s+]+")).filter { it.isNotEmpty() }.joinToString("+")
     }
 
@@ -82,6 +86,41 @@ object CheatCodes {
             if (!snesPar.matches(t)) return "Mã NDS: các nhóm 8 ký tự hex (0-9, A-F), vd. 94000130 FCFF0000"
         }
         if (tokens.size % 2 != 0) return "Mã NDS gồm từng cặp hai nhóm 8 ký tự; đang thiếu một nhóm"
+        return null
+    }
+
+    private val mdGenie = Regex("^[A-Z0-9]{4}-[A-Z0-9]{4}$")
+    private val mdPar = Regex("^[0-9A-F]{6}:[0-9A-F]{4}$")
+
+    private fun mdTokens(code: String): List<String> =
+        code.uppercase().split(Regex("[\\s+,;]+")).filter { it.isNotEmpty() }
+
+    private fun validateMd(code: String): String? {
+        val tokens = mdTokens(code)
+        if (tokens.isEmpty()) return "Chưa nhập mã"
+        for (t in tokens) {
+            if (!mdGenie.matches(t) && !mdPar.matches(t)) {
+                return "Mã Mega Drive: Game Genie XXXX-XXXX hoặc Pro Action Replay XXXXXX:XXXX"
+            }
+        }
+        return null
+    }
+
+    /** Mã GameShark PlayStation: từng cặp "8 ký tự hex" + "4 ký tự hex"; trả về danh sách "AAAAAAAA BBBB". */
+    private fun psxTokens(code: String): List<String> =
+        code.uppercase().split(Regex("[\\s+,;:-]+")).filter { it.isNotEmpty() }
+
+    private fun psxCodes(code: String): List<String> =
+        psxTokens(code).chunked(2).map { it.joinToString(" ") }
+
+    private fun validatePsx(code: String): String? {
+        val tokens = psxTokens(code)
+        if (tokens.isEmpty()) return "Chưa nhập mã"
+        if (tokens.size % 2 != 0) return "Mã PlayStation gồm từng cặp: 8 ký tự hex rồi 4 ký tự hex (vd. 800A1234 00FF)"
+        for ((i, t) in tokens.withIndex()) {
+            val len = if (i % 2 == 0) 8 else 4
+            if (t.length != len || !hex.matches(t)) return "Mã PlayStation gồm từng cặp: 8 ký tự hex rồi 4 ký tự hex (vd. 800A1234 00FF)"
+        }
         return null
     }
 

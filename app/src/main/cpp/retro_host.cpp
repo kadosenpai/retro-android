@@ -1,6 +1,7 @@
 #include "retro_host.h"
 
 #include <dlfcn.h>
+#include <sys/stat.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -233,6 +234,8 @@ bool ReadFile(const std::string& path, std::vector<uint8_t>* out) {
   return static_cast<bool>(f.read(reinterpret_cast<char*>(out->data()), n));
 }
 
+constexpr off_t kMaxInMemoryRom = 64 * 1024 * 1024;
+
 }  // namespace
 
 std::string InitCore(const std::string& corePath, const std::string& systemDir, const std::string& saveDir) {
@@ -292,13 +295,20 @@ std::string InitCore(const std::string& corePath, const std::string& systemDir, 
 std::string LoadGame(const std::string& romPath) {
   if (!g_initialized) return "Lõi chưa được khởi tạo";
   if (g_gameLoaded) UnloadGame();
-  if (!ReadFile(romPath, &g_romData)) return "Không đọc được file ROM";
+  // Ảnh đĩa lớn (PlayStation, vài trăm MB): lõi đòi đường dẫn thì để lõi tự đọc file, không nạp cả ảnh vào RAM.
+  struct retro_system_info sysInfo;
+  memset(&sysInfo, 0, sizeof sysInfo);
+  g.retro_get_system_info(&sysInfo);
+  struct stat st;
+  const bool bigDisc = sysInfo.need_fullpath && stat(romPath.c_str(), &st) == 0 && st.st_size > kMaxInMemoryRom;
+  g_romData.clear();
+  if (!bigDisc && !ReadFile(romPath, &g_romData)) return "Không đọc được file ROM";
 
   struct retro_game_info info;
   memset(&info, 0, sizeof info);
   info.path = romPath.c_str();
-  info.data = g_romData.data();
-  info.size = g_romData.size();
+  info.data = bigDisc ? nullptr : g_romData.data();
+  info.size = bigDisc ? 0 : g_romData.size();
   if (!g.retro_load_game(&info)) return "Lõi không nạp được game này";
   g_gameLoaded = true;
 
