@@ -21,7 +21,7 @@ data class RomInfo(
     val coverAt: Long = 0,
     /** Lần gần nhất đã thử tải ảnh bìa tự động (để không thử lại liên tục). */
     val coverTriedAt: Long = 0,
-    /** Id hệ máy (xem [GameSystem]); các băng cũ không có trường này nên mặc định là GBA. */
+    /** Id hệ máy (xem [GameSystem]); các game cũ không có trường này nên mặc định là GBA. */
     val system: String = "gba",
 ) {
     fun toJson(): JSONObject = JSONObject()

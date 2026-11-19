@@ -164,7 +164,7 @@ fun LibraryScreen(model: AppModel) {
     }
 
     val tab = model.settings.tab
-    // Chỉ hệ máy nào đã có băng mới có trang riêng; thêm băng của hệ mới thì trang mới xuất hiện.
+    // Chỉ hệ máy nào đã có game mới có trang riêng; thêm game của hệ mới thì trang mới xuất hiện.
     val tabs = remember(model.roms) {
         GameSystem.TABS.filter { (id, _) -> model.roms.any { GameSystem.fromId(it.system).tab == id } }
     }
@@ -185,9 +185,9 @@ fun LibraryScreen(model: AppModel) {
         }
     }
     val sort = model.settings.sort
-    // Màn ngang (thấp): gộp thanh trên cùng thành một hàng và bỏ bớt khoảng trống để băng + tên hiện to, đủ.
+    // Màn ngang (thấp): gộp thanh trên cùng thành một hàng và bỏ bớt khoảng trống để game + tên hiện to, đủ.
     val compact = LocalConfiguration.current.screenHeightDp < 480
-    // Màn đủ rộng thì hiện thêm số lượng băng và biểu tượng sắp xếp, như bản web.
+    // Màn đủ rộng thì hiện thêm số lượng game và biểu tượng sắp xếp, như bản web.
     // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
     val behindSheet = settingsOpen
     val blurRadius = if (behindSheet) 16.dp else 0.dp
@@ -200,7 +200,7 @@ fun LibraryScreen(model: AppModel) {
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         if (compact) {
-            // Một hàng duy nhất: cài đặt, ô tìm kiếm, thêm băng.
+            // Một hàng duy nhất: cài đặt, ô tìm kiếm, thêm game.
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -212,7 +212,7 @@ fun LibraryScreen(model: AppModel) {
                 Spacer(Modifier.width(8.dp))
                 SearchBox(query, { query = it }, 36.dp, Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
-                IconBtn(if (hasAnyRom) "refresh" else "plus", if (hasAnyRom) "Quét lại thư mục game" else "Thêm băng", small = true) { addOrScan() }
+                IconBtn(if (hasAnyRom) "refresh" else "plus", if (hasAnyRom) "Quét lại thư mục game" else "Thêm game", small = true) { addOrScan() }
             }
         } else {
             // Thanh tiêu đề
@@ -230,7 +230,7 @@ fun LibraryScreen(model: AppModel) {
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                IconBtn(if (hasAnyRom) "refresh" else "plus", if (hasAnyRom) "Quét lại thư mục game" else "Thêm băng", Modifier.align(Alignment.CenterEnd)) { addOrScan() }
+                IconBtn(if (hasAnyRom) "refresh" else "plus", if (hasAnyRom) "Quét lại thư mục game" else "Thêm game", Modifier.align(Alignment.CenterEnd)) { addOrScan() }
             }
 
             // Ô tìm kiếm
@@ -344,7 +344,7 @@ fun LibraryScreen(model: AppModel) {
         }
     }
 
-    // Giữ lâu vào một băng: băng phóng to ở giữa, bảng thao tác nằm dưới, phần còn lại mờ đi.
+    // Giữ lâu vào một game: game phóng to ở giữa, bảng thao tác nằm dưới, phần còn lại mờ đi.
     gameMenu?.let { rom ->
         GameMenuOverlay(
             rom = rom,
@@ -365,7 +365,7 @@ fun LibraryScreen(model: AppModel) {
                     exportLauncher.launch("${rom.name}.sav")
                 },
                 GameAction("Nhập file .sav", "upload") { gameMenu = null; importConfirm = rom },
-                GameAction("Xoá băng (kèm save)", "trash", danger = true) { gameMenu = null; deleteTarget = rom },
+                GameAction("Xoá game (kèm save)", "trash", danger = true) { gameMenu = null; deleteTarget = rom },
             ),
         )
     }
@@ -559,7 +559,7 @@ private fun rememberCover(model: AppModel, rom: RomInfo): ImageBitmap? {
 }
 
 
-/** Nút tròn có biểu tượng (cài đặt, sắp xếp, thêm băng). */
+/** Nút tròn có biểu tượng (cài đặt, sắp xếp, thêm game). */
 @Composable
 private fun IconBtn(icon: String, desc: String, modifier: Modifier = Modifier, small: Boolean = false, onClick: () -> Unit) {
     Box(
@@ -643,7 +643,7 @@ private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
     ) {
         if (hasAny) {
             Text(
-                "Không tìm thấy băng nào",
+                "Không tìm thấy game nào",
                 color = Rc.Text,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -672,7 +672,7 @@ private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
                 RetroIcon("layers", size = 40.dp, tint = Rc.Text)
                 Spacer(Modifier.width(18.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Chưa có băng nào", color = Rc.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Chưa có game nào", color = Rc.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(2.dp))
                     Text(desc, color = Rc.Muted, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
@@ -684,7 +684,7 @@ private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
                 RetroIcon("layers", size = 56.dp, tint = Rc.Text)
                 Spacer(Modifier.width(22.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Chưa có băng nào", color = Rc.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text("Chưa có game nào", color = Rc.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Text(desc, color = Rc.Muted, fontSize = 16.sp)
                 }
@@ -695,7 +695,7 @@ private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
             Column(cardMod.padding(horizontal = 24.dp, vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 RetroIcon("layers", size = 56.dp, tint = Rc.Text)
                 Spacer(Modifier.height(18.dp))
-                Text("Chưa có băng nào", color = Rc.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Chưa có game nào", color = Rc.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
                 Text(desc, color = Rc.Muted, fontSize = 17.sp, lineHeight = 25.sp, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(22.dp))
@@ -768,7 +768,7 @@ private fun GameMenuOverlay(
             val coverBottom = a.top + coverW + coverW * 0.04f
             val titleDp = 30f
             val n = actions.size
-            // Ưu tiên bảng nằm dưới băng; không đủ chỗ thì sang cạnh băng, đáy bảng bằng đáy băng.
+            // Ưu tiên bảng nằm dưới game; không đủ chỗ thì sang cạnh game, đáy bảng bằng đáy game.
             var rowDp = 48f
             var mx = a.left.coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
             var my = coverBottom + gap
@@ -779,7 +779,7 @@ private fun GameMenuOverlay(
                 mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
                 else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
             }
-            // Băng giữ nguyên vị trí cũ, phóng to nhẹ.
+            // Game giữ nguyên vị trí cũ, phóng to nhẹ.
             Box(
                 Modifier
                     .offset { androidx.compose.ui.unit.IntOffset(a.left.toInt(), a.top.toInt()) }

@@ -169,16 +169,16 @@ class AppModel(private val app: Application) {
             val added = results.filterIsInstance<ImportResult.Added>()
             val dup = results.filterIsInstance<ImportResult.Duplicate>().size
             val rejected = results.filterIsInstance<ImportResult.Rejected>()
-            // Thêm băng của hệ nào thì chuyển sang tab của hệ đó.
+            // Thêm game của hệ nào thì chuyển sang tab của hệ đó.
             added.lastOrNull()?.let { a ->
                 val tab = GameSystem.fromId(a.rom.system).tab
                 if (settings.tab != tab) update { it.copy(tab = tab) }
             }
             toast = when {
                 rejected.isNotEmpty() -> rejected.first().reason
-                added.size == 1 -> "Đã thêm \"${added[0].rom.name}\". Chạm vào băng để chơi."
-                added.size > 1 -> "Đã thêm ${added.size} băng"
-                dup > 0 -> "Băng này đã có trong thư viện"
+                added.size == 1 -> "Đã thêm \"${added[0].rom.name}\". Chạm vào game để chơi."
+                added.size > 1 -> "Đã thêm ${added.size} game"
+                dup > 0 -> "Game này đã có trong thư viện"
                 else -> null
             }
         }
