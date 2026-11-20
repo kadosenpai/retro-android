@@ -53,12 +53,13 @@ object EmulatorEngine {
     @Volatile var onCoreMs: ((Float) -> Unit)? = null
 
     @Volatile var soundOn = true
-    /** Độ trễ âm thanh: mức trần áp dụng ngay, phần đệm sẵn áp dụng khi mở game. */
-    @Volatile var audioLatency = AudioLatency.BALANCED
         set(v) {
             field = v
             track?.setVolume(if (v) 1f else 0f)
         }
+
+    /** Độ trễ âm thanh: mức trần áp dụng ngay, phần đệm sẵn áp dụng khi mở game. */
+    @Volatile var audioLatency = AudioLatency.BALANCED
 
     @Volatile var speed = 1f
         set(v) {
