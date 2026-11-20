@@ -41,16 +41,21 @@ fun AppRoot(model: AppModel) {
                 delay(3200)
                 if (model.toast == msg) model.toast = null
             }
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(horizontal = 24.dp, vertical = 28.dp)
-                    .background(Color(0xE61E1F24), RoundedCornerShape(22.dp))
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-            ) {
-                Text(msg, color = Color.White, fontSize = 15.sp)
-            }
+            ToastBubble(msg, Modifier.align(Alignment.BottomCenter))
         }
+    }
+}
+
+/** Thông báo nổi ngắn ở đáy màn hình. Bảng Cài đặt là cửa sổ riêng nên tự vẽ thêm một bản trong bảng. */
+@Composable
+fun ToastBubble(msg: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(horizontal = 24.dp, vertical = 28.dp)
+            .background(Color(0xE61E1F24), RoundedCornerShape(22.dp))
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+    ) {
+        Text(msg, color = Color.White, fontSize = 15.sp)
     }
 }

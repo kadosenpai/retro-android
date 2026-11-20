@@ -30,19 +30,19 @@ fun BiosPage(model: AppModel, onBack: () -> Unit) {
     PageHeader("BIOS", onBack)
     SectionTitle("PlayStation")
     GroupCard {
-        BiosRow(model, BiosKind.PSX) { pending = BiosKind.PSX; picker.launch(arrayOf("*/*")) }
+        BiosRow(BiosKind.PSX, model.bios.status(BiosKind.PSX)) { pending = BiosKind.PSX; picker.launch(arrayOf("*/*")) }
     }
     SectionTitle("Nintendo DS")
     GroupCard {
         val kinds = listOf(BiosKind.NDS7, BiosKind.NDS9, BiosKind.NDS_FW)
         kinds.forEachIndexed { i, k ->
             if (i > 0) RowDivider(inset = 16.dp)
-            BiosRow(model, k) { pending = k; picker.launch(arrayOf("*/*")) }
+            BiosRow(k, model.bios.status(k)) { pending = k; picker.launch(arrayOf("*/*")) }
         }
     }
     SectionTitle("Game Boy Advance")
     GroupCard {
-        BiosRow(model, BiosKind.GBA) { pending = BiosKind.GBA; picker.launch(arrayOf("*/*")) }
+        BiosRow(BiosKind.GBA, model.bios.status(BiosKind.GBA)) { pending = BiosKind.GBA; picker.launch(arrayOf("*/*")) }
     }
     Text(
         "BIOS là tuỳ chọn: thiếu thì lõi dùng bản giả lập. Chỉ dùng file BIOS lấy từ máy của chính bạn. Mở lại game để BIOS mới có hiệu lực. Mega Drive, NES và SNES không cần BIOS.",
@@ -53,8 +53,8 @@ fun BiosPage(model: AppModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun BiosRow(model: AppModel, kind: BiosKind, onClick: () -> Unit) {
-    val st = model.bios.status(kind)
+private fun BiosRow(kind: BiosKind, st: String?, onClick: () -> Unit) {
+    // Trạng thái truyền vào làm tham số để dòng này vẽ lại ngay khi cài xong.
     val sub = if (st != null) "Đã cài: $st. Chạm để thay" else "Chưa cài. ${kind.hint}"
     ActionRow(kind.title, subtitle = sub, chevron = true, onClick = onClick)
 }

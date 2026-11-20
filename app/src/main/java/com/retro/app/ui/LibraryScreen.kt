@@ -384,17 +384,21 @@ fun LibraryScreen(model: AppModel) {
             shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
             dragHandle = null,
         ) {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .sheetMaxHeight(full = true)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-                    .navigationBarsPadding()
-                    .padding(top = 12.dp, bottom = 24.dp),
-            ) {
-                // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy
-                var settingsPage by remember { mutableStateOf(0) }
+            Box(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .sheetMaxHeight(full = true)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                        .navigationBarsPadding()
+                        .padding(top = 12.dp, bottom = 24.dp),
+                ) {
+                    // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy
+                    var settingsPage by remember { mutableStateOf(0) }
+                // Bảng Cài đặt che mất thông báo của màn hình chính nên hiện thông báo ngay trong bảng.
+                model.toast?.let { ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
+            }
                 val st = model.settings
                 when (settingsPage) {
                     1 -> ControllerPage(model) { settingsPage = 0 }
