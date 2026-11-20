@@ -27,6 +27,7 @@ rc_fetch() {
     git -C "$SRC" init -q
     git -C "$SRC" remote add origin "$url"
   fi
+  git -C "$SRC" remote set-url origin "$url"
   git -C "$SRC" fetch -q --depth 1 origin "$ref"
   git -C "$SRC" checkout -q --force FETCH_HEAD
   COMMIT="$(git -C "$SRC" rev-parse HEAD)"

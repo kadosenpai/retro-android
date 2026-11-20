@@ -11,6 +11,10 @@ enum class BiosKind(val title: String, val hint: String) {
     NDS7("BIOS ARM7 (bios7.bin)", "File 16 KB"),
     NDS9("BIOS ARM9 (bios9.bin)", "File 4 KB"),
     NDS_FW("Firmware (firmware.bin)", "File 128, 256 hoặc 512 KB. Cần đủ cả ba file NDS thì mới dùng BIOS thật, thiếu thì dùng BIOS giả lập"),
+    DSI7("DSi BIOS ARM7 (dsi_bios7.bin)", "File 64 KB, lấy từ máy DSi của bạn"),
+    DSI9("DSi BIOS ARM9 (dsi_bios9.bin)", "File 64 KB, lấy từ máy DSi của bạn"),
+    DSI_FW("DSi Firmware (dsi_firmware.bin)", "File 128 KB trở lên, lấy từ máy DSi của bạn"),
+    DSI_NAND("DSi NAND (dsi_nand.bin)", "File bộ nhớ trong của DSi, khoảng 240 MB. Chép mất vài giây"),
     GBA("BIOS Game Boy Advance (gba_bios.bin)", "File 16 KB. Có thì game GBA hiện logo khởi động và chạy đúng hơn"),
     ;
 
@@ -18,7 +22,7 @@ enum class BiosKind(val title: String, val hint: String) {
     val systemId: String
         get() = when (this) {
             PSX -> GameSystem.PSX.id
-            NDS7, NDS9, NDS_FW -> GameSystem.NDS.id
+            NDS7, NDS9, NDS_FW, DSI7, DSI9, DSI_FW, DSI_NAND -> GameSystem.NDS.id
             GBA -> GameSystem.GBA.id
         }
 }
@@ -31,6 +35,10 @@ class BiosStore(ctx: Context) {
         BiosKind.NDS7 -> "bios7.bin"
         BiosKind.NDS9 -> "bios9.bin"
         BiosKind.NDS_FW -> "firmware.bin"
+        BiosKind.DSI7 -> "dsi_bios7.bin"
+        BiosKind.DSI9 -> "dsi_bios9.bin"
+        BiosKind.DSI_FW -> "dsi_firmware.bin"
+        BiosKind.DSI_NAND -> "dsi_nand.bin"
         BiosKind.GBA -> "gba_bios.bin"
         BiosKind.PSX -> null
     }
@@ -45,8 +53,40 @@ class BiosStore(ctx: Context) {
         else -> if (File(dir, fileOf(kind)!!).length() > 0) "Đã cài" else null
     }
 
+    /** Chế độ DSi cần BIOS ARM7/ARM9 của DS thường cộng với bốn file DSi (lõi đòi như vậy). */
+    fun dsiReady(): Boolean =
+        listOf(BiosKind.NDS7, BiosKind.NDS9, BiosKind.DSI7, BiosKind.DSI9, BiosKind.DSI_FW, BiosKind.DSI_NAND)
+            .all { status(it) != null }
+
+    /** NAND rất lớn nên chép thẳng từ Uri sang file tạm rồi đổi tên, không đọc vào bộ nhớ. */
+    private fun installNand(ctx: Context, uri: Uri): String? {
+        val tmp = File(dir, "dsi_nand.bin.tmp")
+        return try {
+            val copied = ctx.contentResolver.openInputStream(uri)?.use { input ->
+                tmp.outputStream().use { out -> input.copyTo(out, 256 * 1024) }
+            } ?: return "Không đọc được file"
+            // Lõi chỉ nhận NAND đúng 240 MB hoặc 245,5 MB, có hoặc không có phần đuôi 64 byte của no$gba.
+            val sizes = listOf(0xF000000L, 0xF580000L).flatMap { listOf(it, it + 0x40L) }
+            if (copied !in sizes) {
+                tmp.delete()
+                return "File không đúng kích thước NAND DSi (cần 240 MB hoặc 245,5 MB)"
+            }
+            val dest = File(dir, "dsi_nand.bin")
+            dest.delete()
+            if (!tmp.renameTo(dest)) {
+                tmp.delete()
+                return "Không lưu được file NAND"
+            }
+            null
+        } catch (e: Exception) {
+            tmp.delete()
+            "Không chép được file NAND (${e.message ?: "lỗi"}). Kiểm tra dung lượng trống"
+        }
+    }
+
     /** Sao chép BIOS từ Uri vào thư mục system sau khi kiểm tra kích thước/nội dung. Trả về thông báo lỗi, hoặc null nếu xong. */
     fun install(ctx: Context, kind: BiosKind, uri: Uri): String? {
+        if (kind == BiosKind.DSI_NAND) return installNand(ctx, uri)
         val data = try {
             ctx.contentResolver.openInputStream(uri)?.use { input ->
                 val max = 8 * 1024 * 1024
@@ -67,6 +107,9 @@ class BiosStore(ctx: Context) {
             BiosKind.NDS7 -> installFixed(kind, data, setOf(16 * 1024))
             BiosKind.NDS9 -> installFixed(kind, data, setOf(4 * 1024))
             BiosKind.NDS_FW -> installFixed(kind, data, setOf(128 * 1024, 256 * 1024, 512 * 1024))
+            BiosKind.DSI7, BiosKind.DSI9 -> installFixed(kind, data, setOf(64 * 1024))
+            BiosKind.DSI_FW -> installFixed(kind, data, setOf(128 * 1024, 256 * 1024, 512 * 1024))
+            BiosKind.DSI_NAND -> null
             BiosKind.GBA -> installFixed(kind, data, setOf(16 * 1024))
         }
     }

@@ -64,6 +64,12 @@ std::map<std::string, std::string> g_options;
 bool g_optionsDirty = false;
 std::mutex g_optionsMu;
 
+// Giá trị mặc định do chính lõi khai báo (qua SET_CORE_OPTIONS*): lõi melonDS DS đọc mọi tuỳ chọn bằng GET_VARIABLE
+// và coi "không trả lời" là lỗi, nên host phải trả lại mặc định của lõi khi app chưa đặt giá trị riêng.
+std::map<std::string, std::string> g_optionDefaults;
+bool g_coreOptionsV2 = false;  // chỉ bật cho lõi cần nó (melonDS DS), các lõi khác giữ cách cũ
+std::string g_lastMessage;     // thông báo gần nhất lõi gửi cho người dùng (hiện kèm lỗi nạp game)
+
 std::string g_systemDir;
 std::string g_saveDir;
 std::vector<uint8_t> g_romData;  // lõi có thể giữ con trỏ tới dữ liệu ROM, nên giữ nó sống
@@ -105,7 +111,35 @@ bool RETRO_CALLCONV EnvCb(unsigned cmd, void* data) {
     case RETRO_ENVIRONMENT_GET_CAN_DUPE & 0xFFFF:
       *static_cast<bool*>(data) = true;
       return true;
-    case RETRO_ENVIRONMENT_SET_MESSAGE & 0xFFFF:
+    case RETRO_ENVIRONMENT_SET_MESSAGE & 0xFFFF: {
+      auto* m = static_cast<const struct retro_message*>(data);
+      if (m && m->msg) {
+        g_lastMessage = m->msg;
+        LOGW("core message: %s", m->msg);
+      }
+      return true;
+    }
+    case RETRO_ENVIRONMENT_SET_MESSAGE_EXT & 0xFFFF: {
+      auto* m = static_cast<const struct retro_message_ext*>(data);
+      if (m && m->msg) {
+        if (m->level >= RETRO_LOG_WARN) g_lastMessage = m->msg;
+        LOGW("core message: %s", m->msg);
+      }
+      return true;
+    }
+    case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2 & 0xFFFF: {
+      if (!g_coreOptionsV2) return false;
+      auto* opts = static_cast<const struct retro_core_options_v2*>(data);
+      if (!opts || !opts->definitions) return false;
+      std::lock_guard<std::mutex> l(g_optionsMu);
+      for (auto* d = opts->definitions; d->key; ++d) {
+        const char* def = d->default_value ? d->default_value : d->values[0].value;
+        if (def) g_optionDefaults[d->key] = def;
+      }
+      return true;
+    }
+    case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY & 0xFFFF:
+      return g_coreOptionsV2;
     case RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL & 0xFFFF:
     case RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS & 0xFFFF:
     case RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME & 0xFFFF:
@@ -133,8 +167,13 @@ bool RETRO_CALLCONV EnvCb(unsigned cmd, void* data) {
       auto* var = static_cast<struct retro_variable*>(data);
       std::lock_guard<std::mutex> l(g_optionsMu);
       auto it = var->key ? g_options.find(var->key) : g_options.end();
-      if (it == g_options.end()) return false;  // chưa đặt: lõi dùng giá trị mặc định
-      var->value = it->second.c_str();
+      if (it != g_options.end()) {
+        var->value = it->second.c_str();
+        return true;
+      }
+      auto df = var->key ? g_optionDefaults.find(var->key) : g_optionDefaults.end();
+      if (df == g_optionDefaults.end()) return false;  // chưa đặt: lõi dùng giá trị mặc định của nó
+      var->value = df->second.c_str();
       return true;
     }
     case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE & 0xFFFF: {
@@ -149,7 +188,7 @@ bool RETRO_CALLCONV EnvCb(unsigned cmd, void* data) {
     case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS & 0xFFFF:
       return true;
     case RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION & 0xFFFF:
-      *static_cast<unsigned*>(data) = 0;
+      *static_cast<unsigned*>(data) = g_coreOptionsV2 ? 2 : 0;
       return true;
     case RETRO_ENVIRONMENT_GET_LANGUAGE & 0xFFFF:
       *static_cast<unsigned*>(data) = RETRO_LANGUAGE_ENGLISH;
@@ -289,6 +328,15 @@ std::string InitCore(const std::string& corePath, const std::string& systemDir, 
   }
   g = api;
   g_fmt = kFmtRgb565;
+  {
+    struct retro_system_info si;
+    memset(&si, 0, sizeof si);
+    g.retro_get_system_info(&si);
+    g_coreOptionsV2 = si.library_name && strstr(si.library_name, "melonDS DS") != nullptr;
+    std::lock_guard<std::mutex> l(g_optionsMu);
+    g_optionDefaults.clear();
+  }
+  g_lastMessage.clear();
   g.retro_set_environment(EnvCb);
   g.retro_set_video_refresh(VideoCb);
   g.retro_set_audio_sample(AudioSampleCb);
@@ -317,7 +365,12 @@ std::string LoadGame(const std::string& romPath) {
   info.path = romPath.c_str();
   info.data = bigDisc ? nullptr : g_romData.data();
   info.size = bigDisc ? 0 : g_romData.size();
-  if (!g.retro_load_game(&info)) return "Lõi không nạp được game này";
+  g_lastMessage.clear();
+  if (!g.retro_load_game(&info)) {
+    // Lõi thường báo lý do (thiếu BIOS, NAND sai...) qua thông báo; kèm vào lỗi để người dùng biết.
+    return g_lastMessage.empty() ? std::string("Lõi không nạp được game này")
+                                 : std::string("Lõi không nạp được game: ") + g_lastMessage;
+  }
   g_gameLoaded = true;
 
   struct retro_system_av_info av;

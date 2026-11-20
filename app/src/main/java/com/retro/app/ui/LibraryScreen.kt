@@ -110,6 +110,7 @@ fun LibraryScreen(model: AppModel) {
     var menuAnchor by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var renameTarget by remember { mutableStateOf<RomInfo?>(null) }
     var deleteTarget by remember { mutableStateOf<RomInfo?>(null) }
+    var consoleTarget by remember { mutableStateOf<RomInfo?>(null) }
     var deleteAllConfirm by remember { mutableStateOf(false) }
 
     var exportTarget by remember { mutableStateOf<RomInfo?>(null) }
@@ -351,8 +352,11 @@ fun LibraryScreen(model: AppModel) {
             anchor = menuAnchor,
             cover = rememberCover(model, rom),
             onDismiss = { gameMenu = null },
-            actions = listOf(
+            actions = listOfNotNull(
                 GameAction("Đổi tên", "pencil") { gameMenu = null; renameTarget = rom },
+                if (rom.system == GameSystem.NDS.id) {
+                    GameAction("Chế độ máy: " + consoleLabel(rom.consoleMode), "settings") { gameMenu = null; consoleTarget = rom }
+                } else null,
                 GameAction("Tải ảnh bìa gốc", "image") { gameMenu = null; model.fetchCoverNow(rom) },
                 GameAction("Chọn ảnh bìa từ máy", "image") {
                     gameMenu = null
@@ -505,6 +509,43 @@ fun LibraryScreen(model: AppModel) {
         )
     }
 
+    consoleTarget?.let { rom ->
+        // Chọn lại chế độ máy cho game NDS: Tự động / DS / DSi.
+        AlertDialog(
+            onDismissRequest = { consoleTarget = null },
+            title = { Text("Chế độ máy") },
+            text = {
+                Column {
+                    listOf(
+                        Triple("auto", "Tự động", "Game dành riêng cho DSi chạy DSi, còn lại chạy DS"),
+                        Triple("ds", "Nintendo DS", "Nhẹ hơn, có Save State và tiếp tục từ lần chơi trước"),
+                        Triple("dsi", "Nintendo DSi", "Cần đủ file DSi và BIOS DS, nặng hơn, không có Save State"),
+                    ).forEach { (key, title, hint) ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    model.setConsoleMode(rom, key)
+                                    consoleTarget = null
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            androidx.compose.material3.RadioButton(selected = rom.consoleMode == key, onClick = null)
+                            Column(Modifier.padding(start = 12.dp)) {
+                                Text(title, fontWeight = FontWeight.SemiBold)
+                                Text(hint, fontSize = 12.sp, color = Rc.Muted)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { consoleTarget = null }) { Text("Huỷ") } },
+        )
+    }
+
     importConfirm?.let { rom ->
         AlertDialog(
             onDismissRequest = { importConfirm = null },
@@ -540,6 +581,12 @@ fun LibraryScreen(model: AppModel) {
             dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Huỷ") } },
         )
     }
+}
+
+private fun consoleLabel(mode: String) = when (mode) {
+    "ds" -> "DS"
+    "dsi" -> "DSi"
+    else -> "Tự động"
 }
 
 /** Đọc ảnh bìa của game từ bộ nhớ (ngoài luồng chính); null nếu chưa có. */

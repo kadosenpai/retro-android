@@ -57,6 +57,20 @@ fun BiosPage(model: AppModel, onBack: () -> Unit) {
             BiosRow(k, model.bios.status(k)) { pending = k; picker.launch(arrayOf("*/*")) }
         }
     }
+    SectionTitle("Nintendo DSi")
+    GroupCard {
+        val kinds = listOf(BiosKind.DSI7, BiosKind.DSI9, BiosKind.DSI_FW, BiosKind.DSI_NAND)
+        kinds.forEachIndexed { i, k ->
+            if (i > 0) RowDivider(inset = 16.dp)
+            BiosRow(k, model.bios.status(k)) { pending = k; picker.launch(arrayOf("*/*")) }
+        }
+    }
+    Text(
+        "Chế độ DSi cần đủ BIOS ARM7 và ARM9 của DS ở trên cùng bốn file DSi này. Chế độ DSi không có Save State. Chọn chế độ cho từng game bằng cách giữ lâu vào game NDS.",
+        color = Rc.Faint,
+        fontSize = 12.sp,
+        modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 8.dp),
+    )
     SectionTitle("Game Boy Advance")
     GroupCard {
         BiosRow(BiosKind.GBA, model.bios.status(BiosKind.GBA)) { pending = BiosKind.GBA; picker.launch(arrayOf("*/*")) }

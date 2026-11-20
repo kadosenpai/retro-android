@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private const val MGBA_URL = "https://github.com/mgba-emu/mgba"
-private const val MELONDS_URL = "https://github.com/libretro/melonDS"
+private const val MELONDS_URL = "https://github.com/JesseTG/melonds-ds"
 private const val SNES9X_URL = "https://github.com/libretro/snes9x"
 private const val GENESIS_URL = "https://github.com/libretro/Genesis-Plus-GX"
 private const val PCSX_URL = "https://github.com/libretro/pcsx_rearmed"
@@ -109,7 +109,7 @@ fun AboutPage(onBack: () -> Unit) {
         RowDivider(inset = 16.dp)
         ActionRow("Snes9x $snesVersion", subtitle = "Lõi giả lập SNES · giấy phép phi thương mại của Snes9x · mã nguồn gốc, không sửa đổi", chevron = true) { open(SNES9X_URL) }
         RowDivider(inset = 16.dp)
-        ActionRow("melonDS $ndsVersion", subtitle = "Lõi giả lập Nintendo DS · GPL 3.0 · mã nguồn gốc, không sửa đổi", chevron = true) { open(MELONDS_URL) }
+        ActionRow("melonDS DS $ndsVersion", subtitle = "Lõi giả lập Nintendo DS/DSi · GPL 3.0 · mã nguồn gốc, không sửa đổi", chevron = true) { open(MELONDS_URL) }
         RowDivider(inset = 16.dp)
         ActionRow("Genesis Plus GX $mdVersion", subtitle = "Lõi giả lập Mega Drive · giấy phép phi thương mại của Genesis Plus GX · mã nguồn gốc, không sửa đổi", chevron = true) { open(GENESIS_URL) }
         RowDivider(inset = 16.dp)

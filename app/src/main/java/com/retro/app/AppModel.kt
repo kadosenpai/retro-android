@@ -16,6 +16,7 @@ import com.retro.app.data.BiosStore
 import com.retro.app.data.CheatCodes
 import com.retro.app.data.CheatItem
 import com.retro.app.data.ControllerMap
+import com.retro.app.data.Core
 import com.retro.app.data.CoverService
 import com.retro.app.data.GbaButton
 import com.retro.app.data.GameSystem
@@ -107,12 +108,22 @@ class AppModel(private val app: Application) {
         EmulatorEngine.setOption("mgba_gb_colors", settings.gbPalette)
         EmulatorEngine.setOption("mgba_sgb_borders", if (settings.sgbBorder) "ON" else "OFF")
         // NES (FCEUmm): cắt 8 hàng trên/dưới như màn hình TV (256x224), giữ nguyên hai bên.
-        // NDS (melonDS): ghép hai màn dọc, không khe hở; cảm ứng kiểu chạm; chỉ dùng bộ vẽ phần mềm.
-        EmulatorEngine.setOption("melonds_touch_mode", "Touch")
-        EmulatorEngine.setOption("melonds_screen_layout", "Top/Bottom")
+        // NDS (melonDS DS): ghép hai màn dọc, không khe hở; cảm ứng kiểu chạm, không vẽ con trỏ; vào thẳng game;
+        // bộ vẽ phần mềm (bản build không có OpenGL); tắt thông báo vẽ đè lên hình và thẻ SD ảo (tránh tạo file lớn).
+        EmulatorEngine.setOption("melonds_touch_mode", "touch")
+        EmulatorEngine.setOption("melonds_show_cursor", "disabled")
+        EmulatorEngine.setOption("melonds_number_of_screen_layouts", "1")
+        EmulatorEngine.setOption("melonds_screen_layout1", "top-bottom")
         EmulatorEngine.setOption("melonds_screen_gap", "0")
-        EmulatorEngine.setOption("melonds_opengl_renderer", "disabled")
-        EmulatorEngine.setOption("melonds_boot_directly", "enabled")
+        EmulatorEngine.setOption("melonds_boot_mode", "direct")
+        EmulatorEngine.setOption("melonds_jit_fast_memory", "disabled")
+        EmulatorEngine.setOption("melonds_mic_input", "blow")
+        EmulatorEngine.setOption("melonds_dsi_sdcard", "disabled")
+        EmulatorEngine.setOption("melonds_homebrew_sdcard", "disabled")
+        listOf(
+            "unsupported_features", "bios_warnings", "current_layout", "mic_state",
+            "camera_state", "lid_state", "sensor_reading", "pointer_coordinates",
+        ).forEach { EmulatorEngine.setOption("melonds_show_$it", "disabled") }
         EmulatorEngine.setOption("fceumm_overscan", "disabled")
         EmulatorEngine.setOption("fceumm_overscan_h_left", "0")
         EmulatorEngine.setOption("fceumm_overscan_h_right", "0")
@@ -355,7 +366,7 @@ class AppModel(private val app: Application) {
             val err = withContext(Dispatchers.IO) { bios.install(app, kind, uri) }
             biosVersion++
             toast = err ?: "Đã cài ${kind.title}. Mở lại game để dùng."
-            if (err == null) {
+            if (err == null && !kind.name.startsWith("DSI")) {
                 val sys = GameSystem.fromId(kind.systemId)
                 val ids = withContext(Dispatchers.IO) {
                     roms.filter { it.system == sys.id && store.hasState(it.id, RomStore.AUTO_SLOT) }.map { it.id }
@@ -379,21 +390,63 @@ class AppModel(private val app: Application) {
         biosResetPrompt = null
     }
 
+    /** Game đang chơi ở chế độ DSi (lõi không hỗ trợ Save State ở chế độ này). */
+    var playingDsi by mutableStateOf(false)
+        private set
+
+    fun setConsoleMode(rom: RomInfo, mode: String) {
+        scope.launch {
+            withContext(Dispatchers.IO) { store.setConsoleMode(rom.id, mode) }
+            refresh()
+            toast = when (mode) {
+                "ds" -> "\"${rom.name}\" sẽ chạy ở chế độ DS"
+                "dsi" -> "\"${rom.name}\" sẽ chạy ở chế độ DSi (không có Save State)"
+                else -> "\"${rom.name}\" tự chọn chế độ DS hoặc DSi"
+            }
+        }
+    }
+
+    /**
+     * Chọn chế độ máy cho game NDS: trả về "DS" hoặc "DSi", hoặc thông báo lỗi nếu không chạy được.
+     * Tự động: chỉ game dành riêng cho DSi (unit code 3) mới dùng DSi, còn lại dùng DS cho nhẹ và có Save State.
+     */
+    private fun resolveConsole(rom: RomInfo): Pair<String?, String?> {
+        val ready = bios.dsiReady()
+        return when (rom.consoleMode) {
+            "dsi" -> if (ready) "dsi" to null else null to "Chưa cài đủ file cho chế độ DSi. Vào Cài đặt > BIOS"
+            "ds" -> "ds" to null
+            else -> {
+                if (store.ndsUnitCode(rom.id) == 3) {
+                    if (ready) "dsi" to null else null to "Game này chỉ chạy trên DSi. Cài đủ file cho chế độ DSi trong Cài đặt > BIOS"
+                } else "ds" to null
+            }
+        }
+    }
+
     // ---------- Chơi ----------
     fun open(rom: RomInfo) {
         if (loading) return
         scope.launch {
             loading = true
             var resumed = false
+            var dsi = false
             var loadedCheats: List<CheatItem> = emptyList()
             val err = withContext(Dispatchers.IO) {
+                val sys = GameSystem.fromId(rom.system)
+                val opts = mutableMapOf<String, String>()
+                if (sys.core == Core.MELONDS) {
+                    val (mode, problem) = resolveConsole(rom)
+                    if (mode == null) return@withContext problem
+                    opts["melonds_console_mode"] = mode
+                    dsi = mode == "dsi"
+                }
                 val sram = store.readSram(rom.id)
-                val e = EmulatorEngine.load(app, store.romFile(rom.id), rom.id, sram, GameSystem.fromId(rom.system))
+                val e = EmulatorEngine.load(app, store.romFile(rom.id), rom.id, sram, sys, opts)
                 if (e == null) {
                     loadedCheats = store.readCheats(rom.id)
                     applyCheatList(loadedCheats, rom)
                     // Tiếp tục từ lần chơi trước (trạng thái tự động); hỏng thì bỏ qua.
-                    val auto = store.readState(rom.id, RomStore.AUTO_SLOT)
+                    val auto = if (dsi) null else store.readState(rom.id, RomStore.AUTO_SLOT)
                     if (auto != null) {
                         resumed = EmulatorEngine.loadState(auto)
                         if (!resumed) store.deleteState(rom.id, RomStore.AUTO_SLOT)
@@ -407,6 +460,7 @@ class AppModel(private val app: Application) {
                 return@launch
             }
             cheats = loadedCheats
+            playingDsi = dsi
             if (resumed) toast = "Tiếp tục từ lần chơi trước"
             speed = 1f
             EmulatorEngine.speed = 1f
@@ -480,7 +534,9 @@ class AppModel(private val app: Application) {
         val rom = current ?: return
         scope.launch {
             val ok = withContext(Dispatchers.IO) { writeSlot(rom, slot) }
-            toast = if (ok) "Đã lưu vào ô $slot" else "Không lưu được trạng thái"
+            toast = if (ok) "Đã lưu vào ô $slot"
+            else if (playingDsi) "Chế độ DSi không hỗ trợ Save State"
+            else "Không lưu được trạng thái"
             refreshSlots()
         }
     }

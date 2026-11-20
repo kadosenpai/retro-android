@@ -23,6 +23,8 @@ data class RomInfo(
     val coverTriedAt: Long = 0,
     /** Id hệ máy (xem [GameSystem]); các game cũ không có trường này nên mặc định là GBA. */
     val system: String = "gba",
+    /** Chế độ máy của game NDS: "auto" (tự chọn), "ds" hoặc "dsi". */
+    val consoleMode: String = "auto",
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -34,6 +36,7 @@ data class RomInfo(
         .put("coverAt", coverAt)
         .put("coverTriedAt", coverTriedAt)
         .put("system", system)
+        .put("consoleMode", consoleMode)
 
     companion object {
         fun fromJson(o: JSONObject) = RomInfo(
@@ -46,6 +49,7 @@ data class RomInfo(
             coverAt = o.optLong("coverAt", 0),
             coverTriedAt = o.optLong("coverTriedAt", 0),
             system = o.optString("system", "gba"),
+            consoleMode = o.optString("consoleMode", "auto"),
         )
     }
 }
@@ -118,12 +122,33 @@ class RomStore(private val ctx: Context) {
     private fun stateFile(id: String, slot: Int) = File(stateDir, "$id.$slot.state")
     private fun thumbFile(id: String, slot: Int) = File(stateDir, "$id.$slot.png")
 
+    /** Nén Save State (lõi NDS cho trạng thái hàng chục MB, phần lớn là số 0) bằng gzip ở mức nhanh nhất. */
+    private fun gzip(data: ByteArray): ByteArray {
+        val out = java.io.ByteArrayOutputStream(data.size / 8 + 1024)
+        val gz = object : java.util.zip.GZIPOutputStream(out) {
+            init { def.setLevel(java.util.zip.Deflater.BEST_SPEED) }
+        }
+        gz.use { it.write(data) }
+        return out.toByteArray()
+    }
+
+    /** Đọc lại trạng thái; file cũ chưa nén (không có dấu gzip) vẫn đọc được như trước. */
+    private fun gunzipIfNeeded(bytes: ByteArray): ByteArray {
+        if (bytes.size < 2 || bytes[0] != 0x1f.toByte() || bytes[1] != 0x8b.toByte()) return bytes
+        return try {
+            java.util.zip.GZIPInputStream(bytes.inputStream()).use { it.readBytes() }
+        } catch (e: Exception) {
+            bytes
+        }
+    }
+
     fun writeState(id: String, slot: Int, data: ByteArray, thumbPng: ByteArray?) {
-        writeAtomic(stateFile(id, slot), data)
+        writeAtomic(stateFile(id, slot), gzip(data))
         if (thumbPng != null) writeAtomic(thumbFile(id, slot), thumbPng) else thumbFile(id, slot).delete()
     }
 
-    fun readState(id: String, slot: Int): ByteArray? = stateFile(id, slot).takeIf { it.exists() }?.readBytes()
+    fun readState(id: String, slot: Int): ByteArray? =
+        stateFile(id, slot).takeIf { it.exists() }?.readBytes()?.let { gunzipIfNeeded(it) }
 
     fun readThumb(id: String, slot: Int): ByteArray? = thumbFile(id, slot).takeIf { it.exists() }?.readBytes()
 
@@ -430,6 +455,19 @@ class RomStore(private val ctx: Context) {
 
     fun rename(id: String, name: String) = synchronized(lock) {
         writeIndex(readIndex().map { if (it.id == id) it.copy(name = name) else it })
+    }
+
+    fun setConsoleMode(id: String, mode: String) = synchronized(lock) {
+        writeIndex(readIndex().map { if (it.id == id) it.copy(consoleMode = mode) else it })
+    }
+
+    /** Byte "unit code" ở offset 0x12 của header ROM NDS: 0 = DS, 2 = DSi nâng cao, 3 = chỉ chạy trên DSi. -1 nếu không đọc được. */
+    fun ndsUnitCode(id: String): Int = try {
+        java.io.RandomAccessFile(romFile(id), "r").use { f ->
+            if (f.length() < 0x13) -1 else { f.seek(0x12); f.read() }
+        }
+    } catch (e: Exception) {
+        -1
     }
 
     fun touchPlayed(id: String) = synchronized(lock) {

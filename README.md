@@ -7,7 +7,7 @@ Trình chơi game retro cho Android: GBA, Game Boy, Game Boy Color, NES, SNES, N
 | GBA, Game Boy, Game Boy Color | mGBA 0.10.5 | `.gba` `.gb` `.gbc` |
 | NES | FCEUmm | `.nes` |
 | SNES | Snes9x | `.sfc` `.smc` `.swc` `.fig` |
-| Nintendo DS | melonDS | `.nds` `.dsi` `.ids` |
+| Nintendo DS / DSi | melonDS DS (JesseTG) | `.nds` `.dsi` `.ids` |
 | Mega Drive | Genesis Plus GX | `.md` `.gen` `.smd` `.bin` |
 | PlayStation | PCSX ReARMed | `.chd` `.pbp` `.iso` `.img` `.bin`, hoặc `.cue` + các file `.bin` (chọn cùng lúc, giữ nhạc đĩa) |
 
@@ -35,6 +35,7 @@ ROM nén `.zip` chưa được hỗ trợ.
 - Cheat cho GBA (GameShark/Action Replay), GB/GBC (GameShark, Game Genie), NES (Game Genie, mã thô), SNES (Game Genie, Pro Action Replay) NDS (Action Replay), Mega Drive (Game Genie, Pro Action Replay) và PlayStation (GameShark); tắt cheat có hiệu lực ngay, mã sai loại sẽ báo.
 - Game Boy/GBC: chọn bảng màu và viền Super Game Boy (áp dụng khi mở lại game).
 - BIOS tuỳ chọn (Cài đặt → BIOS): PlayStation, Nintendo DS (bios7/bios9/firmware), GBA; thiếu thì lõi dùng bản giả lập.
+- Nintendo DSi (tuỳ chọn): cài `dsi_bios7.bin`, `dsi_bios9.bin`, `dsi_firmware.bin`, `dsi_nand.bin` (cùng `bios7.bin`, `bios9.bin` của DS) trong Cài đặt → BIOS. Giữ lâu vào game NDS → "Chế độ máy" để chọn Tự động / DS / DSi cho từng game. Chế độ DSi không có Save State.
 - Nintendo DS: cảm ứng màn dưới; skin dọc xếp hai màn trên/dưới, skin ngang có màn lớn và màn nhỏ, chạm vào màn nhỏ để đổi chỗ hai màn.
 
 **Skin** (đều của Stanley Sy, starvingartist; ảnh thuộc về tác giả)
@@ -47,11 +48,11 @@ ROM nén `.zip` chưa được hỗ trợ.
 
 - `app/src/main/cpp`: máy chủ libretro (C++), nạp lõi bằng `dlopen`, cầu nối JNI, nhận cảm ứng cho NDS.
 - `scripts/build-mgba-android.sh`: biên dịch mGBA libretro cho arm64 bằng NDK.
-- `scripts/common.sh` (hàm dùng chung: tải đúng commit, ndk-build, đặt lõi vào jniLibs) và `scripts/build-<lõi>-android.sh` cho từng lõi (mGBA, FCEUmm, Snes9x, melonDS, Genesis Plus GX, PCSX ReARMed; có vá nhỏ cho melonDS và mGBA).
+- `scripts/common.sh` (hàm dùng chung: tải đúng commit, ndk-build, đặt lõi vào jniLibs) và `scripts/build-<lõi>-android.sh` cho từng lõi (mGBA, FCEUmm, Snes9x, melonDS DS, Genesis Plus GX, PCSX ReARMed; có vá nhỏ cho mGBA; lõi melonDS DS build bằng CMake).
 - `scripts/patch-mgba-cheats.py`: vá mGBA để tắt cheat gỡ được bản vá ROM (chạy tự động trong script mGBA).
 - `app/src/main/java/com/retro/app`: giao diện + động cơ (Kotlin). `data/` lưu thư viện, hệ máy, cheat; `core/` nối với lõi; `render/` vẽ khung hình (một màn hình hoặc hai màn hình NDS); `ui/` các màn hình và skin.
 - `app/src/main/assets/skin`: ảnh skin và ảnh nút.
 
 ## Giấy phép các lõi
 
-mGBA: MPL 2.0. FCEUmm: GPL 2.0. melonDS: GPL 3.0. PCSX ReARMed: GPL 2.0. Genesis Plus GX: giấy phép phi thương mại riêng. Snes9x: giấy phép phi thương mại riêng của Snes9x (dùng cá nhân thì được, không dùng bán lại). Trang Giới thiệu trong app có liên kết tới từng lõi.
+mGBA: MPL 2.0. FCEUmm: GPL 2.0. melonDS DS: GPL 3.0. PCSX ReARMed: GPL 2.0. Genesis Plus GX: giấy phép phi thương mại riêng. Snes9x: giấy phép phi thương mại riêng của Snes9x (dùng cá nhân thì được, không dùng bán lại). Trang Giới thiệu trong app có liên kết tới từng lõi.

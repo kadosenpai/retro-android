@@ -13,7 +13,7 @@ on:
 jobs:
   apk:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       NDK_VERSION: "27.1.12297006"
       MGBA_REF: ${{ github.event.inputs.mgba_ref || '0.10.5' }}
@@ -48,7 +48,7 @@ jobs:
       - name: Build lõi Snes9x (SNES) cho Android
         run: bash ./scripts/build-snes9x-android.sh
 
-      - name: Build lõi melonDS (Nintendo DS) cho Android
+      - name: Build lõi melonDS DS (Nintendo DS/DSi) cho Android
         run: bash ./scripts/build-melonds-android.sh
 
       - name: Build lõi Genesis Plus GX (Mega Drive) cho Android
