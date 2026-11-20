@@ -224,6 +224,12 @@ class AppModel(private val app: Application) {
     }
 
     // ---------- Tay cầm & bố cục nút ảo ----------
+    /**
+     * Đang chờ gán nút: hàm này nhận mã phím ảo khi người chơi bấm hướng trên D-pad kiểu "hat" (trục) của tay cầm,
+     * loại D-pad không phát phím (vd. Joy-Con trái). Null khi không chờ gán.
+     */
+    var hatCapture: ((Int) -> Unit)? = null
+
     fun assignKey(button: GbaButton, code: Int) {
         controllerMap = controllerMap.assign(button, code)
         prefs.savePadMap(controllerMap)

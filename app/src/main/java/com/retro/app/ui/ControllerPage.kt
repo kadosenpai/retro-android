@@ -157,6 +157,14 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
             title = { Text("Gán nút ${b.label}") },
             text = {
                 LaunchedEffect(Unit) { focus.requestFocus() }
+                // D-pad kiểu hat (trục) không phát phím nên MainActivity chuyển giúp qua hatCapture.
+                DisposableEffect(b) {
+                    model.hatCapture = { code ->
+                        model.assignKey(b, code)
+                        capturing = null
+                    }
+                    onDispose { model.hatCapture = null }
+                }
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -175,12 +183,18 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
                                     model.showToast("Nút này dùng để mở menu")
                                     true
                                 }
-                                KeyEvent.isGamepadButton(code) || code in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_CENTER -> {
+                                // Nhận mọi phím phát ra từ tay cầm (kể cả mã lạ), không chỉ các nút chuẩn.
+                                KeyEvent.isGamepadButton(code) ||
+                                    code in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_CENTER ||
+                                    ev.nativeKeyEvent.source and (InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_DPAD or InputDevice.SOURCE_JOYSTICK) != 0 -> {
                                     model.assignKey(b, code)
                                     capturing = null
                                     true
                                 }
-                                else -> true
+                                else -> {
+                                    model.showToast("Không nhận nút này (mã ${KeyEvent.keyCodeToString(code)})")
+                                    true
+                                }
                             }
                         },
                     contentAlignment = Alignment.Center,
