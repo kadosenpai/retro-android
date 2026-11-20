@@ -400,6 +400,7 @@ fun LibraryScreen(model: AppModel) {
                     1 -> ControllerPage(model) { settingsPage = 0 }
                     2 -> AboutPage { settingsPage = 0 }
                     6 -> GameBoyPage(model) { settingsPage = 0 }
+                    7 -> BiosPage(model) { settingsPage = 0 }
                     3 -> AudioPage(model) { settingsPage = 0 }
                     4 -> {
                         PageHeader("Cảm ứng & rung") { settingsPage = 0 }
@@ -438,6 +439,8 @@ fun LibraryScreen(model: AppModel) {
                             ActionRow("Âm thanh", icon = "volume", chevron = true) { settingsPage = 3 }
                             RowDivider()
                             ActionRow("Game Boy", icon = "image", chevron = true) { settingsPage = 6 }
+                            RowDivider()
+                            ActionRow("BIOS", icon = "database", chevron = true) { settingsPage = 7 }
                         }
                         SectionTitle("Dữ liệu")
                         GroupCard {

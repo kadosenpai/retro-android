@@ -5,11 +5,14 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.retro.app.core.EmulatorEngine
+import com.retro.app.data.BiosKind
+import com.retro.app.data.BiosStore
 import com.retro.app.data.CheatCodes
 import com.retro.app.data.CheatItem
 import com.retro.app.data.ControllerMap
@@ -37,6 +40,10 @@ class SlotView(val slot: Int, val savedAt: Long, val thumb: ImageBitmap?)
 /** Trạng thái toàn ứng dụng. Sống ở mức Application nên không mất khi xoay màn hình. */
 class AppModel(private val app: Application) {
     val store = RomStore(app)
+    val bios = BiosStore(app)
+    /** Tăng mỗi lần cài BIOS để giao diện đọc lại trạng thái. */
+    var biosVersion by mutableIntStateOf(0)
+        private set
     private val prefs = Prefs(app)
     private val covers = CoverService(app, store)
     private var coverJob: Job? = null
@@ -328,6 +335,14 @@ class AppModel(private val app: Application) {
         scope.launch {
             val err = withContext(Dispatchers.IO) { store.importSram(rom.id, uri) }
             toast = err ?: "Đã nhập save cho \"${rom.name}\". Mở game để dùng."
+        }
+    }
+
+    fun installBios(kind: BiosKind, uri: Uri) {
+        scope.launch {
+            val err = withContext(Dispatchers.IO) { bios.install(app, kind, uri) }
+            biosVersion++
+            toast = err ?: "Đã cài ${kind.title}. Mở lại game để dùng."
         }
     }
 

@@ -34,6 +34,7 @@ ROM nén `.zip` chưa được hỗ trợ.
 - Hiện thông số (fps, thời gian xử lý của lõi, giờ, pin) nằm trong khung của skin.
 - Cheat cho GBA (GameShark/Action Replay), GB/GBC (GameShark, Game Genie), NES (Game Genie, mã thô), SNES (Game Genie, Pro Action Replay) NDS (Action Replay), Mega Drive (Game Genie, Pro Action Replay) và PlayStation (GameShark); tắt cheat có hiệu lực ngay, mã sai loại sẽ báo.
 - Game Boy/GBC: chọn bảng màu và viền Super Game Boy (áp dụng khi mở lại game).
+- BIOS tuỳ chọn (Cài đặt → BIOS): PlayStation, Nintendo DS (bios7/bios9/firmware), GBA; thiếu thì lõi dùng bản giả lập.
 - Nintendo DS: cảm ứng màn dưới; skin dọc xếp hai màn trên/dưới, skin ngang có màn lớn và màn nhỏ, chạm vào màn nhỏ để đổi chỗ hai màn.
 
 **Skin** (đều của Stanley Sy, starvingartist; ảnh thuộc về tác giả)
