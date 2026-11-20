@@ -68,6 +68,8 @@ class RomStore(private val ctx: Context) {
 
     fun romFile(id: String) = File(romDir, "$id.rom")
     fun savFile(id: String) = File(saveDir, "$id.sav")
+    /** Thư mục chứa các track của đĩa nhiều file (.cue); game thường không có thư mục này. */
+    fun discDir(id: String) = File(romDir, "$id.disc")
 
     // ---------- Cheat ----------
     private fun cheatFile(id: String) = File(cheatDir, "$id.json")
@@ -162,6 +164,103 @@ class RomStore(private val ctx: Context) {
         }
     }
 
+    /** Thêm nhiều file một lượt: file .cue được ghép với các file .bin trong cùng lượt chọn (giữ nguyên nhạc đĩa). */
+    fun importAll(uris: List<Uri>): List<ImportResult> {
+        val named = uris.map { it to (queryName(it) ?: "") }
+        val used = HashSet<Uri>()
+        val results = ArrayList<ImportResult>()
+        for ((cueUri, cueName) in named) {
+            if (!cueName.lowercase().endsWith(".cue")) continue
+            used.add(cueUri)
+            val wanted = CueSheet.files(readSmallText(cueUri))
+            val tracks = ArrayList<Pair<String, Uri>>()
+            val missing = ArrayList<String>()
+            for (w in wanted) {
+                val hit = named.firstOrNull { (u, n) -> u !in used && n.equals(w, ignoreCase = true) }
+                if (hit != null) tracks.add(w to hit.first) else missing.add(w)
+            }
+            if (wanted.isEmpty() || missing.isNotEmpty()) {
+                results.add(ImportResult.Rejected("\"$cueName\" cần thêm file: ${missing.joinToString(", ").ifEmpty { "(không đọc được danh sách track)" }}. Hãy chọn file .cue và tất cả file .bin của đĩa cùng một lúc"))
+                continue
+            }
+            tracks.forEach { used.add(it.second) }
+            results.add(importDisc(cueUri, cueName, tracks))
+        }
+        for ((u, _) in named) if (u !in used) results.add(import(u))
+        return results
+    }
+
+    private fun readSmallText(uri: Uri): String = try {
+        ctx.contentResolver.openInputStream(uri)?.use { it.readNBytesCompat(64 * 1024).toString(Charsets.ISO_8859_1) } ?: ""
+    } catch (_: Exception) {
+        ""
+    }
+
+    private fun java.io.InputStream.readNBytesCompat(max: Int): ByteArray {
+        val buf = ByteArray(max)
+        var n = 0
+        while (n < max) {
+            val r = read(buf, n, max - n)
+            if (r < 0) break
+            n += r
+        }
+        return buf.copyOf(n)
+    }
+
+    /**
+     * Thêm một đĩa nhiều file: file .cue lưu thành `<id>.rom`, các track lưu trong thư mục `<id>.disc` với đúng tên
+     * mà .cue tham chiếu. id = SHA-256 của .cue và mọi track.
+     */
+    fun importDisc(cueUri: Uri, cueName: String, tracks: List<Pair<String, Uri>>): ImportResult {
+        val stamp = System.nanoTime()
+        val tmpCue = File(romDir, "import-$stamp.tmp")
+        val tmpDir = File(romDir, "import-$stamp.disc.tmp").apply { mkdirs() }
+        try {
+            val md = MessageDigest.getInstance("SHA-256")
+            var total = 0L
+            fun copy(uri: Uri, dest: File): Boolean {
+                ctx.contentResolver.openInputStream(uri).use { input ->
+                    if (input == null) return false
+                    dest.outputStream().use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            md.update(buf, 0, n)
+                            out.write(buf, 0, n)
+                            total += n
+                        }
+                    }
+                }
+                return true
+            }
+            if (!copy(cueUri, tmpCue)) return ImportResult.Rejected("Không đọc được \"$cueName\"")
+            for ((name, uri) in tracks) {
+                md.update(name.lowercase().toByteArray())
+                if (!copy(uri, File(tmpDir, name))) return ImportResult.Rejected("Không đọc được \"$name\"")
+            }
+            val id = md.digest().joinToString("") { "%02x".format(it) }.take(32)
+            synchronized(lock) {
+                val list = readIndex()
+                list.firstOrNull { it.id == id }?.let { return ImportResult.Duplicate(it) }
+                val disc = discDir(id)
+                disc.deleteRecursively()
+                if (!tmpDir.renameTo(disc)) return ImportResult.Rejected("Không lưu được \"$cueName\"")
+                if (!tmpCue.renameTo(romFile(id))) tmpCue.copyTo(romFile(id), overwrite = true)
+                val now = System.currentTimeMillis()
+                val base = cueName.substringBeforeLast('.')
+                val info = RomInfo(id, base, total, now, 0L, fileBase = base, system = GameSystem.PSX.id)
+                writeIndex(list + info)
+                return ImportResult.Added(info)
+            }
+        } catch (e: Exception) {
+            return ImportResult.Rejected("Lỗi khi thêm \"$cueName\": ${e.message}")
+        } finally {
+            tmpCue.delete()
+            tmpDir.deleteRecursively()
+        }
+    }
+
     /** Đoán hệ của file .bin theo nội dung: Mega Drive có chữ "SEGA" ở 0x100, đĩa PlayStation có "PLAYSTATION" ở sector 16; còn lại coi là GBA. */
     private fun sniffBin(f: File): GameSystem {
         val head = ByteArray(40000)
@@ -192,7 +291,7 @@ class RomStore(private val ctx: Context) {
         val displayName = queryName(uri) ?: "Game"
         val ext = displayName.substringAfterLast('.', "").lowercase()
         if (ext == "cue") {
-            return ImportResult.Rejected("\"$displayName\": file .cue chỉ là bảng mục lục của đĩa. Hãy chọn file .bin (đĩa một track) hoặc đổi cả đĩa sang .chd")
+            return ImportResult.Rejected("\"$displayName\": file .cue phải được chọn cùng lúc với các file .bin của đĩa")
         }
         // .bin dùng chung cho GBA, Mega Drive và PlayStation: phải xem nội dung mới biết hệ nào (làm sau khi sao chép).
         var sys = GameSystem.fromExt(ext)
@@ -279,7 +378,35 @@ class RomStore(private val ctx: Context) {
             } catch (_: Exception) {
                 continue
             }
+            // Đĩa nhiều file: .cue ghép với các track cùng thư mục; các track đó không được thêm riêng như game lẻ.
+            val byName = files.associateBy { it[1].lowercase() }
+            val trackDocs = HashSet<String>()
             for (f in files) {
+                if (!f[1].lowercase().endsWith(".cue")) continue
+                val key = "${f[0]}|${f[2]}|${f[3]}"
+                val cueUri = DocumentsContract.buildDocumentUriUsingTree(tree, f[0])
+                val wanted = CueSheet.files(readSmallText(cueUri))
+                val tracks = wanted.mapNotNull { w -> byName[w.lowercase()]?.let { w to it } }
+                if (wanted.isEmpty() || tracks.size != wanted.size) continue
+                tracks.forEach { trackDocs.add(it.second[0]) }
+                val old = known[key]
+                if (old != null && old in liveIds) continue
+                val r = importDisc(
+                    cueUri,
+                    f[1],
+                    tracks.map { (w, d) -> w to DocumentsContract.buildDocumentUriUsingTree(tree, d[0]) },
+                )
+                when (r) {
+                    is ImportResult.Added -> {
+                        known[key] = r.rom.id
+                        added.add(r.rom)
+                    }
+                    is ImportResult.Duplicate -> known[key] = r.rom.id
+                    is ImportResult.Rejected -> {}
+                }
+            }
+            for (f in files) {
+                if (f[0] in trackDocs) continue
                 val ext = f[1].substringAfterLast('.', "").lowercase()
                 if (GameSystem.fromExt(ext) == null) continue
                 val key = "${f[0]}|${f[2]}|${f[3]}"
@@ -311,6 +438,7 @@ class RomStore(private val ctx: Context) {
     fun delete(id: String) = synchronized(lock) {
         writeIndex(readIndex().filter { it.id != id })
         romFile(id).delete()
+        discDir(id).deleteRecursively()
         savFile(id).delete()
         coverFile(id).delete()
         cheatFile(id).delete()

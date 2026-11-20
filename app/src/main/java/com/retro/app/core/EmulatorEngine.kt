@@ -9,6 +9,7 @@ import android.media.PlaybackParams
 import android.os.Process
 import com.retro.app.data.AudioLatency
 import com.retro.app.data.Core
+import com.retro.app.data.CueSheet
 import com.retro.app.data.GameSystem
 import java.io.File
 import java.nio.ByteBuffer
@@ -119,16 +120,26 @@ object EmulatorEngine {
     private fun playPath(ctx: Context, rom: File, sys: GameSystem): String {
         if (sys.core != Core.PCSX) return rom.absolutePath
         return try {
-            val head = ByteArray(16)
-            rom.inputStream().use { it.read(head) }
+            val head = ByteArray(512)
+            val n = rom.inputStream().use { it.read(head) }
+            val dir = File(ctx.cacheDir, "play").apply { mkdirs() }
+            dir.listFiles()?.forEach { it.deleteRecursively() }
+            if (CueSheet.looksLikeCue(head, n)) {
+                // Đĩa nhiều track: .cue nằm cạnh các track (liên kết mềm tới thư mục <id>.disc) để lõi đọc được cả nhạc.
+                val disc = File(rom.parentFile, rom.nameWithoutExtension + ".disc")
+                for (name in CueSheet.files(rom.readText(Charsets.ISO_8859_1))) {
+                    java.nio.file.Files.createSymbolicLink(File(dir, name).toPath(), File(disc, name).toPath())
+                }
+                val cue = File(dir, rom.nameWithoutExtension + ".cue")
+                java.nio.file.Files.createSymbolicLink(cue.toPath(), rom.toPath())
+                return cue.absolutePath
+            }
             val ext = when {
                 String(head, 0, 8, Charsets.ISO_8859_1) == "MComprHD" -> "chd"
                 head[0].toInt() == 0 && String(head, 1, 3, Charsets.ISO_8859_1) == "PBP" -> "pbp"
                 head[0].toInt() == 0 && head[11].toInt() == 0 && (1..10).all { head[it] == 0xFF.toByte() } -> "bin"
                 else -> "iso"
             }
-            val dir = File(ctx.cacheDir, "play").apply { mkdirs() }
-            dir.listFiles()?.forEach { it.delete() }
             val link = File(dir, rom.nameWithoutExtension + "." + ext)
             java.nio.file.Files.createSymbolicLink(link.toPath(), rom.toPath())
             link.absolutePath

@@ -165,7 +165,7 @@ class AppModel(private val app: Application) {
     fun addRoms(uris: List<Uri>) {
         if (uris.isEmpty()) return
         scope.launch {
-            val results = withContext(Dispatchers.IO) { uris.map { store.import(it) } }
+            val results = withContext(Dispatchers.IO) { store.importAll(uris) }
             refresh()
             autoCoverMissing()
             val added = results.filterIsInstance<ImportResult.Added>()
