@@ -77,6 +77,7 @@ class AppModel(private val app: Application) {
         EmulatorEngine.onFps = { fps = it }
         EmulatorEngine.onCoreMs = { coreMs = it }
         EmulatorEngine.soundOn = settings.sound
+        EmulatorEngine.audioLatency = settings.audioLatency
         applyCoreOptions()
         refresh()
         autoCoverMissing()
@@ -90,6 +91,7 @@ class AppModel(private val app: Application) {
         settings = change(settings)
         prefs.save(settings)
         EmulatorEngine.soundOn = settings.sound
+        EmulatorEngine.audioLatency = settings.audioLatency
         applyCoreOptions()
     }
 

@@ -7,6 +7,7 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.media.PlaybackParams
 import android.os.Process
+import com.retro.app.data.AudioLatency
 import com.retro.app.data.Core
 import com.retro.app.data.GameSystem
 import java.io.File
@@ -45,11 +46,15 @@ object EmulatorEngine {
     @Volatile var sramSink: ((String, ByteArray) -> Unit)? = null
     /** Tần số phát ra (Hz); khớp retro::kOutputRate bên C++. */
     private const val OUTPUT_RATE = 48000
+    /** Dung lượng AudioTrack (ms): lớn hơn mức trần cao nhất; hàng đợi thực tế bị giữ dưới [AudioLatency.maxMs]. */
+    private const val AUDIO_CAPACITY_MS = 140
 
     @Volatile var onFps: ((Float) -> Unit)? = null
     @Volatile var onCoreMs: ((Float) -> Unit)? = null
 
     @Volatile var soundOn = true
+    /** Độ trễ âm thanh: mức trần áp dụng ngay, phần đệm sẵn áp dụng khi mở game. */
+    @Volatile var audioLatency = AudioLatency.BALANCED
         set(v) {
             field = v
             track?.setVolume(if (v) 1f else 0f)
@@ -272,8 +277,8 @@ object EmulatorEngine {
         if (rate <= 0) return
         try {
             val minBuf = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
-            val frameBytes = (rate / 60) * 4
-            val size = max(minBuf * 2, frameBytes * 8)
+            // Dung lượng chỉ là giới hạn trên; độ trễ thật do mức trần hàng đợi trong [loop] quyết định.
+            val size = max(minBuf, rate / 1000 * AUDIO_CAPACITY_MS * 4)
             val t = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
@@ -290,11 +295,17 @@ object EmulatorEngine {
                 )
                 .setBufferSizeInBytes(size)
                 .setTransferMode(AudioTrack.MODE_STREAM)
-                .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_NONE)
+                .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
                 .build()
             t.setVolume(if (soundOn) 1f else 0f)
             track = t
             appliedSpeed = 1f
+            // Đệm sẵn một đoạn im lặng ngắn làm "đệm an toàn" cho khung chậm; sau đó hàng đợi được giữ quanh mức này.
+            val pre = rate * audioLatency.prefillMs / 1000
+            audioWritten = 0L
+            val w = t.write(ShortArray(pre * 2), 0, pre * 2, AudioTrack.WRITE_NON_BLOCKING)
+            if (w > 0) audioWritten = (w / 2).toLong()
+            audioRate = rate
             t.play()
             applySpeedToTrack()
         } catch (e: Throwable) {
@@ -312,6 +323,9 @@ object EmulatorEngine {
     }
 
     private var appliedSpeed = 1f
+    /** Số khung âm thanh đã đẩy vào AudioTrack từ lúc tạo, để biết còn bao nhiêu chưa phát. */
+    private var audioWritten = 0L
+    private var audioRate = OUTPUT_RATE
 
     private fun applySpeedToTrack() {
         val t = track ?: return
@@ -361,8 +375,15 @@ object EmulatorEngine {
             val n = NativeCore.nativeDrainAudio(audioBuf)
             val t = track
             if (t != null && n > 0) {
-                // Không chặn: nhịp game do đồng hồ thời gian thực quyết định; âm thanh chỉ được đẩy vào bộ đệm.
-                t.write(audioBuf, 0, n * 2, AudioTrack.WRITE_NON_BLOCKING)
+                // Không chặn: nhịp game do đồng hồ thời gian thực quyết định. Đồng hồ âm thanh lệch nhẹ so với
+                // đồng hồ hệ thống nên hàng đợi sẽ dần đầy lên và tiếng trễ so với hình; vượt mức trần thì bỏ đoạn này.
+                val head = t.playbackHeadPosition.toLong() and 0xFFFFFFFFL
+                val queued = audioWritten - head
+                val maxQueue = (audioRate / 1000L * audioLatency.maxMs * max(1f, speed)).toLong()
+                if (queued <= maxQueue) {
+                    val w = t.write(audioBuf, 0, n * 2, AudioTrack.WRITE_NON_BLOCKING)
+                    if (w > 0) audioWritten += w / 2
+                }
             }
             nextNs += (1_000_000_000.0 / (av[0].coerceAtLeast(1.0) * speed)).toLong()
             val d = nextNs - System.nanoTime()

@@ -400,13 +400,7 @@ fun LibraryScreen(model: AppModel) {
                     1 -> ControllerPage(model) { settingsPage = 0 }
                     2 -> AboutPage { settingsPage = 0 }
                     6 -> GameBoyPage(model) { settingsPage = 0 }
-                    3 -> {
-                        PageHeader("Âm thanh") { settingsPage = 0 }
-                        Spacer(Modifier.height(8.dp))
-                        GroupCard {
-                            ToggleRow("Bật âm thanh", st.sound, icon = "volume") { v -> model.update { it.copy(sound = v) } }
-                        }
-                    }
+                    3 -> AudioPage(model) { settingsPage = 0 }
                     4 -> {
                         PageHeader("Cảm ứng & rung") { settingsPage = 0 }
                         Spacer(Modifier.height(8.dp))

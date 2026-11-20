@@ -8,8 +8,16 @@ enum class SortKey(val label: String) {
     ADDED("Mới thêm"),
 }
 
+/** Độ trễ âm thanh: đệm sẵn [prefillMs] ms, hàng đợi vượt [maxMs] ms thì bỏ bớt (đệm ít = sát hình hơn nhưng dễ lẹt xẹt). */
+enum class AudioLatency(val label: String, val hint: String, val prefillMs: Int, val maxMs: Int) {
+    RESPONSIVE("Phản hồi nhanh", "Tiếng sát hình nhất. Máy yếu có thể bị lẹt xẹt (NDS, PlayStation)", 10, 25),
+    BALANCED("Cân bằng", "Mặc định, hợp với hầu hết máy", 30, 60),
+    STABLE("Tiếng ổn định", "Tiếng không bị đứt, trễ hơn một chút. Hợp máy yếu hoặc tai nghe Bluetooth", 60, 120),
+}
+
 data class Settings(
     val sound: Boolean = true,
+    val audioLatency: AudioLatency = AudioLatency.BALANCED,
     val showPad: Boolean = true,
     val haptics: Boolean = true,
     val showStats: Boolean = false,
@@ -31,6 +39,7 @@ class Prefs(ctx: Context) {
         val d = Settings()
         return Settings(
             sound = sp.getBoolean("sound", d.sound),
+            audioLatency = enumOf(sp.getString("audioLatency", null), d.audioLatency),
             showPad = sp.getBoolean("showPad", d.showPad),
             haptics = sp.getBoolean("haptics", d.haptics),
             showStats = sp.getBoolean("showStats", d.showStats),
@@ -45,6 +54,7 @@ class Prefs(ctx: Context) {
     fun save(s: Settings) {
         sp.edit()
             .putBoolean("sound", s.sound)
+            .putString("audioLatency", s.audioLatency.name)
             .putBoolean("showPad", s.showPad)
             .putBoolean("haptics", s.haptics)
             .putBoolean("showStats", s.showStats)
