@@ -344,12 +344,39 @@ class AppModel(private val app: Application) {
         }
     }
 
+    /** Sau khi cài BIOS: các game của hệ đó đang có điểm tự lưu (sẽ tiếp tục thay vì khởi động lại qua BIOS mới). */
+    class BiosResetPrompt(val systemLabel: String, val ids: List<String>)
+
+    var biosResetPrompt by mutableStateOf<BiosResetPrompt?>(null)
+        private set
+
     fun installBios(kind: BiosKind, uri: Uri) {
         scope.launch {
             val err = withContext(Dispatchers.IO) { bios.install(app, kind, uri) }
             biosVersion++
             toast = err ?: "Đã cài ${kind.title}. Mở lại game để dùng."
+            if (err == null) {
+                val sys = GameSystem.fromId(kind.systemId)
+                val ids = withContext(Dispatchers.IO) {
+                    roms.filter { it.system == sys.id && store.hasState(it.id, RomStore.AUTO_SLOT) }.map { it.id }
+                }
+                if (ids.isNotEmpty()) biosResetPrompt = BiosResetPrompt(sys.label, ids)
+            }
         }
+    }
+
+    /** Xoá điểm tự lưu của các game đã hỏi, để lần mở sau khởi động từ đầu qua BIOS mới. Save State thủ công và file save giữ nguyên. */
+    fun confirmBiosReset() {
+        val p = biosResetPrompt ?: return
+        biosResetPrompt = null
+        scope.launch {
+            withContext(Dispatchers.IO) { p.ids.forEach { store.deleteState(it, RomStore.AUTO_SLOT) } }
+            toast = "Đã đặt ${p.ids.size} game ${p.systemLabel} khởi động lại từ đầu"
+        }
+    }
+
+    fun dismissBiosReset() {
+        biosResetPrompt = null
     }
 
     // ---------- Chơi ----------

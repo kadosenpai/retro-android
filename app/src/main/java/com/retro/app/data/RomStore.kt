@@ -130,6 +130,8 @@ class RomStore(private val ctx: Context) {
     /** Thời điểm lưu (ms); 0 nếu ô trống. */
     fun stateTime(id: String, slot: Int): Long = stateFile(id, slot).takeIf { it.exists() }?.lastModified() ?: 0L
 
+    fun hasState(id: String, slot: Int): Boolean = stateFile(id, slot).exists()
+
     fun deleteState(id: String, slot: Int) {
         stateFile(id, slot).delete()
         thumbFile(id, slot).delete()

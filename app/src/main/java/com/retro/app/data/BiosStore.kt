@@ -12,6 +12,15 @@ enum class BiosKind(val title: String, val hint: String) {
     NDS9("BIOS ARM9 (bios9.bin)", "File 4 KB"),
     NDS_FW("Firmware (firmware.bin)", "File 128, 256 hoặc 512 KB. Cần đủ cả ba file NDS thì mới dùng BIOS thật, thiếu thì dùng BIOS giả lập"),
     GBA("BIOS Game Boy Advance (gba_bios.bin)", "File 16 KB. Có thì game GBA hiện logo khởi động và chạy đúng hơn"),
+    ;
+
+    /** Hệ máy dùng BIOS này (id của [GameSystem]). */
+    val systemId: String
+        get() = when (this) {
+            PSX -> GameSystem.PSX.id
+            NDS7, NDS9, NDS_FW -> GameSystem.NDS.id
+            GBA -> GameSystem.GBA.id
+        }
 }
 
 /** Lưu BIOS vào thư mục system của lõi (`filesDir/system`); lõi tự tìm file ở đó khi mở game. */
