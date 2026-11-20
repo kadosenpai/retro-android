@@ -396,9 +396,6 @@ fun LibraryScreen(model: AppModel) {
                 ) {
                     // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy
                     var settingsPage by remember { mutableStateOf(0) }
-                // Bảng Cài đặt che mất thông báo của màn hình chính nên hiện thông báo ngay trong bảng.
-                model.toast?.let { ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
-            }
                 val st = model.settings
                 when (settingsPage) {
                     1 -> ControllerPage(model) { settingsPage = 0 }
@@ -466,6 +463,9 @@ fun LibraryScreen(model: AppModel) {
                         }
                     }
                 }
+            }
+                // Bảng Cài đặt che mất thông báo của màn hình chính nên hiện thông báo ngay trong bảng.
+                model.toast?.let { ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
             }
         }
       }
