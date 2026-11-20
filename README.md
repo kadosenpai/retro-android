@@ -8,8 +8,8 @@ Trình chơi game retro cho Android: GBA, Game Boy, Game Boy Color, NES, SNES, N
 | NES | FCEUmm | `.nes` |
 | SNES | Snes9x | `.sfc` `.smc` `.swc` `.fig` |
 | Nintendo DS | melonDS | `.nds` `.dsi` `.ids` |
-| Mega Drive | Genesis Plus GX | `.md` `.gen` `.smd` |
-| PlayStation | PCSX ReARMed | `.chd` `.pbp` `.iso` (một file) |
+| Mega Drive | Genesis Plus GX | `.md` `.gen` `.smd` `.bin` |
+| PlayStation | PCSX ReARMed | `.chd` `.pbp` `.iso` `.img` `.bin` (đĩa một file, một track) |
 
 ROM nén `.zip` chưa được hỗ trợ.
 

@@ -35,10 +35,10 @@ enum class GameSystem(
     NES("nes", "NES", "nes", setOf("nes", "unf", "unif"), "Nintendo - Nintendo Entertainment System", "Nintendo_-_Nintendo_Entertainment_System", 0x2010, Core.FCEUMM, CheatKind.NES),
     SNES("snes", "SNES", "snes", setOf("sfc", "smc", "swc", "fig"), "Nintendo - Super Nintendo Entertainment System", "Nintendo_-_Super_Nintendo_Entertainment_System", 0x8000, Core.SNES9X, CheatKind.SNES),
     NDS("nds", "NDS", "nds", setOf("nds", "dsi", "ids"), "Nintendo - Nintendo DS", "Nintendo_-_Nintendo_DS", 0x200, Core.MELONDS, CheatKind.NDS),
-    // Mega Drive: ".bin" đã thuộc GBA nên chỉ nhận md/gen/smd. Màn 256 hoặc 320 điểm đều hiển thị 4:3.
+    // Mega Drive: ".bin" dùng chung với GBA/PlayStation nên được nhận qua nội dung file (xem RomStore.sniffBin), ở đây chỉ liệt kê md/gen/smd. Màn 256 hoặc 320 điểm đều hiển thị 4:3.
     MD("md", "Mega Drive", "md", setOf("md", "gen", "smd"), "Sega - Mega Drive - Genesis", "Sega_-_Mega_Drive_-_Genesis", 0x1000, Core.GENESIS, CheatKind.MD, 4f / 3f),
-    // PlayStation: chỉ nhận ảnh đĩa một file (chd, pbp, iso); lõi đọc thẳng từ file nên ảnh nặng không bị nạp vào RAM.
-    PSX("psx", "PlayStation", "psx", setOf("chd", "pbp", "iso"), "Sony - PlayStation", "Sony_-_PlayStation", 0x10000, Core.PCSX, CheatKind.PSX, 4f / 3f);
+    // PlayStation: chỉ nhận ảnh đĩa một file (chd, pbp, iso, img; .bin một track qua sniffBin); lõi đọc thẳng từ file nên ảnh nặng không bị nạp vào RAM.
+    PSX("psx", "PlayStation", "psx", setOf("chd", "pbp", "iso", "img"), "Sony - PlayStation", "Sony_-_PlayStation", 0x10000, Core.PCSX, CheatKind.PSX, 4f / 3f);
 
     companion object {
         fun fromId(id: String?): GameSystem = values().firstOrNull { it.id == id } ?: GBA

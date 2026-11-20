@@ -162,12 +162,41 @@ class RomStore(private val ctx: Context) {
         }
     }
 
+    /** Đoán hệ của file .bin theo nội dung: Mega Drive có chữ "SEGA" ở 0x100, đĩa PlayStation có "PLAYSTATION" ở sector 16; còn lại coi là GBA. */
+    private fun sniffBin(f: File): GameSystem {
+        val head = ByteArray(40000)
+        var n = 0
+        try {
+            f.inputStream().use { input ->
+                while (n < head.size) {
+                    val r = input.read(head, n, head.size - n)
+                    if (r < 0) break
+                    n += r
+                }
+            }
+        } catch (_: Exception) {
+            return GameSystem.GBA
+        }
+        fun at(off: Int, text: String) =
+            off + text.length <= n && String(head, off, text.length, Charsets.ISO_8859_1) == text
+        if (at(0x100, "SEGA")) return GameSystem.MD
+        if (at(16 * 2048 + 8, "PLAYSTATION")) return GameSystem.PSX // ảnh 2048 byte/sector
+        // Ảnh thô 2352 byte/sector (bắt đầu bằng mẫu đồng bộ 00 FF*10 00): sector 16 nằm quanh byte 37632.
+        val raw = n > 12 && head[0] == 0.toByte() && head[11] == 0.toByte() && (1..10).all { head[it] == 0xFF.toByte() }
+        if (raw && n >= 37700 && String(head, 37600, 100, Charsets.ISO_8859_1).contains("PLAYSTATION")) return GameSystem.PSX
+        return GameSystem.GBA
+    }
+
     /** Sao chép ROM từ Uri người dùng chọn vào bộ nhớ riêng; id = SHA-256 của nội dung. */
     fun import(uri: Uri): ImportResult {
         val displayName = queryName(uri) ?: "Game"
         val ext = displayName.substringAfterLast('.', "").lowercase()
-        val sys = GameSystem.fromExt(ext)
-            ?: return ImportResult.Rejected("\"$displayName\": chỉ hỗ trợ file .gba, .gb, .gbc, .nes, .sfc, .smc, .nds, .md, .gen, .chd, .pbp, .iso (không nén .zip)")
+        if (ext == "cue") {
+            return ImportResult.Rejected("\"$displayName\": file .cue chỉ là bảng mục lục của đĩa. Hãy chọn file .bin (đĩa một track) hoặc đổi cả đĩa sang .chd")
+        }
+        // .bin dùng chung cho GBA, Mega Drive và PlayStation: phải xem nội dung mới biết hệ nào (làm sau khi sao chép).
+        var sys = GameSystem.fromExt(ext)
+            ?: return ImportResult.Rejected("\"$displayName\": chỉ hỗ trợ file .gba, .gb, .gbc, .nes, .sfc, .smc, .nds, .md, .gen, .bin, .chd, .pbp, .iso (không nén .zip)")
         val tmp = File(romDir, "import-${System.nanoTime()}.tmp")
         try {
             val md = MessageDigest.getInstance("SHA-256")
@@ -185,6 +214,7 @@ class RomStore(private val ctx: Context) {
                     }
                 }
             }
+            if (ext == "bin") sys = sniffBin(tmp)
             if (total < sys.minRomSize) return ImportResult.Rejected("\"$displayName\" quá nhỏ, không phải ROM ${sys.label}")
             val id = md.digest().joinToString("") { "%02x".format(it) }.take(32)
             synchronized(lock) {

@@ -119,11 +119,12 @@ object EmulatorEngine {
     private fun playPath(ctx: Context, rom: File, sys: GameSystem): String {
         if (sys.core != Core.PCSX) return rom.absolutePath
         return try {
-            val head = ByteArray(8)
+            val head = ByteArray(16)
             rom.inputStream().use { it.read(head) }
             val ext = when {
-                String(head, Charsets.ISO_8859_1) == "MComprHD" -> "chd"
+                String(head, 0, 8, Charsets.ISO_8859_1) == "MComprHD" -> "chd"
                 head[0].toInt() == 0 && String(head, 1, 3, Charsets.ISO_8859_1) == "PBP" -> "pbp"
+                head[0].toInt() == 0 && head[11].toInt() == 0 && (1..10).all { head[it] == 0xFF.toByte() } -> "bin"
                 else -> "iso"
             }
             val dir = File(ctx.cacheDir, "play").apply { mkdirs() }
