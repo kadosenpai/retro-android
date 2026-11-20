@@ -15,6 +15,15 @@ enum class AudioLatency(val label: String, val hint: String, val prefillMs: Int,
     STABLE("Tiếng ổn định", "Tiếng không bị đứt, trễ hơn một chút. Hợp máy yếu hoặc tai nghe Bluetooth", 60, 120),
 }
 
+/** Máy chủ thay thế cho Nintendo Wi-Fi Connection (đã đóng) mà lõi NDS dùng để chơi online; [value] là giá trị DNS đưa cho lõi. */
+enum class WfcServer(val label: String, val hint: String, val value: String) {
+    KAERU("Kaeru WFC", "Mặc định, hợp với nhiều game", "178.62.43.212"),
+    WIIMMFI("Wiimmfi", "Hay dùng cho Mario Kart DS và vài game khác", "95.217.77.181"),
+    ALTWFC("AltWFC", "Máy chủ cộng đồng khác", "172.104.88.237"),
+    DEFAULT_DNS("DNS mặc định", "Không dùng máy chủ cộng đồng, chỉ để thử", "0.0.0.0"),
+    KEEP("Không ghi đè", "Giữ cài đặt trong firmware của máy NDS", "default"),
+}
+
 data class Settings(
     val sound: Boolean = true,
     val audioLatency: AudioLatency = AudioLatency.BALANCED,
@@ -30,6 +39,9 @@ data class Settings(
     val gbPalette: String = "Grayscale",
     /** Hiện viền Super Game Boy (áp dụng khi mở lại game). */
     val sgbBorder: Boolean = true,
+    /** Wi-Fi của máy NDS (chơi online). Tắt thì game không thấy mạng. */
+    val wifi: Boolean = true,
+    val wfcServer: WfcServer = WfcServer.KAERU,
 )
 
 class Prefs(ctx: Context) {
@@ -48,6 +60,8 @@ class Prefs(ctx: Context) {
             tab = sp.getString("tab", null) ?: d.tab,
             gbPalette = sp.getString("gbPalette", null) ?: d.gbPalette,
             sgbBorder = sp.getBoolean("sgbBorder", d.sgbBorder),
+            wifi = sp.getBoolean("wifi", d.wifi),
+            wfcServer = enumOf(sp.getString("wfcServer", null), d.wfcServer),
         )
     }
 
@@ -63,6 +77,8 @@ class Prefs(ctx: Context) {
             .putString("tab", s.tab)
             .putString("gbPalette", s.gbPalette)
             .putBoolean("sgbBorder", s.sgbBorder)
+            .putBoolean("wifi", s.wifi)
+            .putString("wfcServer", s.wfcServer.name)
             .apply()
     }
 

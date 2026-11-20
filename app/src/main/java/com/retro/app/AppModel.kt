@@ -120,6 +120,9 @@ class AppModel(private val app: Application) {
         EmulatorEngine.setOption("melonds_mic_input", "blow")
         EmulatorEngine.setOption("melonds_dsi_sdcard", "disabled")
         EmulatorEngine.setOption("melonds_homebrew_sdcard", "disabled")
+        // Wi-Fi: "indirect" đi qua mạng của điện thoại; máy chủ thay thế cho Nintendo WFC chọn trong Cài đặt.
+        EmulatorEngine.setOption("melonds_network_mode", if (settings.wifi) "indirect" else "disabled")
+        EmulatorEngine.setOption("melonds_firmware_wfc_dns", settings.wfcServer.value)
         listOf(
             "unsupported_features", "bios_warnings", "current_layout", "mic_state",
             "camera_state", "lid_state", "sensor_reading", "pointer_coordinates",

@@ -398,7 +398,7 @@ fun LibraryScreen(model: AppModel) {
                         .navigationBarsPadding()
                         .padding(top = 12.dp, bottom = 24.dp),
                 ) {
-                    // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy
+                    // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy, 7 = BIOS, 8 = Wi-Fi
                     var settingsPage by remember { mutableStateOf(0) }
                 val st = model.settings
                 when (settingsPage) {
@@ -406,6 +406,7 @@ fun LibraryScreen(model: AppModel) {
                     2 -> AboutPage { settingsPage = 0 }
                     6 -> GameBoyPage(model) { settingsPage = 0 }
                     7 -> BiosPage(model) { settingsPage = 0 }
+                    8 -> WifiPage(model) { settingsPage = 0 }
                     3 -> AudioPage(model) { settingsPage = 0 }
                     4 -> {
                         PageHeader("Cảm ứng & rung") { settingsPage = 0 }
@@ -444,6 +445,8 @@ fun LibraryScreen(model: AppModel) {
                             ActionRow("Âm thanh", icon = "volume", chevron = true) { settingsPage = 3 }
                             RowDivider()
                             ActionRow("Game Boy", icon = "image", chevron = true) { settingsPage = 6 }
+                            RowDivider()
+                            ActionRow("Wi-Fi (NDS)", icon = "wifi", chevron = true) { settingsPage = 8 }
                             RowDivider()
                             ActionRow("BIOS", icon = "database", chevron = true) { settingsPage = 7 }
                         }

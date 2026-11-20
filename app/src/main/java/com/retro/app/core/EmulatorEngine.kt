@@ -186,7 +186,10 @@ object EmulatorEngine {
 
     // ---------- Nạp / gỡ game ----------
     /** Trả về null nếu thành công, ngược lại là thông báo lỗi. */
-    fun load(ctx: Context, rom: File, romId: String, sram: ByteArray?, sys: GameSystem): String? = call {
+    fun load(
+        ctx: Context, rom: File, romId: String, sram: ByteArray?, sys: GameSystem,
+        options: Map<String, String> = emptyMap(),
+    ): String? = call {
         try {
             if (loaded) unloadInternal()
             if (loadedCore != sys.core) {
@@ -200,6 +203,8 @@ object EmulatorEngine {
                 loadedCore = sys.core
             }
             val path = playPath(ctx, rom, sys)
+            // Tuỳ chọn riêng của game (ví dụ chế độ DS/DSi) phải đặt trước khi nạp vì lõi đọc lúc nạp.
+            options.forEach { (k, v) -> NativeCore.nativeSetOption(k, v) }
             val err = NativeCore.nativeLoadGame(path)
             if (err != null) return@call err
             applyControllerDevice()
