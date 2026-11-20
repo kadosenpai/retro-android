@@ -18,6 +18,10 @@ object NativeCore {
 
     /** Cảm ứng màn dưới NDS: x, y chuẩn hoá -32768..32767 theo toàn khung hình. */
     external fun nativeSetTouch(x: Int, y: Int, down: Boolean)
+    /** Hai cần analog (-32768..32767): trái X, trái Y, phải X, phải Y. */
+    external fun nativeSetAnalog(lx: Int, ly: Int, rx: Int, ry: Int)
+    /** Đổi loại tay cầm ở cổng [port] (vd. DualShock của PlayStation). */
+    external fun nativeSetControllerDevice(port: Int, device: Int)
 
     /** [fps, sampleRate, width, height, pixelFormat] */
     external fun nativeAvInfo(): DoubleArray
@@ -53,5 +57,9 @@ object Pad {
     const val X = 1 shl 9
     const val L = 1 shl 10
     const val R = 1 shl 11
+    const val L2 = 1 shl 12
+    const val R2 = 1 shl 13
+    const val L3 = 1 shl 14
+    const val R3 = 1 shl 15
     const val DPAD = UP or DOWN or LEFT or RIGHT
 }

@@ -41,6 +41,7 @@ ROM nén `.zip` chưa được hỗ trợ.
 - GBA, GB, GBC, NES: Atomic Advance – SmokeGray.
 - SNES: SNES Pocket (JoyCon).
 - NDS: Atomic NDS 2 (Onyx Black).
+- PlayStation: DualShocked - Gray (hai cần analog, L2/R2/L3/R3; DualShock được bật tự động).
 
 ## Cấu trúc
 

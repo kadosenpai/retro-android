@@ -60,12 +60,21 @@ private fun bitOf(c: Ctl): Int = when (c) {
     Ctl.Y -> Pad.Y
     Ctl.L -> Pad.L
     Ctl.R -> Pad.R
+    Ctl.L2 -> Pad.L2
+    Ctl.R2 -> Pad.R2
+    Ctl.L3 -> Pad.L3
+    Ctl.R3 -> Pad.R3
     Ctl.START -> Pad.START
     Ctl.SELECT -> Pad.SELECT
     else -> 0
 }
 
-private val LATCHABLE = listOf(Ctl.A, Ctl.B, Ctl.X, Ctl.Y, Ctl.L, Ctl.R, Ctl.START, Ctl.SELECT)
+private val LATCHABLE = listOf(Ctl.A, Ctl.B, Ctl.X, Ctl.Y, Ctl.L, Ctl.R, Ctl.L2, Ctl.R2, Ctl.START, Ctl.SELECT)
+
+/** Điều khiển dạng tròn/chữ thập (D-pad, joycon, hai cần analog): xử lý theo vị trí ngón, không phải nút bấm. */
+private fun Ctl.isDir() = this == Ctl.DPAD || this == Ctl.STICK || this == Ctl.LSTICK || this == Ctl.RSTICK
+
+private fun Ctl.isAnalog() = this == Ctl.LSTICK || this == Ctl.RSTICK
 
 private fun len(x: Float, y: Float): Float = sqrt(x * x + y * y)
 
@@ -85,7 +94,9 @@ fun SkinPad(
     onQuickLoad: () -> Unit,
     /** NDS: chạm màn dưới. x, y chuẩn hoá -32768..32767 theo toàn khung hình, down = đang chạm. */
     onTouch: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
-    /** "smoke" (GBA/GB/GBC/NES), "snes" hoặc "nds". */
+    /** PlayStation: hai cần analog trên skin (-32768..32767): trái X, trái Y, phải X, phải Y. */
+    onAnalog: (Int, Int, Int, Int) -> Unit = { _, _, _, _ -> },
+    /** "smoke" (GBA/GB/GBC/NES/Mega Drive), "snes", "nds" hoặc "psx". */
     skin: String = "smoke",
     game: @Composable (Modifier) -> Unit,
     hud: @Composable (Modifier, Color, Float) -> Unit = { _, _, _ -> },
@@ -101,6 +112,7 @@ fun SkinPad(
     val onSaveNow by rememberUpdatedState(onQuickSave)
     val onLoadNow by rememberUpdatedState(onQuickLoad)
     val onTouchNow by rememberUpdatedState(onTouch)
+    val onAnalogNow by rememberUpdatedState(onAnalog)
 
     var pressed by remember { mutableStateOf(emptySet<Ctl>()) }
     var dirs by remember { mutableStateOf(emptyMap<Ctl, Int>()) }
@@ -116,6 +128,7 @@ fun SkinPad(
         val def = when (skin) {
             "snes" -> if (land) SNES_LANDSCAPE else SNES_PORTRAIT
             "nds" -> if (land) NDS_LANDSCAPE else NDS_PORTRAIT
+            "psx" -> if (land) PSX_LANDSCAPE else PSX_PORTRAIT
             else -> if (land) LANDSCAPE else PORTRAIT
         }
         val kx = wPx / def.mw
@@ -203,7 +216,7 @@ fun SkinPad(
             def.hudSp,
         )
 
-        val dItems = def.items.filter { it.c == Ctl.DPAD || it.c == Ctl.STICK }
+        val dItems = def.items.filter { it.c.isDir() }
 
         fun dirBits(fr: Rect, p: Offset): Int {
             val c = fr.center
@@ -223,7 +236,7 @@ fun SkinPad(
             var best: Ctl? = null
             var bestD = Float.MAX_VALUE
             for (i in def.items) {
-                if (i.c == Ctl.DPAD || i.c == Ctl.STICK) continue
+                if (i.c.isDir()) continue
                 if (!hitRect(i).contains(p)) continue
                 val c = frame(i).center
                 val d = len(p.x - c.x, p.y - c.y)
@@ -255,7 +268,9 @@ fun SkinPad(
             var menuId: PointerId? = null // ngón đang đặt trên nút nhà
             var menuDownAt = 0L
             var menuFired = false // đã giữ đủ lâu và đã thoát
+            val lastAnalog = IntArray(4)
             onMaskNow(0)
+            onAnalogNow(0, 0, 0, 0)
             onTouchNow(0, 0, false)
             pressed = emptySet()
             dirs = emptyMap()
@@ -278,6 +293,7 @@ fun SkinPad(
                     val now = HashSet<Ctl>()
                     val dirNow = HashMap<Ctl, Int>()
                     val knobNow = HashMap<Ctl, Offset>()
+                    val analogNow = HashMap<Ctl, Offset>()
                     var stickMask = 0
                     var btnMask = 0
                     var doMenu = false
@@ -314,14 +330,24 @@ fun SkinPad(
                         }
                         if (d != null) {
                             val fr = frame(d)
-                            val bits = dirBits(fr, ch.position)
-                            stickMask = stickMask or bits
-                            dirNow[d.c] = (dirNow[d.c] ?: 0) or bits
-                            // Núm trượt theo ngón, tối đa 30% bề rộng khung.
-                            val kd = ch.position - fr.center
-                            val kl = len(kd.x, kd.y)
-                            val kmax = fr.width * 0.3f
-                            knobNow[d.c] = if (kl > kmax) kd * (kmax / kl) else kd
+                            if (d.c.isAnalog()) {
+                                // Cần analog: độ nghiêng = khoảng cách từ tâm / bán kính (tối đa 1); núm trượt theo, giữ trong vành.
+                                val v = ch.position - fr.center
+                                val l = len(v.x, v.y)
+                                val rr = fr.width * 0.5f
+                                val a = if (l > rr) v * (rr / l) else v
+                                analogNow[d.c] = Offset(a.x / rr, a.y / rr)
+                                knobNow[d.c] = a * 0.75f
+                            } else {
+                                val bits = dirBits(fr, ch.position)
+                                stickMask = stickMask or bits
+                                dirNow[d.c] = (dirNow[d.c] ?: 0) or bits
+                                // Núm trượt theo ngón, tối đa 30% bề rộng khung.
+                                val kd = ch.position - fr.center
+                                val kl = len(kd.x, kd.y)
+                                val kmax = fr.width * 0.3f
+                                knobNow[d.c] = if (kl > kmax) kd * (kmax / kl) else kd
+                            }
                             owner[id] = null
                         } else {
                             if (touchId == null && !ch.previousPressed && touchRect?.contains(ch.position) == true) touchId = id
@@ -360,6 +386,17 @@ fun SkinPad(
                         lastMask = mask
                         onMaskNow(mask)
                     }
+                    // Hai cần analog (PlayStation): chỉ gửi khi giá trị đổi; vùng chết nhỏ để cần không trôi.
+                    fun axis(c: Ctl, x: Boolean): Int {
+                        val o = analogNow[c] ?: return 0
+                        if (len(o.x, o.y) < 0.12f) return 0
+                        return ((if (x) o.x else o.y) * 32767f).roundToInt().coerceIn(-32768, 32767)
+                    }
+                    val an = intArrayOf(axis(Ctl.LSTICK, true), axis(Ctl.LSTICK, false), axis(Ctl.RSTICK, true), axis(Ctl.RSTICK, false))
+                    if (!an.contentEquals(lastAnalog)) {
+                        an.copyInto(lastAnalog)
+                        onAnalogNow(an[0], an[1], an[2], an[3])
+                    }
                     pressed = now
                     dirs = dirNow
                     knobs = knobNow
@@ -375,13 +412,13 @@ fun SkinPad(
         Canvas(Modifier.fillMaxSize().then(input)) {
             val tint = Color(0x44FFFFFF)
             for (i in def.items) {
-                if (i.c == Ctl.DPAD || i.c == Ctl.STICK) continue
+                if (i.c.isDir()) continue
                 if (i.c !in pressed) continue
                 val f = frame(i)
                 when (i.c) {
-                    Ctl.A, Ctl.B, Ctl.X, Ctl.Y, Ctl.START, Ctl.SELECT ->
+                    Ctl.A, Ctl.B, Ctl.X, Ctl.Y, Ctl.START, Ctl.SELECT, Ctl.L3, Ctl.R3 ->
                         drawCircle(tint, radius = minOf(f.width, f.height) / 2f, center = f.center)
-                    Ctl.QSAVE, Ctl.QLOAD, Ctl.L, Ctl.R, Ctl.MENU ->
+                    Ctl.QSAVE, Ctl.QLOAD, Ctl.L, Ctl.R, Ctl.L2, Ctl.R2, Ctl.MENU ->
                         drawRoundRect(tint, f.topLeft, Size(f.width, f.height), CornerRadius(f.height / 2f, f.height / 2f))
                     else -> {}
                 }
@@ -389,8 +426,8 @@ fun SkinPad(
             for (i in dItems) {
                 val f = frame(i)
                 val dir = dirs[i.c] ?: 0
-                val kd = if (i.c == Ctl.STICK) def.stickKnob else def.knob
-                val kb = if (i.c == Ctl.STICK) stickBmp else knobBmp
+                val kd = if (i.c == Ctl.STICK || i.c.isAnalog()) def.stickKnob else def.knob
+                val kb = if (i.c == Ctl.STICK || i.c.isAnalog()) stickBmp else knobBmp
                 if (kd != null && kb != null) {
                     // Núm joycon/cần analog: vẽ ở giữa khung, trượt theo ngón.
                     val c = f.center + (knobs[i.c] ?: Offset.Zero)

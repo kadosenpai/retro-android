@@ -45,6 +45,10 @@ JNI(void, nativeUnloadGame)(JNIEnv*, jobject) { retro::UnloadGame(); }
 JNI(void, nativeRunFrame)(JNIEnv*, jobject) { retro::RunFrame(); }
 JNI(void, nativeReset)(JNIEnv*, jobject) { retro::Reset(); }
 JNI(void, nativeSetTouch)(JNIEnv*, jobject, jint x, jint y, jboolean down) { retro::SetTouch(x, y, down == JNI_TRUE); }
+JNI(void, nativeSetAnalog)(JNIEnv*, jobject, jint lx, jint ly, jint rx, jint ry) { retro::SetAnalog(lx, ly, rx, ry); }
+JNI(void, nativeSetControllerDevice)(JNIEnv*, jobject, jint port, jint device) {
+  retro::SetControllerDevice(static_cast<unsigned>(port), static_cast<unsigned>(device));
+}
 JNI(void, nativeSetInput)(JNIEnv*, jobject, jint mask) { retro::SetInput(static_cast<uint32_t>(mask)); }
 
 // [fps, sampleRate, width, height, pixelFormat]

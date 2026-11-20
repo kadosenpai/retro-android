@@ -71,6 +71,8 @@ std::vector<uint8_t> g_romData;  // lõi có thể giữ con trỏ tới dữ li
 AvInfo g_av;
 std::atomic<uint32_t> g_pad{0};
 // Cảm ứng (NDS): toạ độ chuẩn hoá libretro -0x8000..0x7FFF và trạng thái chạm.
+/** Cần analog: [0]=trái X, [1]=trái Y, [2]=phải X, [3]=phải Y (-32768..32767). */
+std::atomic<int> g_analog[4] = {{0}, {0}, {0}, {0}};
 std::atomic<int> g_touchX{0};
 std::atomic<int> g_touchY{0};
 std::atomic<int> g_touchDown{0};
@@ -204,11 +206,17 @@ size_t RETRO_CALLCONV AudioBatchCb(const int16_t* data, size_t frames) {
 
 void RETRO_CALLCONV InputPollCb() {}
 
-int16_t RETRO_CALLCONV InputStateCb(unsigned port, unsigned device, unsigned /*index*/, unsigned id) {
+int16_t RETRO_CALLCONV InputStateCb(unsigned port, unsigned device, unsigned index, unsigned id) {
   if (port == 0 && device == RETRO_DEVICE_POINTER) {
     if (id == RETRO_DEVICE_ID_POINTER_X) return static_cast<int16_t>(g_touchX.load(std::memory_order_relaxed));
     if (id == RETRO_DEVICE_ID_POINTER_Y) return static_cast<int16_t>(g_touchY.load(std::memory_order_relaxed));
     if (id == RETRO_DEVICE_ID_POINTER_PRESSED) return static_cast<int16_t>(g_touchDown.load(std::memory_order_relaxed));
+    return 0;
+  }
+  if (port == 0 && device == RETRO_DEVICE_ANALOG) {
+    if (index <= RETRO_DEVICE_INDEX_ANALOG_RIGHT && id <= RETRO_DEVICE_ID_ANALOG_Y) {
+      return static_cast<int16_t>(g_analog[index * 2 + id].load(std::memory_order_relaxed));
+    }
     return 0;
   }
   if (port != 0 || device != RETRO_DEVICE_JOYPAD) return 0;
@@ -335,6 +343,7 @@ std::string LoadGame(const std::string& romPath) {
     g_resPrevL = g_resPrevR = 0;
   }
   g_pad = 0;
+  for (auto& a : g_analog) a = 0;
   g_touchDown = 0;
   return "";
 }
@@ -365,6 +374,18 @@ void Reset() {
 }
 
 void SetInput(uint32_t mask) { g_pad.store(mask, std::memory_order_relaxed); }
+
+void SetAnalog(int lx, int ly, int rx, int ry) {
+  g_analog[0].store(lx, std::memory_order_relaxed);
+  g_analog[1].store(ly, std::memory_order_relaxed);
+  g_analog[2].store(rx, std::memory_order_relaxed);
+  g_analog[3].store(ry, std::memory_order_relaxed);
+}
+
+void SetControllerDevice(unsigned port, unsigned device) {
+  if (!g_initialized || !g.retro_set_controller_port_device) return;
+  g.retro_set_controller_port_device(port, device);
+}
 
 void SetTouch(int x, int y, bool down) {
   g_touchX.store(x, std::memory_order_relaxed);

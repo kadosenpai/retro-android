@@ -121,8 +121,8 @@ fun AboutPage(onBack: () -> Unit) {
     }
     Text(
         "Giao diện: AndroidX / Jetpack Compose (Apache 2.0), phông Inter (SIL OFL 1.1), biểu tượng Lucide (ISC). " +
-            "Skin \"Atomic Advance – SmokeGray\", \"SNES Pocket (JoyCon)\" và \"Atomic NDS 2 (Onyx Black)\" của Stanley Sy (starvingartist), ảnh thuộc về tác giả. " +
-            "Game Boy Advance, Game Boy, NES, Super Nintendo và Nintendo DS là nhãn hiệu của Nintendo; Retro không liên kết với Nintendo.",
+            "Skin \"Atomic Advance – SmokeGray\", \"SNES Pocket (JoyCon)\", \"Atomic NDS 2 (Onyx Black)\" và \"DualShocked – Gray\" của Stanley Sy (starvingartist), ảnh thuộc về tác giả. " +
+            "Game Boy Advance, Game Boy, NES, Super Nintendo và Nintendo DS là nhãn hiệu của Nintendo; PlayStation là nhãn hiệu của Sony; Mega Drive là nhãn hiệu của Sega. Retro không liên kết với các hãng này.",
         color = Rc.Faint,
         fontSize = 12.sp,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),

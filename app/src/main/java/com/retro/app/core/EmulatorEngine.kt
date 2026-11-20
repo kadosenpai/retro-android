@@ -47,6 +47,8 @@ object EmulatorEngine {
     @Volatile var sramSink: ((String, ByteArray) -> Unit)? = null
     /** Tần số phát ra (Hz); khớp retro::kOutputRate bên C++. */
     private const val OUTPUT_RATE = 48000
+    /** RETRO_DEVICE_SUBCLASS(RETRO_DEVICE_ANALOG, 1) = (2 shl 8) or 5: DualShock của PCSX ReARMed. */
+    private const val DEVICE_DUALSHOCK = (2 shl 8) or 5
     /** Dung lượng AudioTrack (ms): lớn hơn mức trần cao nhất; hàng đợi thực tế bị giữ dưới [AudioLatency.maxMs]. */
     private const val AUDIO_CAPACITY_MS = 140
 
@@ -88,7 +90,41 @@ object EmulatorEngine {
     }
 
     private fun pushInput() {
-        if (loadedCore != null) NativeCore.nativeSetInput(touchMask or hwMask)
+        if (loadedCore == null) return
+        var m = touchMask or hwMask
+        if (loadedCore != Core.PCSX) {
+            // Chỉ PlayStation có L2/R2/L3/R3: các hệ khác coi L2/R2 như L/R (tay cầm có cò kép vẫn dùng được).
+            if (m and Pad.L2 != 0) m = m or Pad.L
+            if (m and Pad.R2 != 0) m = m or Pad.R
+            m = m and (Pad.L2 or Pad.R2 or Pad.L3 or Pad.R3).inv()
+        }
+        NativeCore.nativeSetInput(m)
+    }
+
+    private val uiAnalog = IntArray(4)
+    private val hwAnalog = IntArray(4)
+
+    /** Hai cần analog trên skin cảm ứng (-32768..32767): trái X, trái Y, phải X, phải Y. */
+    fun setAnalog(lx: Int, ly: Int, rx: Int, ry: Int) {
+        uiAnalog[0] = lx; uiAnalog[1] = ly; uiAnalog[2] = rx; uiAnalog[3] = ry
+        pushAnalog()
+    }
+
+    /** Hai cần analog của tay cầm vật lý; cần nào đang nghiêng thì ưu tiên hơn cần trên skin. */
+    fun setHardwareAnalog(lx: Int, ly: Int, rx: Int, ry: Int) {
+        hwAnalog[0] = lx; hwAnalog[1] = ly; hwAnalog[2] = rx; hwAnalog[3] = ry
+        pushAnalog()
+    }
+
+    private fun pushAnalog() {
+        if (loadedCore == null) return
+        fun v(i: Int) = if (hwAnalog[i] != 0) hwAnalog[i] else uiAnalog[i]
+        NativeCore.nativeSetAnalog(v(0), v(1), v(2), v(3))
+    }
+
+    /** PlayStation: bật tay cầm DualShock (có hai cần analog) thay vì tay cầm số mặc định của host. */
+    private fun applyControllerDevice() {
+        if (loadedCore == Core.PCSX) NativeCore.nativeSetControllerDevice(0, DEVICE_DUALSHOCK)
     }
 
     // ---------- Chạy việc trên luồng giả lập ----------
@@ -166,6 +202,7 @@ object EmulatorEngine {
             val path = playPath(ctx, rom, sys)
             val err = NativeCore.nativeLoadGame(path)
             if (err != null) return@call err
+            applyControllerDevice()
             if (sram != null && sram.isNotEmpty()) NativeCore.nativeSetSram(sram)
             av = NativeCore.nativeAvInfo()
             lastSramHash = NativeCore.nativeGetSram()?.contentHashCode() ?: 0
@@ -257,6 +294,7 @@ object EmulatorEngine {
             if (state != null) NativeCore.nativeUnserialize(state)
             av = NativeCore.nativeAvInfo()
             lastSramHash = NativeCore.nativeGetSram()?.contentHashCode() ?: 0
+            applyControllerDevice()
             pushInput()
             cheatsActive = false
         } catch (e: Throwable) {

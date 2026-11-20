@@ -14,6 +14,10 @@ enum class GbaButton(val label: String, val bit: Int) {
     Y("Y (SNES)", Pad.Y),
     L("L", Pad.L),
     R("R", Pad.R),
+    L2("L2 (PS1)", Pad.L2),
+    R2("R2 (PS1)", Pad.R2),
+    L3("L3 (PS1)", Pad.L3),
+    R3("R3 (PS1)", Pad.R3),
     START("Start", Pad.START),
     SELECT("Select", Pad.SELECT),
 }
@@ -22,7 +26,7 @@ enum class GbaButton(val label: String, val bit: Int) {
  * Bảng gán nút tay cầm: mã phím Android -> nút GBA. Logic thuần Kotlin.
  * Mã phím mặc định (hằng số của android.view.KeyEvent):
  * DPAD_UP=19, DPAD_DOWN=20, DPAD_LEFT=21, DPAD_RIGHT=22, BUTTON_A=96, BUTTON_B=97,
- * BUTTON_L1=102, BUTTON_R1=103, BUTTON_L2=104, BUTTON_R2=105, BUTTON_START=108, BUTTON_SELECT=109.
+ * BUTTON_L1=102, BUTTON_R1=103, BUTTON_L2=104, BUTTON_R2=105, THUMBL=106, THUMBR=107, BUTTON_START=108, BUTTON_SELECT=109.
  */
 class ControllerMap(val keys: Map<GbaButton, Set<Int>>) {
 
@@ -57,8 +61,13 @@ class ControllerMap(val keys: Map<GbaButton, Set<Int>>) {
                 // Bố cục Nintendo: nút trên (Y kiểu Xbox) = X, nút trái (X kiểu Xbox) = Y.
                 GbaButton.X to setOf(100),
                 GbaButton.Y to setOf(99),
-                GbaButton.L to setOf(102, 104),
-                GbaButton.R to setOf(103, 105),
+                GbaButton.L to setOf(102),
+                GbaButton.R to setOf(103),
+                // Chỉ PlayStation dùng L2/R2/L3/R3; các hệ khác coi L2/R2 như L/R.
+                GbaButton.L2 to setOf(104),
+                GbaButton.R2 to setOf(105),
+                GbaButton.L3 to setOf(106),
+                GbaButton.R3 to setOf(107),
                 GbaButton.START to setOf(108),
                 GbaButton.SELECT to setOf(109),
             ),
@@ -80,6 +89,11 @@ class ControllerMap(val keys: Map<GbaButton, Set<Int>>) {
                     val codes = raw.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
                     if (codes.isNotEmpty()) parsed[b] = codes // chuỗi hỏng thì dùng mặc định
                 }
+            }
+            // Bản lưu cũ (chưa có L2/R2): L2/R2 trước đây gộp vào L/R, nay tách riêng nên bỏ khỏi L/R.
+            if (GbaButton.L2 !in parsed) {
+                parsed[GbaButton.L]?.let { if (it.size > 1) parsed[GbaButton.L] = it - 104 }
+                parsed[GbaButton.R]?.let { if (it.size > 1) parsed[GbaButton.R] = it - 105 }
             }
             return ControllerMap(GbaButton.values().associateWith { parsed[it] ?: def[it] ?: emptySet() })
         }

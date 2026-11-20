@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.retro.app.core.EmulatorEngine
 import com.retro.app.core.Pad
+import com.retro.app.data.GameSystem
 import com.retro.app.ui.AppRoot
 import com.retro.app.ui.RetroTheme
 
@@ -73,6 +74,9 @@ class MainActivity : ComponentActivity() {
         return super.dispatchKeyEvent(event)
     }
 
+    /** Giá trị cần analog (-1..1) sang -32768..32767, bỏ vùng chết nhỏ để cần không trôi. */
+    private fun stickInt(v: Float): Int = if (kotlin.math.abs(v) < 0.12f) 0 else (v.coerceIn(-1f, 1f) * 32767f).toInt()
+
     /** D-pad kiểu "hat" (trục) đổi thành mã phím D-pad ảo để dùng chung bảng gán nút; 0 = không bấm. */
     private fun hatKey(event: MotionEvent): Int {
         val hx = event.getAxisValue(MotionEvent.AXIS_HAT_X)
@@ -102,6 +106,24 @@ class MainActivity : ComponentActivity() {
                 // Cần analog trái luôn là hướng; D-pad hat đi qua bảng gán nút như phím D-pad thường.
                 val x = event.getAxisValue(MotionEvent.AXIS_X)
                 val y = event.getAxisValue(MotionEvent.AXIS_Y)
+                if (model.current?.system == GameSystem.PSX.id) {
+                    // PlayStation (DualShock): hai cần analog của tay cầm đi thẳng vào lõi, không đổi thành hướng.
+                    var rx = event.getAxisValue(MotionEvent.AXIS_Z)
+                    var ry = event.getAxisValue(MotionEvent.AXIS_RZ)
+                    if (rx == 0f && ry == 0f) {
+                        rx = event.getAxisValue(MotionEvent.AXIS_RX)
+                        ry = event.getAxisValue(MotionEvent.AXIS_RY)
+                    }
+                    val on = playing()
+                    EmulatorEngine.setHardwareAnalog(
+                        if (on) stickInt(x) else 0, if (on) stickInt(y) else 0,
+                        if (on) stickInt(rx) else 0, if (on) stickInt(ry) else 0,
+                    )
+                    axisMask = 0
+                    hatMask = if (on && key != 0) bitFor(key) else 0
+                    pushHardware()
+                    return true
+                }
                 var m = 0
                 if (x > 0.5f) m = m or Pad.RIGHT
                 if (x < -0.5f) m = m or Pad.LEFT

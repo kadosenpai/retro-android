@@ -4,7 +4,8 @@ import androidx.compose.ui.graphics.Color
 
 /* Định nghĩa skin: bảng toạ độ nút/màn hình cho từng hệ (dùng bởi SkinPad). */
 
-internal enum class Ctl { DPAD, STICK, A, B, X, Y, L, R, START, SELECT, MENU, QSAVE, QLOAD, SWAP }
+/** LSTICK/RSTICK: hai cần analog của PlayStation (xuất giá trị analog); STICK: cần tròn xuất hướng (joycon SNES). */
+internal enum class Ctl { DPAD, STICK, LSTICK, RSTICK, A, B, X, Y, L, R, L2, R2, L3, R3, START, SELECT, MENU, QSAVE, QLOAD, SWAP }
 
 /** Một nút: khung (đơn vị của ảnh skin) và phần mở rộng vùng chạm mỗi cạnh. */
 internal class SkinItem(
@@ -186,5 +187,66 @@ internal val NDS_LANDSCAPE = SkinDef(
         SkinItem(Ctl.MENU, 27f, 358f, 29f, 28f, 10f, 0f, 0f, 10f, "skin/nds_menu.png"),
         SkinItem(Ctl.QSAVE, 275f, 375f, 56f, 20f, 0f, 0f, 0f, 10f),
         SkinItem(Ctl.QLOAD, 563f, 375f, 56f, 20f, 0f, 0f, 0f, 10f),
+    ),
+)
+
+/*
+ * PlayStation (DualShocked - Gray): tam giác = X, tròn = A, chéo = B, vuông = Y (theo tên nút libretro);
+ * đơn vị skin là điểm của ảnh gốc (375x812 dọc, 812x375 ngang).
+ */
+internal val PSX_PORTRAIT = SkinDef(
+    asset = "skin/psx_portrait.png",
+    mw = 375f, mh = 812f,
+    sx = 8f, sy = 75f, sw = 360f, sh = 270f,
+    hy = 30f,
+    stickKnob = Knob("skin/psx_thumbstick.png", 128f, 128f, 64f, 64f),
+    items = listOf(
+        SkinItem(Ctl.DPAD, 4f, 491f, 170f, 169f, 0f, 0f, 0f, 0f, "skin/psx_dpad.png"),
+        SkinItem(Ctl.X, 251f, 491f, 70f, 70f, 4f, 4f, 4f, 0f, "skin/psx_triangle.png"),
+        SkinItem(Ctl.A, 307f, 541f, 70f, 70f, 0f, 4f, 4f, 4f, "skin/psx_circle.png"),
+        SkinItem(Ctl.B, 251f, 591f, 70f, 70f, 4f, 0f, 4f, 4f, "skin/psx_cross.png"),
+        SkinItem(Ctl.Y, 196f, 541f, 70f, 70f, 4f, 4f, 0f, 4f, "skin/psx_square.png"),
+        SkinItem(Ctl.L, 3f, 430f, 106f, 61f, 3f, 6f, 0f, 0f, "skin/psx_l1.png"),
+        SkinItem(Ctl.L2, 101f, 430f, 70f, 61f, 0f, 6f, 4f, 0f, "skin/psx_l2.png"),
+        SkinItem(Ctl.R2, 206f, 430f, 70f, 61f, 4f, 6f, 0f, 0f, "skin/psx_r2.png"),
+        SkinItem(Ctl.R, 268f, 430f, 106f, 61f, 0f, 6f, 3f, 0f, "skin/psx_r1.png"),
+        SkinItem(Ctl.L3, 16f, 381f, 32f, 32f, 6f, 6f, 6f, 6f),
+        SkinItem(Ctl.R3, 323f, 381f, 32f, 32f, 6f, 6f, 6f, 6f),
+        SkinItem(Ctl.SELECT, 141f, 649f, 40f, 29f, 0f, 0f, 0f, 5f, "skin/psx_select.png"),
+        SkinItem(Ctl.START, 189f, 648f, 48f, 30f, 0f, 0f, 0f, 5f, "skin/psx_start.png"),
+        SkinItem(Ctl.MENU, 21f, 761f, 33f, 32f, 5f, 5f, 5f, 5f, "skin/psx_menu.png"),
+        SkinItem(Ctl.QSAVE, 71f, 385f, 56f, 24f, 0f, 0f, 0f, 0f),
+        SkinItem(Ctl.QLOAD, 246f, 385f, 56f, 24f, 0f, 0f, 0f, 0f),
+        SkinItem(Ctl.LSTICK, 68f, 702f, 72f, 72f, 20f, 20f, 20f, 20f),
+        SkinItem(Ctl.RSTICK, 235f, 702f, 72f, 72f, 20f, 20f, 20f, 20f),
+    ),
+)
+
+internal val PSX_LANDSCAPE = SkinDef(
+    asset = "skin/psx_landscape.png",
+    mw = 812f, mh = 375f,
+    sx = 206f, sy = 10f, sw = 400f, sh = 300f,
+    hy = 1f,
+    hudSp = 8f,
+    stickKnob = Knob("skin/psx_thumbstick.png", 128f, 128f, 64f, 64f),
+    items = listOf(
+        SkinItem(Ctl.DPAD, 26f, 72f, 168f, 168f, 0f, 0f, 0f, 0f, "skin/psx_dpad.png"),
+        SkinItem(Ctl.X, 668f, 71f, 70f, 70f, 4f, 4f, 4f, 0f, "skin/psx_triangle.png"),
+        SkinItem(Ctl.A, 723f, 122f, 70f, 70f, 0f, 4f, 4f, 4f, "skin/psx_circle.png"),
+        SkinItem(Ctl.B, 668f, 172f, 70f, 70f, 4f, 0f, 4f, 4f, "skin/psx_cross.png"),
+        SkinItem(Ctl.Y, 612f, 122f, 70f, 70f, 4f, 4f, 0f, 4f, "skin/psx_square.png"),
+        SkinItem(Ctl.L, 23f, 5f, 106f, 61f, 3f, 5f, 0f, 0f, "skin/psx_l1.png"),
+        SkinItem(Ctl.L2, 121f, 5f, 70f, 61f, 0f, 5f, 4f, 0f, "skin/psx_l2.png"),
+        SkinItem(Ctl.R2, 623f, 5f, 70f, 61f, 4f, 5f, 0f, 0f, "skin/psx_r2.png"),
+        SkinItem(Ctl.R, 685f, 5f, 106f, 61f, 0f, 5f, 3f, 0f, "skin/psx_r1.png"),
+        SkinItem(Ctl.L3, 223f, 307f, 32f, 32f, 4f, 4f, 4f, 4f),
+        SkinItem(Ctl.R3, 558f, 307f, 32f, 32f, 4f, 4f, 4f, 4f),
+        SkinItem(Ctl.SELECT, 196f, 348f, 40f, 29f, 4f, 4f, 4f, 0f, "skin/psx_select.png"),
+        SkinItem(Ctl.START, 576f, 348f, 48f, 30f, 4f, 4f, 4f, 0f, "skin/psx_start.png"),
+        SkinItem(Ctl.MENU, 22f, 324f, 33f, 32f, 5f, 5f, 5f, 5f, "skin/psx_menu.png"),
+        SkinItem(Ctl.QSAVE, 290f, 313f, 56f, 24f, 0f, 0f, 0f, 0f),
+        SkinItem(Ctl.QLOAD, 464f, 313f, 56f, 24f, 0f, 0f, 0f, 0f),
+        SkinItem(Ctl.LSTICK, 100f, 269f, 72f, 72f, 20f, 20f, 20f, 20f),
+        SkinItem(Ctl.RSTICK, 639f, 269f, 72f, 72f, 20f, 20f, 20f, 20f),
     ),
 )
