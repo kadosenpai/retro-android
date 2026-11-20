@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
 import com.retro.app.data.GbaButton
+import com.retro.app.data.SCAN_BASE
+import com.retro.app.data.hardwareKeyCode
 
 /** Tên các tay cầm đang kết nối. */
 private fun connectedPads(): List<String> =
@@ -51,7 +53,7 @@ private fun connectedPads(): List<String> =
         }
         .map { it.name }
 
-private fun keyName(code: Int): String = when (code) {
+private fun keyName(code: Int): String = if (code >= SCAN_BASE) "Nút phần cứng ${code - SCAN_BASE}" else when (code) {
     KeyEvent.KEYCODE_DPAD_UP -> "Mũi tên lên"
     KeyEvent.KEYCODE_DPAD_DOWN -> "Mũi tên xuống"
     KeyEvent.KEYCODE_DPAD_LEFT -> "Mũi tên trái"
@@ -172,27 +174,29 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
                         .focusRequester(focus)
                         .focusable()
                         .onPreviewKeyEvent { ev ->
-                            val code = ev.nativeKeyEvent.keyCode
+                            val rawCode = ev.nativeKeyEvent.keyCode
+                            // Phím không tên (keyCode 0) như D-pad Joy-Con trái được phân biệt bằng scanCode.
+                            val code = hardwareKeyCode(rawCode, ev.nativeKeyEvent.scanCode)
                             when {
                                 ev.type != KeyEventType.KeyDown -> true
-                                code == KeyEvent.KEYCODE_BACK -> {
+                                rawCode == KeyEvent.KEYCODE_BACK -> {
                                     capturing = null
                                     true
                                 }
-                                code == KeyEvent.KEYCODE_BUTTON_MODE -> {
+                                rawCode == KeyEvent.KEYCODE_BUTTON_MODE -> {
                                     model.showToast("Nút này dùng để mở menu")
                                     true
                                 }
                                 // Nhận mọi phím phát ra từ tay cầm (kể cả mã lạ), không chỉ các nút chuẩn.
-                                KeyEvent.isGamepadButton(code) ||
-                                    code in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_CENTER ||
+                                KeyEvent.isGamepadButton(rawCode) || code >= SCAN_BASE ||
+                                    rawCode in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_CENTER ||
                                     ev.nativeKeyEvent.source and (InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_DPAD or InputDevice.SOURCE_JOYSTICK) != 0 -> {
                                     model.assignKey(b, code)
                                     capturing = null
                                     true
                                 }
                                 else -> {
-                                    model.showToast("Không nhận nút này (mã ${KeyEvent.keyCodeToString(code)})")
+                                    model.showToast("Không nhận nút này (mã ${KeyEvent.keyCodeToString(rawCode)})")
                                     true
                                 }
                             }

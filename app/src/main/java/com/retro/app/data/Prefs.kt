@@ -20,8 +20,6 @@ enum class WfcServer(val label: String, val hint: String, val value: String) {
     KAERU("Kaeru WFC", "Mặc định, hợp với nhiều game", "178.62.43.212"),
     WIIMMFI("Wiimmfi", "Hay dùng cho Mario Kart DS và vài game khác", "95.217.77.181"),
     ALTWFC("AltWFC", "Máy chủ cộng đồng khác", "172.104.88.237"),
-    DEFAULT_DNS("DNS mặc định", "Không dùng máy chủ cộng đồng, chỉ để thử", "0.0.0.0"),
-    KEEP("Không ghi đè", "Giữ cài đặt trong firmware của máy NDS", "default"),
 }
 
 data class Settings(

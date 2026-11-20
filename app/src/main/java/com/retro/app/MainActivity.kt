@@ -12,6 +12,7 @@ import com.retro.app.core.EmulatorEngine
 import com.retro.app.core.Pad
 import com.retro.app.data.GameSystem
 import com.retro.app.ui.AppRoot
+import com.retro.app.data.hardwareKeyCode
 import com.retro.app.ui.RetroTheme
 
 class MainActivity : ComponentActivity() {
@@ -56,7 +57,7 @@ class MainActivity : ComponentActivity() {
                 model.menuOpen = true
                 return true
             }
-            val bit = bitFor(event.keyCode)
+            val bit = bitFor(hardwareKeyCode(event.keyCode, event.scanCode))
             if (bit != 0) {
                 if (playing()) {
                     when (event.action) {

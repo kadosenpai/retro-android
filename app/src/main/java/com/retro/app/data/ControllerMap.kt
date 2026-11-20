@@ -2,6 +2,15 @@ package com.retro.app.data
 
 import com.retro.app.core.Pad
 
+/**
+ * Mã phím dùng để gán nút. Một số tay cầm (Joy-Con trái...) gửi phím không có tên trong Android: keyCode = UNKNOWN (0),
+ * chỉ phân biệt được bằng scanCode. Khi đó dùng [SCAN_BASE] + scanCode làm mã riêng cho từng nút, tránh trùng mã phím thật.
+ */
+const val SCAN_BASE = 100000
+
+fun hardwareKeyCode(keyCode: Int, scanCode: Int): Int =
+    if (keyCode == android.view.KeyEvent.KEYCODE_UNKNOWN && scanCode != 0) SCAN_BASE + scanCode else keyCode
+
 /** Các nút của GBA mà tay cầm có thể gán. */
 enum class GbaButton(val label: String, val bit: Int) {
     UP("Lên", Pad.UP),
