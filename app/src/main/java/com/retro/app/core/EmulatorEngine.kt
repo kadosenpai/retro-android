@@ -192,7 +192,8 @@ object EmulatorEngine {
     ): String? = call {
         try {
             if (loaded) unloadInternal()
-            if (loadedCore != sys.core) {
+            // melonDS DS không nạp lại được game thứ hai trong cùng một lần khởi tạo (app sập), nên mỗi game NDS khởi tạo lõi mới.
+            if (loadedCore != sys.core || sys.core == Core.MELONDS) {
                 // Hệ máy khác lõi thì nạp lõi mới (host tự gỡ lõi cũ).
                 loadedCore = null
                 val corePath = ctx.applicationInfo.nativeLibraryDir + "/" + sys.core.libName
