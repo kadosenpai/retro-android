@@ -18,11 +18,6 @@ cmake -S "$SRC" -B "$BUILD" -G Ninja \
   -DENABLE_OGLRENDERER=OFF -DENABLE_OPENGL=OFF \
   -DBUILD_TESTING=OFF
 
-# Vá nhật ký gói tin mạng (gỡ lỗi chơi online); mã nguồn melonDS gốc được cmake tải về lúc cấu hình ở trên.
-NETSLIRP="$(find "$BUILD/_deps" -name Net_Slirp.cpp | head -n1)"
-[ -n "$NETSLIRP" ] || { echo "Không thấy Net_Slirp.cpp để vá" >&2; exit 1; }
-python3 "$ROOT/scripts/patch-melonds-netlog.py" "$NETSLIRP"
-
 cmake --build "$BUILD" --target melondsds_libretro -j"$(nproc)"
 
 SO="$(find "$BUILD" -maxdepth 3 -name 'melondsds_libretro*.so' | head -n1)"

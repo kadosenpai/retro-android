@@ -15,21 +15,6 @@ enum class AudioLatency(val label: String, val hint: String, val prefillMs: Int,
     STABLE("Tiếng ổn định", "Tiếng không bị đứt, trễ hơn một chút. Hợp máy yếu hoặc tai nghe Bluetooth", 60, 120),
 }
 
-/** Máy chủ thay thế cho Nintendo Wi-Fi Connection (đã đóng) mà lõi NDS dùng để chơi online; [value] là giá trị DNS đưa cho lõi. */
-enum class WfcServer(val label: String, val hint: String, val value: String) {
-    KAERU("Kaeru WFC", "Mặc định, hợp với nhiều game", "178.62.43.212"),
-    WIIMMFI("Wiimmfi", "Hay dùng cho Mario Kart DS và vài game khác", "95.217.77.181"),
-    ALTWFC("AltWFC", "Máy chủ cộng đồng khác", "172.104.88.237"),
-    /** Địa chỉ do người dùng nhập ([Settings.customDns]); [value] để trống vì lấy từ cài đặt. */
-    CUSTOM("Tự nhập DNS", "Nhập địa chỉ DNS của máy chủ khác", ""),
-}
-
-/** Địa chỉ IPv4 dạng a.b.c.d (mỗi phần 0–255). */
-fun isIpv4(s: String): Boolean {
-    val parts = s.trim().split('.')
-    return parts.size == 4 && parts.all { p -> p.isNotEmpty() && p.length <= 3 && p.all { it in '0'..'9' } && p.toInt() in 0..255 }
-}
-
 data class Settings(
     val sound: Boolean = true,
     val audioLatency: AudioLatency = AudioLatency.BALANCED,
@@ -45,11 +30,6 @@ data class Settings(
     val gbPalette: String = "Grayscale",
     /** Hiện viền Super Game Boy (áp dụng khi mở lại game). */
     val sgbBorder: Boolean = true,
-    /** Wi-Fi của máy NDS (chơi online). Tắt thì game không thấy mạng. */
-    val wifi: Boolean = true,
-    val wfcServer: WfcServer = WfcServer.KAERU,
-    /** DNS tự nhập (dùng khi [wfcServer] = CUSTOM). */
-    val customDns: String = "",
 )
 
 class Prefs(ctx: Context) {
@@ -68,9 +48,6 @@ class Prefs(ctx: Context) {
             tab = sp.getString("tab", null) ?: d.tab,
             gbPalette = sp.getString("gbPalette", null) ?: d.gbPalette,
             sgbBorder = sp.getBoolean("sgbBorder", d.sgbBorder),
-            wifi = sp.getBoolean("wifi", d.wifi),
-            wfcServer = enumOf(sp.getString("wfcServer", null), d.wfcServer),
-            customDns = sp.getString("customDns", null) ?: d.customDns,
         )
     }
 
@@ -86,9 +63,6 @@ class Prefs(ctx: Context) {
             .putString("tab", s.tab)
             .putString("gbPalette", s.gbPalette)
             .putBoolean("sgbBorder", s.sgbBorder)
-            .putBoolean("wifi", s.wifi)
-            .putString("wfcServer", s.wfcServer.name)
-            .putString("customDns", s.customDns)
             .apply()
     }
 

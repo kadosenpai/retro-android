@@ -37,9 +37,6 @@ object NativeCore {
     external fun nativeSerialize(): ByteArray?
     external fun nativeUnserialize(data: ByteArray): Boolean
     external fun nativeSetOption(key: String, value: String)
-    /** Các dòng log gần nhất của lõi (an toàn gọi từ luồng bất kỳ). */
-    external fun nativeGetLog(): String
-    external fun nativeClearLog()
     external fun nativeCheatReset()
     /** false nếu lõi không đọc được mã (chỉ báo được với lõi đã vá). */
     external fun nativeCheatSet(index: Int, enabled: Boolean, code: String): Boolean
