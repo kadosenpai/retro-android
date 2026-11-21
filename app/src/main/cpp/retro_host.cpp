@@ -103,11 +103,30 @@ std::string g_logLast;
 int g_logRepeat = 0;
 const size_t kLogMaxLines = 500;
 
+// Dòng nhiễu của lõi (ghi liên tục, không giúp gỡ lỗi) -> bỏ để không đẩy mất các dòng quan trọng.
+bool LogNoise(const std::string& s) {
+  static const char* const kNoise[] = {
+      "PU: region", "PU region", "remapping", "retro_get_memory_data", "Resetting JIT", "done resetting",
+      "unknown ARM9 IO", "unknown ARM7 IO", "wifi: ", "Slirp: register poll", "Slirp: unregister poll",
+  };
+  for (const char* n : kNoise)
+    if (s.find(n) != std::string::npos) return true;
+  return false;
+}
+
+std::vector<std::string> g_logPinned;  // dòng "app ..." (cài đặt app đưa cho lõi): luôn nằm đầu nhật ký
+const size_t kLogMaxPinned = 20;
+
 void LogPush(const char* tag, const char* text) {
   std::string line = std::string(tag) + (text ? text : "");
   while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) line.pop_back();
   if (line.size() > 300) line.resize(300);
   std::lock_guard<std::mutex> l(g_logMu);
+  if (strncmp(tag, "app ", 4) == 0) {
+    if (g_logPinned.size() < kLogMaxPinned) g_logPinned.push_back(line);
+    return;
+  }
+  if (LogNoise(line)) return;
   if (!g_log.empty() && line == g_logLast) {
     g_logRepeat++;
     g_log.back() = line + " (x" + std::to_string(g_logRepeat + 1) + ")";
@@ -317,6 +336,7 @@ std::string InitCore(const std::string& corePath, const std::string& systemDir, 
   {
     std::lock_guard<std::mutex> l(g_logMu);
     g_log.clear();
+    g_logPinned.clear();
     g_logLast.clear();
     g_logRepeat = 0;
   }
@@ -568,6 +588,10 @@ bool Unserialize(const uint8_t* data, size_t size) {
 std::string GetLog() {
   std::lock_guard<std::mutex> l(g_logMu);
   std::string out;
+  for (const auto& s : g_logPinned) {
+    out += s;
+    out += '\n';
+  }
   for (const auto& s : g_log) {
     out += s;
     out += '\n';
@@ -578,6 +602,7 @@ std::string GetLog() {
 void ClearLog() {
   std::lock_guard<std::mutex> l(g_logMu);
   g_log.clear();
+  g_logPinned.clear();
   g_logLast.clear();
   g_logRepeat = 0;
 }
