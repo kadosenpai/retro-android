@@ -67,10 +67,11 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                 .navigationBarsPadding()
                 .padding(top = 12.dp, bottom = 20.dp),
         ) {
-            // 0 = menu chính, 1 = Cheat, 2 = Tay cầm, 3 = Lưu trạng thái, 4 = Nạp trạng thái
+            // 0 = menu chính, 1 = Cheat, 2 = Tay cầm, 3 = Lưu trạng thái, 4 = Nạp trạng thái, 5 = Hình ảnh
             var page by remember { mutableStateOf(0) }
             val st = model.settings
             when (page) {
+                5 -> DisplayPage(model) { page = 0 }
                 1 -> CheatsPage(model) { page = 0 }
                 2 -> ControllerPage(model) { page = 0 }
                 3 -> StatesPage(model, save = true, onClose = onClose) { page = 0 }
@@ -132,6 +133,8 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                         ToggleRow("Hiện nút ảo", st.showPad, icon = "dpad") { v -> model.update { it.copy(showPad = v) } }
                         RowDivider()
                         ActionRow("Tay cầm", icon = "gamepad", chevron = true) { page = 2 }
+                        RowDivider()
+                        ActionRow("Hình ảnh", icon = "image", chevron = true, subtitle = st.filter.label) { page = 5 }
                         RowDivider()
                         ToggleRow("Hiện thông số", st.showStats, icon = "eye") { v ->
                             model.update { it.copy(showStats = v) }

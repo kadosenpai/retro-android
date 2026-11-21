@@ -95,6 +95,13 @@ class AppModel(private val app: Application) {
         roms = store.list()
     }
 
+    /** Kéo thanh cường độ bộ lọc: đổi ngay trên màn hình nhưng chưa lưu (lưu khi thả tay bằng [commitSettings]). */
+    fun previewFilterLevel(v: Float) {
+        settings = settings.copy(filterLevel = v.coerceIn(0f, 1f))
+    }
+
+    fun commitSettings() = update { it }
+
     fun update(change: (Settings) -> Settings) {
         settings = change(settings)
         prefs.save(settings)

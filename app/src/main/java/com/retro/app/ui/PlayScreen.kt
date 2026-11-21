@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -35,8 +36,10 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.retro.app.AppModel
 import com.retro.app.core.EmulatorEngine
 import com.retro.app.data.GameSystem
+import com.retro.app.data.ScaleMode
 import com.retro.app.render.DisplayAspect
 import com.retro.app.render.GameGLView
+import com.retro.app.render.RenderPrefs
 
 @Composable
 fun PlayScreen(model: AppModel) {
@@ -44,6 +47,13 @@ fun PlayScreen(model: AppModel) {
     val landscape = cfg.screenWidthDp > cfg.screenHeightDp
     val s = model.settings
     val isNds = model.current?.system == "nds"
+
+    // Bộ lọc hình và cách phóng to: luồng vẽ đọc các giá trị này mỗi khung.
+    SideEffect {
+        RenderPrefs.filter = s.filter
+        RenderPrefs.level = s.filterLevel
+        RenderPrefs.scaleMode = s.scaleMode
+    }
 
     // Toàn màn hình khi chơi.
     val view = LocalView.current
@@ -88,10 +98,10 @@ fun PlayScreen(model: AppModel) {
                 modifier = Modifier.background(androidx.compose.ui.graphics.Color.Black),
             )
         } else if (landscape) {
-            Box(Modifier.fillMaxSize().dsTouch(isNds)) { GameSurface(Modifier.fillMaxSize()) }
+            Box(Modifier.fillMaxSize().dsTouch(isNds, s.scaleMode)) { GameSurface(Modifier.fillMaxSize()) }
         } else {
             Column(Modifier.fillMaxSize()) {
-                Box(Modifier.fillMaxWidth().weight(1f).windowInsetsPadding(WindowInsets.safeDrawing).dsTouch(isNds)) {
+                Box(Modifier.fillMaxWidth().weight(1f).windowInsetsPadding(WindowInsets.safeDrawing).dsTouch(isNds, s.scaleMode)) {
                     GameSurface(Modifier.fillMaxSize())
                 }
             }
@@ -153,10 +163,11 @@ private fun GameSurface(modifier: Modifier) {
 /**
  * NDS khi ẩn phím ảo: khung hình (256x384) hiển thị nguyên cả hai màn; chạm vào nửa dưới thì gửi cảm ứng cho lõi.
  */
-private fun Modifier.dsTouch(enabled: Boolean): Modifier = if (!enabled) this else pointerInput(Unit) {
+private fun Modifier.dsTouch(enabled: Boolean, scaleMode: ScaleMode): Modifier = if (!enabled) this else pointerInput(scaleMode) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
-        val vp = computeViewport(size.width, size.height, 256, 384)
+        // Phải dùng đúng cách phóng như bộ vẽ để toạ độ chạm khớp với hình.
+        val vp = computeViewport(size.width, size.height, 256, 384, 0f, scaleMode)
 
         fun send(p: Offset, pressed: Boolean) {
             if (vp.width <= 0 || vp.height <= 0) return

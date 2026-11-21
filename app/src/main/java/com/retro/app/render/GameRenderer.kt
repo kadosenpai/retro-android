@@ -18,7 +18,11 @@ void main() {
 }
 """
 
-// Hiển thị thô (lấy mẫu gần nhất); uBgr đảo kênh màu cho khung XRGB8888.
+// Bộ lọc hình, uMode: 0 = pixel thô, 1 = sắc nét (sharp bilinear), 2 = LCD, 3 = CRT.
+// Texture luôn để GL_LINEAR; chế độ thô tự lấy mẫu đúng giữa texel nên vẫn ra "gần nhất".
+// Sắc nét: giữ phần giữa mỗi texel đặc, chỉ trộn màu trong khoảng một pixel màn hình ở mép texel.
+// Phóng nguyên số thì không có vùng trộn nên giống hệt pixel thô.
+// uBgr đảo kênh màu cho khung XRGB8888.
 private const val FRAGMENT = """
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -28,13 +32,53 @@ precision mediump float;
 varying vec2 vUv;
 uniform sampler2D uTex;
 uniform float uBgr;
-uniform vec2 uVr;     // dải dọc của khung được vẽ (0..1)
-uniform float uHalf;  // nửa texel theo chiều dọc, tránh lẹm sang nửa kia khi lọc mượt
+uniform vec2 uTexSize;   // kích thước khung hình trong texture (texel)
+uniform vec2 uVr;        // dải dọc của khung được vẽ (0..1)
+uniform vec2 uOut;       // kích thước vùng vẽ trên màn hình (pixel)
+uniform float uMode;
+uniform float uStrength; // 0..1, dùng cho LCD và CRT
 
 void main() {
-  float v = clamp(uVr.x + vUv.y * (uVr.y - uVr.x), uVr.x + uHalf, uVr.y - uHalf);
-  vec3 c = texture2D(uTex, vec2(vUv.x, v)).rgb;
-  gl_FragColor = vec4(uBgr > 0.5 ? c.bgr : c, 1.0);
+  // Vùng nguồn đang vẽ (texel) và vị trí hiện tại trong đó.
+  vec2 src = vec2(uTexSize.x, (uVr.y - uVr.x) * uTexSize.y);
+  vec2 p = clamp(vUv * src, vec2(0.0), src - 0.0001);
+  vec2 base = floor(p);
+  vec2 fr = p - base;
+  vec2 sc = max(uOut / src, vec2(1.0));   // pixel màn hình trên mỗi texel
+
+  vec2 pos = base + 0.5;
+  if (uMode > 0.5) {
+    vec2 rr = 0.5 - 0.5 / sc;
+    vec2 cd = fr - 0.5;
+    pos = base + (cd - clamp(cd, -rr, rr)) * sc + 0.5;
+  }
+  // Giữ điểm lấy mẫu trong vùng nguồn để không lẹm sang màn hình kia của NDS.
+  pos = clamp(pos, vec2(0.5), src - 0.5);
+  vec3 c = texture2D(uTex, vec2(pos.x / uTexSize.x, uVr.x + pos.y / uTexSize.y)).rgb;
+  if (uBgr > 0.5) c = c.bgr;
+
+  if (uMode > 1.5 && uMode < 2.5) {
+    // LCD: vạch tối mảnh (khoảng 1 pixel) ở mép trên và mép trái của mỗi texel.
+    float fade = smoothstep(1.5, 3.0, min(sc.x, sc.y));
+    vec2 e = fr * sc;
+    vec2 w = max(vec2(1.0), 0.12 * sc);
+    vec2 g = clamp(w - e + 0.5, 0.0, 1.0);
+    c *= 1.0 - 0.7 * uStrength * fade * max(g.x, g.y);
+    c *= 1.0 + 0.1 * uStrength * fade;
+  } else if (uMode > 2.5) {
+    // CRT: đường quét ngang (hàng sáng rộng hơn khi điểm ảnh sáng) và chấm màu RGB theo cột pixel màn hình.
+    float fadeY = smoothstep(1.5, 3.0, sc.y);
+    float lum = dot(c, vec3(0.299, 0.587, 0.114));
+    float wd = mix(0.2, 0.36, lum);
+    float scan = smoothstep(wd, 0.5, abs(fr.y - 0.5));
+    c *= 1.0 - 0.85 * uStrength * fadeY * scan;
+    float xm = mod(floor(gl_FragCoord.x), 3.0);
+    vec3 tri = vec3(xm < 0.5 ? 1.0 : 0.0, (xm > 0.5 && xm < 1.5) ? 1.0 : 0.0, xm > 1.5 ? 1.0 : 0.0);
+    float a = 0.16 * uStrength;
+    c *= (1.0 - a) + a * 3.0 * tri;
+    c *= 1.0 + 0.12 * uStrength;
+  }
+  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }
 """
 
@@ -44,8 +88,10 @@ class GameRenderer : GLSurfaceView.Renderer {
     private var uTex = 0
     private var uBgr = 0
     private var uVr = 0
-    private var uHalf = 0
-    private var linear = false
+    private var uTexSize = 0
+    private var uOut = 0
+    private var uMode = 0
+    private var uStrength = 0
     private var aPos = 0
 
     private val quad: FloatBuffer =
@@ -70,15 +116,18 @@ class GameRenderer : GLSurfaceView.Renderer {
         uTex = GLES20.glGetUniformLocation(program, "uTex")
         uBgr = GLES20.glGetUniformLocation(program, "uBgr")
         uVr = GLES20.glGetUniformLocation(program, "uVr")
-        uHalf = GLES20.glGetUniformLocation(program, "uHalf")
-        linear = false
+        uTexSize = GLES20.glGetUniformLocation(program, "uTexSize")
+        uOut = GLES20.glGetUniformLocation(program, "uOut")
+        uMode = GLES20.glGetUniformLocation(program, "uMode")
+        uStrength = GLES20.glGetUniformLocation(program, "uStrength")
 
         val t = IntArray(1)
         GLES20.glGenTextures(1, t, 0)
         tex = t[0]
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST)
+        // Luôn lọc tuyến tính: shader tự quyết định mức làm mịn (xem FRAGMENT).
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
@@ -126,26 +175,21 @@ class GameRenderer : GLSurfaceView.Renderer {
         }
 
         val quads = DsLayout.quads
-        // NDS và hệ ép tỉ lệ (PlayStation, Mega Drive): lọc mượt khi phóng không nguyên số; hệ thường: lấy mẫu gần nhất.
-        val wantLinear = quads != null || DisplayAspect.value > 0f
-        if (wantLinear != linear) {
-            val f = if (wantLinear) GLES20.GL_LINEAR else GLES20.GL_NEAREST
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, f)
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, f)
-            linear = wantLinear
-        }
         GLES20.glUseProgram(program)
         GLES20.glUniform1i(uTex, 0)
         GLES20.glUniform1f(uBgr, if (is565) 0f else 1f)
+        GLES20.glUniform2f(uTexSize, w.toFloat(), h.toFloat())
+        GLES20.glUniform1f(uMode, RenderPrefs.filter.ordinal.toFloat())
+        GLES20.glUniform1f(uStrength, RenderPrefs.level)
         quad.position(0)
         GLES20.glEnableVertexAttribArray(aPos)
         GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quad)
         if (quads == null) {
-            val vp = computeViewport(surfW, surfH, w, h, DisplayAspect.value)
+            val vp = computeViewport(surfW, surfH, w, h, DisplayAspect.value, RenderPrefs.scaleMode)
             if (vp.width > 0 && vp.height > 0) {
                 GLES20.glViewport(vp.x, surfH - vp.y - vp.height, vp.width, vp.height)
                 GLES20.glUniform2f(uVr, 0f, 1f)
-                GLES20.glUniform1f(uHalf, 0f)
+                GLES20.glUniform2f(uOut, vp.width.toFloat(), vp.height.toFloat())
                 GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
             }
         } else {
@@ -157,7 +201,7 @@ class GameRenderer : GLSurfaceView.Renderer {
                 if (qw <= 0 || qh <= 0) continue
                 GLES20.glViewport(x, surfH - y - qh, qw, qh)
                 GLES20.glUniform2f(uVr, q.v0, q.v1)
-                GLES20.glUniform1f(uHalf, 0.5f / h)
+                GLES20.glUniform2f(uOut, qw.toFloat(), qh.toFloat())
                 GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
             }
         }
