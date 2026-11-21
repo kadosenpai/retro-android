@@ -6,14 +6,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
 import com.retro.app.data.WfcServer
+import com.retro.app.data.isIpv4
 
 /** Trang Wi-Fi của máy NDS: bật/tắt mạng và chọn máy chủ thay thế cho Nintendo Wi-Fi Connection. */
 @Composable
@@ -37,6 +41,30 @@ fun WifiPage(model: AppModel, onBack: () -> Unit) {
             ServerRow(srv, selected = st.wfcServer == srv) {
                 model.update { it.copy(wfcServer = srv) }
                 applied()
+            }
+        }
+        if (st.wfcServer == WfcServer.CUSTOM) {
+            val bad = st.customDns.isNotBlank() && !isIpv4(st.customDns)
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
+                OutlinedTextField(
+                    value = st.customDns,
+                    onValueChange = { v ->
+                        model.update { it.copy(customDns = v.filter { c -> c.isDigit() || c == '.' }.take(15)) }
+                    },
+                    label = { Text("Địa chỉ DNS (vd. 95.217.77.181)") },
+                    singleLine = true,
+                    isError = bad,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (bad || st.customDns.isBlank()) {
+                    Text(
+                        if (bad) "Cần dạng a.b.c.d, mỗi số 0–255" else "Để trống thì dùng DNS có sẵn trong firmware",
+                        color = if (bad) Rc.Danger else Rc.Faint,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
             }
         }
     }

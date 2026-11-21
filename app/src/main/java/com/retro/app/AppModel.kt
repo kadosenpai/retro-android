@@ -25,6 +25,8 @@ import com.retro.app.data.Prefs
 import com.retro.app.data.RomInfo
 import com.retro.app.data.RomStore
 import com.retro.app.data.Settings
+import com.retro.app.data.WfcServer
+import com.retro.app.data.isIpv4
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
@@ -122,7 +124,9 @@ class AppModel(private val app: Application) {
         EmulatorEngine.setOption("melonds_homebrew_sdcard", "disabled")
         // Wi-Fi: "indirect" đi qua mạng của điện thoại; máy chủ thay thế cho Nintendo WFC chọn trong Cài đặt.
         EmulatorEngine.setOption("melonds_network_mode", if (settings.wifi) "indirect" else "disabled")
-        EmulatorEngine.setOption("melonds_firmware_wfc_dns", settings.wfcServer.value)
+        // "default" = không ghi đè (dùng DNS có sẵn trong firmware); DNS tự nhập sai định dạng cũng rơi về đây.
+        val dns = if (settings.wfcServer == WfcServer.CUSTOM) settings.customDns.trim().takeIf { isIpv4(it) } else settings.wfcServer.value
+        EmulatorEngine.setOption("melonds_firmware_wfc_dns", dns ?: "default")
         listOf(
             "unsupported_features", "bios_warnings", "current_layout", "mic_state",
             "camera_state", "lid_state", "sensor_reading", "pointer_coordinates",

@@ -407,6 +407,7 @@ fun LibraryScreen(model: AppModel) {
                     6 -> GameBoyPage(model) { settingsPage = 0 }
                     7 -> BiosPage(model) { settingsPage = 0 }
                     8 -> WifiPage(model) { settingsPage = 0 }
+                    9 -> LogPage(model) { settingsPage = 0 }
                     3 -> AudioPage(model) { settingsPage = 0 }
                     4 -> {
                         PageHeader("Cảm ứng & rung") { settingsPage = 0 }
@@ -449,6 +450,8 @@ fun LibraryScreen(model: AppModel) {
                             ActionRow("Wi-Fi (NDS)", icon = "wifi", chevron = true) { settingsPage = 8 }
                             RowDivider()
                             ActionRow("BIOS", icon = "database", chevron = true) { settingsPage = 7 }
+                            RowDivider()
+                            ActionRow("Nhật ký lõi", icon = "list", chevron = true) { settingsPage = 9 }
                         }
                         SectionTitle("Dữ liệu")
                         GroupCard {

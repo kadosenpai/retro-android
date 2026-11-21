@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <atomic>
+#include <deque>
 #include <fstream>
 #include <map>
 #include <mutex>
@@ -95,6 +96,29 @@ double g_resPos = 0.0;      // vị trí nội suy (tính theo khung nguồn)
 int16_t g_resPrevL = 0, g_resPrevR = 0;  // khung nguồn đứng trước vị trí 0
 const size_t kAudioCapFrames = 48000;  // giữ tối đa ~1 giây để không phình bộ nhớ
 
+// Nhật ký lõi: giữ các dòng log gần nhất (lõi có thể ghi từ luồng khác nên cần khoá). Dòng lặp liên tiếp được gộp "(×N)".
+std::mutex g_logMu;
+std::deque<std::string> g_log;
+std::string g_logLast;
+int g_logRepeat = 0;
+const size_t kLogMaxLines = 500;
+
+void LogPush(const char* tag, const char* text) {
+  std::string line = std::string(tag) + (text ? text : "");
+  while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) line.pop_back();
+  if (line.size() > 300) line.resize(300);
+  std::lock_guard<std::mutex> l(g_logMu);
+  if (!g_log.empty() && line == g_logLast) {
+    g_logRepeat++;
+    g_log.back() = line + " (x" + std::to_string(g_logRepeat + 1) + ")";
+    return;
+  }
+  g_logLast = line;
+  g_logRepeat = 0;
+  g_log.push_back(line);
+  while (g_log.size() > kLogMaxLines) g_log.pop_front();
+}
+
 // ---- Callback ----
 void RETRO_CALLCONV LogCb(enum retro_log_level level, const char* fmt, ...) {
   char buf[512];
@@ -104,6 +128,8 @@ void RETRO_CALLCONV LogCb(enum retro_log_level level, const char* fmt, ...) {
   va_end(ap);
   if (level >= RETRO_LOG_WARN) LOGW("core: %s", buf);
   else LOGI("core: %s", buf);
+  const char* tag = level >= RETRO_LOG_ERROR ? "E " : level == RETRO_LOG_WARN ? "W " : level == RETRO_LOG_INFO ? "I " : "D ";
+  LogPush(tag, buf);
 }
 
 bool RETRO_CALLCONV EnvCb(unsigned cmd, void* data) {
@@ -116,6 +142,7 @@ bool RETRO_CALLCONV EnvCb(unsigned cmd, void* data) {
       if (m && m->msg) {
         g_lastMessage = m->msg;
         LOGW("core message: %s", m->msg);
+        LogPush("M ", m->msg);
       }
       return true;
     }
@@ -124,6 +151,7 @@ bool RETRO_CALLCONV EnvCb(unsigned cmd, void* data) {
       if (m && m->msg) {
         if (m->level >= RETRO_LOG_WARN) g_lastMessage = m->msg;
         LOGW("core message: %s", m->msg);
+        LogPush("M ", m->msg);
       }
       return true;
     }
@@ -286,6 +314,12 @@ constexpr off_t kMaxInMemoryRom = 64 * 1024 * 1024;
 }  // namespace
 
 std::string InitCore(const std::string& corePath, const std::string& systemDir, const std::string& saveDir) {
+  {
+    std::lock_guard<std::mutex> l(g_logMu);
+    g_log.clear();
+    g_logLast.clear();
+    g_logRepeat = 0;
+  }
   if (g_initialized) Shutdown();
   g_systemDir = systemDir;
   g_saveDir = saveDir;
@@ -351,6 +385,14 @@ std::string InitCore(const std::string& corePath, const std::string& systemDir, 
 std::string LoadGame(const std::string& romPath) {
   if (!g_initialized) return "Lõi chưa được khởi tạo";
   if (g_gameLoaded) UnloadGame();
+  if (g_coreOptionsV2) {
+    // Ghi vào nhật ký các tuỳ chọn mạng app đã đặt, để đối chiếu khi gỡ lỗi chơi online.
+    std::lock_guard<std::mutex> l(g_optionsMu);
+    for (const char* k : {"melonds_network_mode", "melonds_firmware_wfc_dns", "melonds_console_mode"}) {
+      auto it = g_options.find(k);
+      LogPush("app ", (std::string(k) + " = " + (it == g_options.end() ? "(mặc định)" : it->second)).c_str());
+    }
+  }
   // Ảnh đĩa lớn (PlayStation, vài trăm MB): lõi đòi đường dẫn thì để lõi tự đọc file, không nạp cả ảnh vào RAM.
   struct retro_system_info sysInfo;
   memset(&sysInfo, 0, sizeof sysInfo);
@@ -521,6 +563,23 @@ bool Serialize(std::vector<uint8_t>* out) {
 bool Unserialize(const uint8_t* data, size_t size) {
   if (!g_initialized || !g_gameLoaded) return false;
   return g.retro_unserialize(data, size);
+}
+
+std::string GetLog() {
+  std::lock_guard<std::mutex> l(g_logMu);
+  std::string out;
+  for (const auto& s : g_log) {
+    out += s;
+    out += '\n';
+  }
+  return out;
+}
+
+void ClearLog() {
+  std::lock_guard<std::mutex> l(g_logMu);
+  g_log.clear();
+  g_logLast.clear();
+  g_logRepeat = 0;
 }
 
 void SetOption(const std::string& key, const std::string& value) {

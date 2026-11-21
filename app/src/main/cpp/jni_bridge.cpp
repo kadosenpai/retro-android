@@ -114,6 +114,10 @@ JNI(void, nativeSetOption)(JNIEnv* env, jobject, jstring key, jstring value) {
   retro::SetOption(Str(env, key), Str(env, value));
 }
 
+JNI(jstring, nativeGetLog)(JNIEnv* env, jobject) { return env->NewStringUTF(retro::GetLog().c_str()); }
+
+JNI(void, nativeClearLog)(JNIEnv*, jobject) { retro::ClearLog(); }
+
 JNI(void, nativeCheatReset)(JNIEnv*, jobject) { retro::CheatReset(); }
 
 JNI(jboolean, nativeCheatSet)(JNIEnv* env, jobject, jint index, jboolean enabled, jstring code) {

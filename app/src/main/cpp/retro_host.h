@@ -46,6 +46,9 @@ void SetSram(const uint8_t* data, size_t size);
 bool Serialize(std::vector<uint8_t>* out);
 bool Unserialize(const uint8_t* data, size_t size);
 void SetOption(const std::string& key, const std::string& value);
+// Nhật ký lõi: các dòng log gần nhất (mỗi dòng kết thúc bằng '\n'); xoá khi nạp lõi mới.
+std::string GetLog();
+void ClearLog();
 void CheatReset();
 // Trả về false nếu lõi (đã vá) không đọc được mã.
 bool CheatSet(unsigned index, bool enabled, const std::string& code);
