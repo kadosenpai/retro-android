@@ -69,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
@@ -349,23 +350,18 @@ fun LibraryScreen(model: AppModel) {
                                 maxLines = 1,
                             )
                             GlassIconBtn("search", "Tìm kiếm") { searchOpen = true }
+                            if (view != LibView.RECENT && tabs.isNotEmpty()) {
+                                Spacer(Modifier.width(8.dp))
+                                SortButton(sort) { k -> model.update { it.copy(sort = k) } }
+                            }
                             Spacer(Modifier.width(8.dp))
                             GlassIconBtn(refreshIcon, refreshDesc) { addOrScan() }
                         }
                     }
                     if (view == LibView.LIBRARY && tabs.isNotEmpty()) {
-                        Spacer(Modifier.height(10.dp))
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            GlassTabBar(tabs, pagerState.currentPage, Modifier.weight(1f)) { id ->
-                                if (id != model.settings.tab) model.update { it.copy(tab = id) }
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            SortButton(sort) { k -> model.update { it.copy(sort = k) } }
-                        }
-                    } else if (view == LibView.FAVORITES && tabs.isNotEmpty()) {
-                        Spacer(Modifier.height(10.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            SortButton(sort) { k -> model.update { it.copy(sort = k) } }
+                        Spacer(Modifier.height(12.dp))
+                        GlassTabBar(tabs, pagerState.currentPage, Modifier.fillMaxWidth()) { id ->
+                            if (id != model.settings.tab) model.update { it.copy(tab = id) }
                         }
                     }
                     Spacer(Modifier.height(2.dp))
@@ -823,7 +819,7 @@ private fun HeroCard(rom: RomInfo, cover: ImageBitmap?, onOpen: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
-            .glassSurface(26.dp, tint = Color(0x24FFFFFF))
+            .glassSurface(26.dp, tint = Color(0x33FFFFFF))
             .clickable(onClick = onOpen)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -865,8 +861,14 @@ private fun HeroCard(rom: RomInfo, cover: ImageBitmap?, onOpen: () -> Unit) {
             )
         }
         Spacer(Modifier.width(12.dp))
-        Box(Modifier.size(46.dp).clip(CircleShape).background(Color(0x38FFFFFF)), contentAlignment = Alignment.Center) {
-            RetroIcon("play", size = 22.dp, tint = Rc.Text)
+        Box(
+            Modifier
+                .size(46.dp)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(listOf(Color(0xFFFF6BAE), Color(0xFFD42A82)))),
+            contentAlignment = Alignment.Center,
+        ) {
+            RetroIcon("play", size = 22.dp, tint = Color.White)
         }
     }
 }

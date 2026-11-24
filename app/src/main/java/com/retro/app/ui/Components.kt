@@ -43,7 +43,7 @@ fun GroupCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(Rc.Glass),
+            .glassSurface(18.dp, tint = Color(0x1FFFFFFF)),
     ) { content() }
 }
 
@@ -140,7 +140,7 @@ fun ToggleRow(
     }
 }
 
-/** Nút gạt như web: bật = nền trắng, núm đen; tắt = nền kính, núm trắng. */
+/** Nút gạt: bật = nền tím, núm trắng; tắt = nền kính, núm trắng. */
 @Composable
 fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
     val x = animateDpAsState(if (checked) 24.dp else 3.dp, label = "thumb").value
@@ -148,7 +148,7 @@ fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
         Modifier
             .size(52.dp, 30.dp)
             .clip(RoundedCornerShape(15.dp))
-            .background(if (checked) Color.White else Color(0x38FFFFFF))
+            .background(if (checked) Color(0xFF7A6CF0) else Color(0x38FFFFFF))
             .clickable(role = Role.Switch) { onChange(!checked) },
     ) {
         Box(
@@ -156,7 +156,7 @@ fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
                 .offset(x = x, y = 3.dp)
                 .size(24.dp)
                 .clip(CircleShape)
-                .background(if (checked) Color.Black else Color.White),
+                .background(Color.White),
         )
     }
 }

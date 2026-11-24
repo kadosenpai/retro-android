@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -52,7 +53,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = state,
-        containerColor = Rc.SheetGlass,
+        containerColor = Color.Transparent,
         contentColor = Rc.Text,
         scrimColor = Color(0x59000000),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -61,6 +62,16 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                .background(Color(0xB8101216))
+                .background(
+                    Brush.linearGradient(
+                        0f to Color(0x2E6A4BFF),
+                        0.55f to Color(0x24E0398A),
+                        1f to Color(0x2E10B896),
+                    ),
+                )
+                .glassSurface(32.dp, tint = Color(0x0FFFFFFF))
                 .sheetMaxHeight()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
@@ -146,7 +157,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
     }
 }
 
-/** Ô biểu tượng trong lưới menu: ô vuông kính, bật = nền trắng biểu tượng đen. */
+/** Ô biểu tượng trong lưới menu: ô kính bo tròn; bật = nền trắng biểu tượng đen. */
 @Composable
 private fun MenuTile(icon: String, label: String, modifier: Modifier = Modifier, on: Boolean = false, onClick: () -> Unit) {
     Column(
@@ -155,15 +166,15 @@ private fun MenuTile(icon: String, label: String, modifier: Modifier = Modifier,
     ) {
         Box(
             Modifier
-                .size(60.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(if (on) Color.White else Rc.GlassStrong),
+                .size(64.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .glassSurface(22.dp, tint = if (on) Color(0xF2FFFFFF) else Color(0x2EFFFFFF)),
             contentAlignment = Alignment.Center,
         ) {
-            RetroIcon(icon, size = 26.dp, tint = if (on) Color.Black else Rc.Text)
+            RetroIcon(icon, size = 28.dp, tint = if (on) Color.Black else Rc.Text)
         }
         Spacer(Modifier.height(6.dp))
-        Text(label, color = if (on) Rc.Text else Rc.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(label, color = if (on) Rc.Text else Color(0xD9FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
