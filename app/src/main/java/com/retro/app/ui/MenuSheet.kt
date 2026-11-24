@@ -63,12 +63,11 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(Color(0xB8101216))
+                .background(Color(0xB31C1D21))
                 .background(
-                    Brush.linearGradient(
-                        0f to Color(0x2E6A4BFF),
-                        0.55f to Color(0x24E0398A),
-                        1f to Color(0x2E10B896),
+                    Brush.verticalGradient(
+                        0f to Color(0x14FFFFFF),
+                        1f to Color.Transparent,
                     ),
                 )
                 .glassSurface(32.dp, tint = Color(0x0FFFFFFF))

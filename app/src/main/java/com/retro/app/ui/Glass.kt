@@ -16,7 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
@@ -99,9 +101,9 @@ fun Modifier.glass(
     radius: Dp,
     tint: Color = Rc.GlassTint,
     fallback: Color = Rc.GlassFallback,
-    blur: Dp = 6.dp,
-    bevel: Dp = 18.dp,
-    refraction: Dp = 14.dp,
+    blur: Dp = 18.dp,
+    bevel: Dp = 12.dp,
+    refraction: Dp = 4.dp,
 ): Modifier = composed {
     val src = LocalGlass.current
     val density = LocalDensity.current
@@ -110,6 +112,7 @@ fun Modifier.glass(
     var pos by remember { mutableStateOf(Offset.Zero) }
     val live = src != null && Build.VERSION.SDK_INT >= 31
     this
+        .shadow(10.dp, RoundedCornerShape(radius), clip = false, ambientColor = Color(0x59000000), spotColor = Color(0x59000000))
         .onGloballyPositioned { pos = it.positionInWindow() }
         .drawWithContent {
             val w = size.width
@@ -163,10 +166,10 @@ private fun DrawScope.drawGlassEdges(path: Path, w: Float, h: Float) {
     drawPath(
         path,
         Brush.linearGradient(
-            0f to Color(0xBFFFFFFF),
-            0.38f to Color(0x0AFFFFFF),
-            0.62f to Color(0x0AFFFFFF),
-            1f to Color(0x80FFFFFF),
+            0f to Color(0x59FFFFFF),
+            0.4f to Color(0x0DFFFFFF),
+            0.6f to Color(0x0DFFFFFF),
+            1f to Color(0x33FFFFFF),
             start = Offset.Zero,
             end = Offset(w, h),
         ),
@@ -175,7 +178,7 @@ private fun DrawScope.drawGlassEdges(path: Path, w: Float, h: Float) {
     drawPath(
         path,
         Brush.verticalGradient(
-            0f to Color(0x59FFFFFF),
+            0f to Color(0x1FFFFFFF),
             0.25f to Color.Transparent,
             startY = 0f,
             endY = h,
@@ -200,13 +203,13 @@ private fun buildGlassEffect(w: Float, h: Float, radius: Float, blurPx: Float, b
         e = AndroidRenderEffect.createRuntimeShaderEffect(shader, "content")
     }
     val cm = ColorMatrix()
-    cm.setSaturation(1.5f)
+    cm.setSaturation(1.25f)
     cm.postConcat(
         ColorMatrix(
             floatArrayOf(
-                1.1f, 0f, 0f, 0f, 0f,
-                0f, 1.1f, 0f, 0f, 0f,
-                0f, 0f, 1.1f, 0f, 0f,
+                1.05f, 0f, 0f, 0f, 0f,
+                0f, 1.05f, 0f, 0f, 0f,
+                0f, 0f, 1.05f, 0f, 0f,
                 0f, 0f, 0f, 1f, 0f,
             ),
         ),

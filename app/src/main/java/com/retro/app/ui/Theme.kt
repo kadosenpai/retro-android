@@ -38,11 +38,11 @@ object Rc {
     val Faint = Color(0x8CFFFFFF)
     val Danger = Color(0xFFFF6B6B)
     /** Lớp phủ của kính trong suốt (nền kính thấy được phía sau). */
-    val GlassTint = Color(0x1CFFFFFF)
+    val GlassTint = Color(0x6B26272C)
     /** Nền kính khi không làm được hiệu ứng nền (tắt kính, Android cũ): tối hơn để chữ vẫn rõ. */
-    val GlassFallback = Color(0xCC17181C)
+    val GlassFallback = Color(0xE61E1F23)
     /** Bảng menu kính tối: chữ nổi rõ hơn trên nền game phía sau. */
-    val SheetGlass = Color(0xE0101216)
+    val SheetGlass = Color(0xD41C1D21)
 }
 
 /** Phông Inter, giống bản web. */
@@ -77,24 +77,19 @@ private fun Typography.withFont(f: FontFamily): Typography = copy(
  * radial-gradient(120% 80% at 0 0, #1f2026 0%, #0d0e12 55%, #08090c 100%).
  */
 fun Modifier.retroBackground(): Modifier = this.drawBehind {
-    drawRect(Color(0xFF07080C))
+    drawRect(Color(0xFF050507))
     val w = size.width
     val h = size.height
     if (w > 0f && h > 0f) {
-        // Ba vệt màu mờ (tím, hồng, lục lam) để kính có thứ để làm mờ và khúc xạ phía sau.
-        fun blob(c: Color, cx: Float, cy: Float, r: Float) {
-            drawRect(
-                brush = Brush.radialGradient(
-                    0f to c,
-                    1f to Color.Transparent,
-                    center = Offset(cx * w, cy * h),
-                    radius = r * w,
-                ),
-            )
-        }
-        blob(Color(0xCC4A2BE0), 0.05f, 0.04f, 1.05f)
-        blob(Color(0xB3E02F86), 1.0f, 0.46f, 0.95f)
-        blob(Color(0xB30A9C7C), 0.0f, 0.95f, 0.95f)
+        // Chỉ một vệt sáng rất nhẹ ở góc trên để nền không chết hẳn.
+        drawRect(
+            brush = Brush.radialGradient(
+                0f to Color(0xFF17181D),
+                1f to Color.Transparent,
+                center = Offset(0f, 0f),
+                radius = 1.1f * w,
+            ),
+        )
     }
 }
 

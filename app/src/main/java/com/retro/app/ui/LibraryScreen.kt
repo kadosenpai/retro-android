@@ -69,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -431,7 +432,7 @@ fun LibraryScreen(model: AppModel) {
         ModalBottomSheet(
             onDismissRequest = { settingsOpen = false },
             sheetState = state,
-            containerColor = Rc.SheetGlass,
+            containerColor = Color(0xD41C1D21),
             contentColor = Rc.Text,
             scrimColor = Color(0x59000000),
             shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
@@ -681,7 +682,7 @@ private fun GlassIconBtn(icon: String, desc: String, modifier: Modifier = Modifi
     Box(
         modifier
             .size(48.dp)
-            .glass(24.dp, blur = 4.dp, bevel = 14.dp, refraction = 9.dp)
+            .glass(24.dp, blur = 16.dp, bevel = 12.dp, refraction = 4.dp)
             .clip(CircleShape)
             .clickable(role = Role.Button, onClickLabel = desc, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -708,7 +709,7 @@ private fun GlassSearchBox(query: String, onChange: (String) -> Unit, modifier: 
     Row(
         modifier
             .height(44.dp)
-            .glass(22.dp, blur = 4.dp, bevel = 14.dp, refraction = 9.dp)
+            .glass(22.dp, blur = 16.dp, bevel = 12.dp, refraction = 4.dp)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -739,7 +740,7 @@ private fun GlassTabBar(tabs: List<Pair<String, String>>, selected: Int, modifie
     Row(
         modifier
             .height(48.dp)
-            .glass(24.dp, blur = 4.dp, bevel = 18.dp, refraction = 12.dp)
+            .glass(24.dp, blur = 16.dp, bevel = 12.dp, refraction = 4.dp)
             .padding(4.dp)
             .then(if (even) Modifier else Modifier.horizontalScroll(rememberScrollState())),
         verticalAlignment = Alignment.CenterVertically,
@@ -754,7 +755,7 @@ private fun GlassTabBar(tabs: List<Pair<String, String>>, selected: Int, modifie
                     .then(if (even) Modifier.weight(1f) else Modifier.widthIn(min = 64.dp))
                     .fillMaxHeight()
                     .clip(CircleShape)
-                    .then(if (on) Modifier.background(Color(0x42FFFFFF)).border(1.dp, Color(0x4DFFFFFF), CircleShape) else Modifier)
+                    .then(if (on) Modifier.background(Color(0x33FFFFFF)) else Modifier)
                     .clickable(role = Role.Tab) { onSelect(id) }
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center,
@@ -778,7 +779,7 @@ private fun GlassBottomBar(selected: LibView, onSelect: (LibView) -> Unit, onSet
         modifier
             .fillMaxWidth()
             .height(68.dp)
-            .glass(34.dp, blur = 3.dp, bevel = 26.dp, refraction = 18.dp)
+            .glass(34.dp, blur = 18.dp, bevel = 18.dp, refraction = 6.dp)
             .padding(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -795,7 +796,7 @@ private fun BarItem(icon: String, label: String, on: Boolean, modifier: Modifier
         modifier
             .fillMaxHeight()
             .clip(CircleShape)
-            .then(if (on) Modifier.background(Color(0x3DFFFFFF)).border(1.dp, Color(0x4DFFFFFF), CircleShape) else Modifier)
+            .then(if (on) Modifier.background(Color(0x33FFFFFF)) else Modifier)
             .clickable(role = Role.Tab, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -819,7 +820,7 @@ private fun HeroCard(rom: RomInfo, cover: ImageBitmap?, onOpen: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
-            .glassSurface(26.dp, tint = Color(0x33FFFFFF))
+            .glassSurface(26.dp, tint = Color(0x4D26272C))
             .clickable(onClick = onOpen)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1081,17 +1082,20 @@ private fun GameMenuOverlay(
             val coverBottom = a.top + coverW + coverW * 0.04f
             val titleDp = 30f
             val n = actions.size
-            // Ưu tiên bảng nằm dưới game; không đủ chỗ thì sang cạnh game, đáy bảng bằng đáy game.
-            var rowDp = 48f
-            var mx = a.left.coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
-            var my = coverBottom + gap
-            if (my + (titleDp + n * rowDp) * dens > sh - insetBottom) {
-                val bottomY = minOf(coverBottom, sh - insetBottom)
-                rowDp = (((bottomY - insetTop) / dens - titleDp) / n).coerceIn(34f, 48f)
-                my = bottomY - (titleDp + n * rowDp) * dens
-                mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
-                else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
-            }
+            // Bảng không bao giờ đè lên bìa: đặt dưới bìa nếu đủ chỗ, không thì đặt trên bìa;
+            // cả hai đều thiếu thì chọn phía rộng hơn và thu nhỏ chiều cao dòng.
+            val lift = coverW * 0.04f
+            val spaceBelow = sh - insetBottom - (coverBottom + gap)
+            val spaceAbove = (a.top - lift - gap) - insetTop
+            val fullH = (titleDp + n * 48f) * dens
+            val below = spaceBelow >= fullH || (spaceAbove < fullH && spaceBelow >= spaceAbove)
+            val space = if (below) spaceBelow else spaceAbove
+            val rowDp = (((space / dens) - titleDp) / n).coerceIn(34f, 48f)
+            val panelH = (titleDp + n * rowDp) * dens
+            val my = if (below) coverBottom + gap else (a.top - lift - gap - panelH).coerceAtLeast(margin)
+            // Game ở cột trái: bảng thẳng hàng cạnh trái bìa; game ở cột phải: thẳng hàng cạnh phải.
+            val mx = (if (a.left + menuW + margin <= sw) a.left else a.right - menuW)
+                .coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
             // Game giữ nguyên vị trí cũ, phóng to nhẹ.
             Box(
                 Modifier
@@ -1124,9 +1128,10 @@ private fun GameMenuOverlay(
                 Modifier
                     .offset { androidx.compose.ui.unit.IntOffset(mx.toInt(), my.toInt()) }
                     .width(260.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Rc.SheetGlass)
-                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
+                    .shadow(24.dp, RoundedCornerShape(28.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color(0xB3232327))
+                    .glassSurface(28.dp, tint = Color(0x0DFFFFFF))
                     .clickable(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null,
@@ -1139,15 +1144,16 @@ private fun GameMenuOverlay(
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.height(titleDp.dp).padding(horizontal = 16.dp).wrapContentHeight(Alignment.CenterVertically),
+                    modifier = Modifier.height(titleDp.dp).padding(horizontal = 20.dp).wrapContentHeight(Alignment.CenterVertically),
                 )
-                actions.forEach { act ->
+                actions.forEachIndexed { idx, act ->
+                    if (idx > 0) Box(Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(1.dp).background(Color(0x1FFFFFFF)))
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .clickable(onClick = act.onClick)
                             .height(rowDp.dp)
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 20.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
