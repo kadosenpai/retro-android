@@ -77,19 +77,24 @@ private fun Typography.withFont(f: FontFamily): Typography = copy(
  * radial-gradient(120% 80% at 0 0, #1f2026 0%, #0d0e12 55%, #08090c 100%).
  */
 fun Modifier.retroBackground(): Modifier = this.drawBehind {
-    drawRect(Color(0xFF050507))
+    drawRect(Rc.Bg)
     val w = size.width
     val h = size.height
     if (w > 0f && h > 0f) {
-        // Chỉ một vệt sáng rất nhẹ ở góc trên để nền không chết hẳn.
-        drawRect(
-            brush = Brush.radialGradient(
-                0f to Color(0xFF17181D),
-                1f to Color.Transparent,
-                center = Offset(0f, 0f),
-                radius = 1.1f * w,
-            ),
-        )
+        val radius = 1.2f * w
+        val sy = (0.8f * h) / radius
+        scale(scaleX = 1f, scaleY = sy, pivot = Offset.Zero) {
+            drawRect(
+                brush = Brush.radialGradient(
+                    0f to Color(0xFF1F2026),
+                    0.55f to Color(0xFF0D0E12),
+                    1f to Color(0xFF08090C),
+                    center = Offset.Zero,
+                    radius = radius,
+                ),
+                size = Size(w, h / sy),
+            )
+        }
     }
 }
 

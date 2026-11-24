@@ -69,8 +69,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
@@ -88,20 +86,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import com.retro.app.AppModel
 import com.retro.app.data.GameSystem
 import com.retro.app.data.RomInfo
@@ -120,6 +104,7 @@ fun LibraryScreen(model: AppModel) {
         focus.clearFocus()
         keyboard?.hide()
     }
+    var sortPill by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var gameMenu by remember { mutableStateOf<RomInfo?>(null) } // game đang mở menu giữ lâu
     var menuAnchor by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
@@ -180,18 +165,12 @@ fun LibraryScreen(model: AppModel) {
     }
 
     val tab = model.settings.tab
-    val sort = model.settings.sort
-    // Màn ngang (thấp): gộp thanh trên thành một hàng, bỏ thanh dưới để game hiện to, đủ.
-    val compact = LocalConfiguration.current.screenHeightDp < 480
-    var view by remember { mutableStateOf(LibView.LIBRARY) }
-    var searchOpen by remember { mutableStateOf(false) }
-    // Tab: "Tất cả" cùng các hệ máy đã có game; thêm game của hệ mới thì tab mới xuất hiện.
+    // Chỉ hệ máy nào đã có game mới có trang riêng; thêm game của hệ mới thì trang mới xuất hiện.
     val tabs = remember(model.roms) {
-        val systems = GameSystem.TABS.filter { (id, _) -> model.roms.any { GameSystem.fromId(it.system).tab == id } }
-        if (systems.isEmpty()) emptyList() else listOf(ALL_TAB to "Tất cả") + systems
+        GameSystem.TABS.filter { (id, _) -> model.roms.any { GameSystem.fromId(it.system).tab == id } }
     }
     val tabsNow = rememberUpdatedState(tabs)
-    // Vuốt trái/phải để chuyển giữa các tab (mỗi tab một trang).
+    // Vuốt trái/phải để chuyển giữa các hệ máy (mỗi hệ một trang).
     val pagerState = rememberPagerState(
         initialPage = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0),
         pageCount = { tabsNow.value.size },
@@ -206,186 +185,161 @@ fun LibraryScreen(model: AppModel) {
             if (id != model.settings.tab) model.update { it.copy(tab = id) }
         }
     }
-    fun closeSearch() {
-        searchOpen = false
-        query = ""
-        hideKeyboard()
-    }
-    androidx.activity.compose.BackHandler(enabled = searchOpen) { closeSearch() }
-    androidx.activity.compose.BackHandler(enabled = !searchOpen && view != LibView.LIBRARY) { view = LibView.LIBRARY }
-
+    val sort = model.settings.sort
+    // Màn ngang (thấp): gộp thanh trên cùng thành một hàng và bỏ bớt khoảng trống để game + tên hiện to, đủ.
+    val compact = LocalConfiguration.current.screenHeightDp < 480
+    // Màn đủ rộng thì hiện thêm số lượng game và biểu tượng sắp xếp, như bản web.
     // Làm mờ phần nền phía sau khi có bảng mở (Android 12 trở lên).
-    val blurRadius = if (settingsOpen) 16.dp else 0.dp
-    val glassState = rememberGlassState()
-    val density = LocalDensity.current
-    // Chiều cao thanh trên và thanh dưới: nội dung cuộn xuống dưới chúng (để kính có gì để làm mờ) nhưng đầu và cuối lưới chừa chỗ đúng bằng chúng.
-    var headerPx by remember { mutableStateOf(0) }
-    var bottomPx by remember { mutableStateOf(0) }
-    val topPad = with(density) { headerPx.toDp() } + 12.dp
-    val bottomPad = if (compact) 8.dp else with(density) { bottomPx.toDp() } + 12.dp
-    val onMenu: (RomInfo, androidx.compose.ui.geometry.Rect?) -> Unit = { rom, rect ->
-        hideKeyboard()
-        menuAnchor = rect
-        gameMenu = rom
-    }
-    val pickRoms = { picker.launch(arrayOf("*/*")) }
+    val behindSheet = settingsOpen
+    val blurRadius = if (behindSheet) 16.dp else 0.dp
 
-    CompositionLocalProvider(LocalGlass provides (if (model.settings.glass) glassState else null)) {
-        Box(Modifier.fillMaxSize().blur(blurRadius, BlurredEdgeTreatment.Unbounded)) {
-            // Vùng nguồn của kính: nền và nội dung cuộn nằm phía sau các thanh.
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .glassSource(glassState)
-                    .retroBackground()
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+    Column(
+        Modifier
+            .fillMaxSize()
+            .blur(blurRadius, BlurredEdgeTreatment.Unbounded)
+            .retroBackground()
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+    ) {
+        if (compact) {
+            // Một hàng duy nhất: cài đặt, ô tìm kiếm, thêm game.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                when {
-                    tabs.isEmpty() -> Box(Modifier.padding(top = topPad, bottom = bottomPad)) {
-                        EmptyState(hasAny = false, onAdd = pickRoms)
-                    }
-                    view == LibView.LIBRARY -> HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        beyondViewportPageCount = 0,
-                    ) { page ->
-                        val pageTab = tabs.getOrNull(page)?.first ?: tab
-                        val inTab = remember(model.roms, pageTab) {
-                            if (pageTab == ALL_TAB) model.roms else model.roms.filter { GameSystem.fromId(it.system).tab == pageTab }
-                        }
-                        val shown = remember(inTab, query, sort) { sortRoms(matchQuery(inTab, query), sort) }
-                        // Thẻ "Chơi tiếp": game chơi gần nhất, chỉ ở trang Tất cả và khi không tìm kiếm.
-                        val hero = remember(model.roms, pageTab, query) {
-                            if (pageTab == ALL_TAB && query.isBlank()) model.roms.filter { it.lastPlayedAt > 0 }.maxByOrNull { it.lastPlayedAt } else null
-                        }
-                        if (shown.isEmpty()) {
-                            Box(Modifier.padding(top = topPad, bottom = bottomPad)) {
-                                EmptyState(hasAny = inTab.isNotEmpty(), onAdd = pickRoms)
-                            }
-                        } else {
-                            GamesGrid(shown, model, compact, topPad, bottomPad, showBadge = pageTab == ALL_TAB, hero = hero, onMenu = onMenu)
-                        }
-                    }
-                    else -> {
-                        val recent = view == LibView.RECENT
-                        val list = remember(model.roms, view, query, sort) {
-                            if (recent) {
-                                matchQuery(model.roms.filter { it.lastPlayedAt > 0 }, query).sortedByDescending { it.lastPlayedAt }
-                            } else {
-                                sortRoms(matchQuery(model.roms.filter { it.favorite }, query), sort)
-                            }
-                        }
-                        if (list.isEmpty()) {
-                            Box(Modifier.padding(top = topPad, bottom = bottomPad)) {
-                                if (query.isNotBlank()) {
-                                    EmptyState(hasAny = true, onAdd = pickRoms)
-                                } else if (recent) {
-                                    SimpleEmpty("Chưa có game nào gần đây", "Chơi một game, nó sẽ hiện ở đây.")
-                                } else {
-                                    SimpleEmpty("Chưa có game yêu thích", "Giữ lâu vào một game rồi chọn \"Thêm vào Yêu thích\".")
-                                }
-                            }
-                        } else {
-                            GamesGrid(list, model, compact, topPad, bottomPad, showBadge = true, hero = null, onMenu = onMenu)
-                        }
-                    }
+                IconBtn("settings", "Cài đặt", small = true) {
+                    hideKeyboard()
+                    settingsOpen = true
                 }
+                Spacer(Modifier.width(8.dp))
+                SearchBox(query, { query = it }, 36.dp, Modifier.weight(1f))
+                Spacer(Modifier.width(8.dp))
+                IconBtn(if (hasAnyRom) "refresh" else "plus", if (hasAnyRom) "Quét lại thư mục game" else "Thêm game", small = true) { addOrScan() }
             }
-
-            // Thanh trên (kính): tiêu đề, tìm kiếm, quét lại; hàng tab hệ máy và sắp xếp.
-            Column(
-                Modifier
-                    .align(Alignment.TopStart)
-                    .fillMaxWidth()
-                    .onSizeChanged { headerPx = it.height }
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                    .padding(start = 16.dp, end = 16.dp, top = 6.dp),
-            ) {
-                val refreshIcon = if (hasAnyRom) "refresh" else "plus"
-                val refreshDesc = if (hasAnyRom) "Quét lại thư mục game" else "Thêm game"
-                if (compact) {
-                    Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
-                        GlassIconBtn("settings", "Cài đặt") {
-                            hideKeyboard()
-                            settingsOpen = true
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        if (searchOpen) {
-                            GlassSearchBox(query, { query = it }, Modifier.weight(1f))
-                            Spacer(Modifier.width(8.dp))
-                            GlassIconBtn("x", "Đóng tìm kiếm") { closeSearch() }
-                        } else {
-                            if (tabs.isNotEmpty()) {
-                                GlassTabBar(tabs, pagerState.currentPage, Modifier.weight(1f)) { id ->
-                                    if (id != model.settings.tab) model.update { it.copy(tab = id) }
-                                }
-                            } else {
-                                Spacer(Modifier.weight(1f))
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            SortButton(sort) { k -> model.update { it.copy(sort = k) } }
-                            Spacer(Modifier.width(8.dp))
-                            GlassIconBtn("search", "Tìm kiếm") { searchOpen = true }
-                            Spacer(Modifier.width(8.dp))
-                            GlassIconBtn(refreshIcon, refreshDesc) { addOrScan() }
-                        }
-                    }
-                } else {
-                    Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (searchOpen) {
-                            GlassSearchBox(query, { query = it }, Modifier.weight(1f))
-                            Spacer(Modifier.width(10.dp))
-                            GlassIconBtn("x", "Đóng tìm kiếm") { closeSearch() }
-                        } else {
-                            Text(
-                                when (view) {
-                                    LibView.LIBRARY -> "Thư viện"
-                                    LibView.RECENT -> "Gần đây"
-                                    LibView.FAVORITES -> "Yêu thích"
-                                },
-                                modifier = Modifier.weight(1f),
-                                color = Rc.Text,
-                                fontSize = 34.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = (-0.5).sp,
-                                maxLines = 1,
-                            )
-                            GlassIconBtn("search", "Tìm kiếm") { searchOpen = true }
-                            if (view != LibView.RECENT && tabs.isNotEmpty()) {
-                                Spacer(Modifier.width(8.dp))
-                                SortButton(sort) { k -> model.update { it.copy(sort = k) } }
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            GlassIconBtn(refreshIcon, refreshDesc) { addOrScan() }
-                        }
-                    }
-                    if (view == LibView.LIBRARY && tabs.isNotEmpty()) {
-                        Spacer(Modifier.height(12.dp))
-                        GlassTabBar(tabs, pagerState.currentPage, Modifier.fillMaxWidth()) { id ->
-                            if (id != model.settings.tab) model.update { it.copy(tab = id) }
-                        }
-                    }
-                    Spacer(Modifier.height(2.dp))
-                }
-            }
-
-            // Thanh dưới (kính): Thư viện · Gần đây · Yêu thích · Cài đặt.
-            if (!compact) {
-                GlassBottomBar(
-                    selected = view,
-                    onSelect = { v ->
-                        hideKeyboard()
-                        view = v
-                    },
-                    onSettings = {
+        } else {
+            // Thanh tiêu đề
+            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+                    IconBtn("settings", "Cài đặt") {
                         hideKeyboard()
                         settingsOpen = true
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .onSizeChanged { bottomPx = it.height }
-                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
-                        .padding(start = 22.dp, end = 22.dp, bottom = 10.dp),
+                    }
+                }
+                Text(
+                    "Thư viện",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Rc.Text,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                IconBtn(if (hasAnyRom) "refresh" else "plus", if (hasAnyRom) "Quét lại thư mục game" else "Thêm game", Modifier.align(Alignment.CenterEnd)) { addOrScan() }
+            }
+
+            // Ô tìm kiếm
+            SearchBox(query, { query = it }, 42.dp, Modifier.padding(horizontal = 16.dp).fillMaxWidth())
+        }
+
+        // Tiêu đề mục + sắp xếp
+        Spacer(Modifier.height(if (compact) 2.dp else 8.dp))
+        if (model.roms.isNotEmpty()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 18.dp, end = 16.dp, top = if (compact) 0.dp else 4.dp, bottom = if (compact) 4.dp else 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    GameSystem.fromId(tabs.getOrNull(pagerState.currentPage)?.first ?: tab).label.uppercase(),
+                    color = Rc.Muted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.6.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
+            Box {
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Rc.Glass)
+                        .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
+                        .clickable { sortPill = true }
+                        .padding(start = 12.dp, end = 6.dp, top = if (compact) 3.dp else 6.dp, bottom = if (compact) 3.dp else 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(sort.label, color = Rc.Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(2.dp))
+                    RetroIcon("chevron-down", size = 18.dp, tint = Rc.Text)
+                }
+                SortMenu(sortPill, { sortPill = false }, sort) { k -> model.update { it.copy(sort = k) } }
+            }
+        }
+        }
+
+        if (tabs.isEmpty()) {
+            EmptyState(hasAny = false, onAdd = { picker.launch(arrayOf("*/*")) })
+        } else HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            beyondViewportPageCount = 0,
+        ) { page ->
+            val pageTab = tabs.getOrNull(page)?.first ?: tab
+            val inTab = remember(model.roms, pageTab) { model.roms.filter { GameSystem.fromId(it.system).tab == pageTab } }
+            val shown = remember(inTab, query, sort) {
+                val q = query.trim().lowercase()
+                val filtered = if (q.isEmpty()) inTab else inTab.filter { it.name.lowercase().contains(q) || it.id.startsWith(q) }
+                when (sort) {
+                    SortKey.RECENT -> filtered.sortedByDescending { maxOf(it.lastPlayedAt, it.addedAt) }
+                    SortKey.NAME -> filtered.sortedBy { it.name.lowercase() }
+                    SortKey.ADDED -> filtered.sortedByDescending { it.addedAt }
+                }
+            }
+            if (shown.isEmpty()) {
+                EmptyState(hasAny = inTab.isNotEmpty(), onAdd = { picker.launch(arrayOf("*/*")) })
+            } else {
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                // Màn ngang: cỡ bìa tính theo chiều cao còn lại để cả bìa, tên 2 dòng và ngày chơi luôn nằm gọn trong một hàng.
+                val coverSize = maxOf(90.dp, minOf(170.dp, maxHeight - 84.dp))
+                LazyVerticalGrid(
+                    columns = if (compact) GridCells.FixedSize(coverSize) else GridCells.Adaptive(150.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.Start),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    items(shown, key = { it.id }) { rom ->
+                        // Giữ vị trí ô bằng biến thường (không phải state) để cuộn danh sách không bị recompose liên tục.
+                        val tileBounds = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
+                        Box(Modifier.onGloballyPositioned { tileBounds[0] = it.boundsInWindow() }) {
+                            RomTile(
+                                rom = rom,
+                                cover = rememberCover(model, rom),
+                                onOpen = { model.open(rom) },
+                                onMenu = {
+                                    hideKeyboard()
+                                    menuAnchor = tileBounds[0]
+                                    gameMenu = rom
+                                },
+                            )
+                        }
+                    }
+                }
+                }
+            }
+        }
+        // Chấm báo đang ở trang (hệ máy) nào (chỉ hiện khi có từ hai hệ máy trở lên).
+        if (tabs.size > 1) Row(
+            Modifier.fillMaxWidth().padding(vertical = if (compact) 4.dp else 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tabs.forEachIndexed { i, _ ->
+                val on = i == pagerState.currentPage
+                Box(
+                    Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(if (on) 8.dp else 6.dp)
+                        .clip(CircleShape)
+                        .background(if (on) Color.White else Rc.Faint),
                 )
             }
         }
@@ -399,10 +353,6 @@ fun LibraryScreen(model: AppModel) {
             cover = rememberCover(model, rom),
             onDismiss = { gameMenu = null },
             actions = listOfNotNull(
-                GameAction(if (rom.favorite) "Bỏ khỏi Yêu thích" else "Thêm vào Yêu thích", "star") {
-                    gameMenu = null
-                    model.toggleFavorite(rom)
-                },
                 GameAction("Đổi tên", "pencil") { gameMenu = null; renameTarget = rom },
                 if (rom.system == GameSystem.NDS.id) {
                     GameAction("Chế độ máy: " + consoleLabel(rom.consoleMode), "settings") { gameMenu = null; consoleTarget = rom }
@@ -432,9 +382,9 @@ fun LibraryScreen(model: AppModel) {
         ModalBottomSheet(
             onDismissRequest = { settingsOpen = false },
             sheetState = state,
-            containerColor = Color(0xD41C1D21),
+            containerColor = Rc.Sheet,
             contentColor = Rc.Text,
-            scrimColor = Color(0x59000000),
+            scrimColor = Color(0x8C000000),
             shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
             dragHandle = null,
         ) {
@@ -660,56 +610,28 @@ private fun rememberCover(model: AppModel, rom: RomInfo): ImageBitmap? {
 }
 
 
-private enum class LibView { LIBRARY, RECENT, FAVORITES }
-
-/** Id của tab "Tất cả" (các tab hệ máy dùng id trong [GameSystem.TABS]). */
-private const val ALL_TAB = "all"
-
-private fun matchQuery(list: List<RomInfo>, query: String): List<RomInfo> {
-    val q = query.trim().lowercase()
-    return if (q.isEmpty()) list else list.filter { it.name.lowercase().contains(q) || it.id.startsWith(q) }
-}
-
-private fun sortRoms(list: List<RomInfo>, sort: SortKey): List<RomInfo> = when (sort) {
-    SortKey.RECENT -> list.sortedByDescending { maxOf(it.lastPlayedAt, it.addedAt) }
-    SortKey.NAME -> list.sortedBy { it.name.lowercase() }
-    SortKey.ADDED -> list.sortedByDescending { it.addedAt }
-}
-
-/** Nút tròn kính có biểu tượng (tìm kiếm, sắp xếp, quét lại...). */
+/** Nút tròn có biểu tượng (cài đặt, sắp xếp, thêm game). */
 @Composable
-private fun GlassIconBtn(icon: String, desc: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun IconBtn(icon: String, desc: String, modifier: Modifier = Modifier, small: Boolean = false, onClick: () -> Unit) {
     Box(
         modifier
-            .size(48.dp)
-            .glass(24.dp, blur = 16.dp, bevel = 12.dp, refraction = 4.dp)
+            .size(if (small) 36.dp else 44.dp)
             .clip(CircleShape)
             .clickable(role = Role.Button, onClickLabel = desc, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        RetroIcon(icon, size = 22.dp, tint = Rc.Text)
+        RetroIcon(icon, size = if (small) 22.dp else 26.dp, tint = Rc.Text)
     }
 }
 
-/** Nút sắp xếp kèm menu chọn kiểu sắp xếp. */
+/** Ô tìm kiếm dạng viên thuốc. */
 @Composable
-private fun SortButton(sort: SortKey, onPick: (SortKey) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        GlassIconBtn("sort", "Sắp xếp") { open = true }
-        SortMenu(open, { open = false }, sort, onPick)
-    }
-}
-
-/** Ô tìm kiếm dạng viên thuốc bằng kính; tự mở bàn phím khi xuất hiện. */
-@Composable
-private fun GlassSearchBox(query: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+private fun SearchBox(query: String, onChange: (String) -> Unit, height: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
     Row(
         modifier
-            .height(44.dp)
-            .glass(22.dp, blur = 16.dp, bevel = 12.dp, refraction = 4.dp)
+            .height(height)
+            .clip(RoundedCornerShape(height / 2))
+            .background(Rc.Glass)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -721,7 +643,7 @@ private fun GlassSearchBox(query: String, onChange: (String) -> Unit, modifier: 
             singleLine = true,
             textStyle = TextStyle(color = Rc.Text, fontSize = 15.sp, fontFamily = InterFamily),
             cursorBrush = SolidColor(Color.White),
-            modifier = Modifier.weight(1f).focusRequester(focus),
+            modifier = Modifier.weight(1f),
             decorationBox = { inner ->
                 Box(contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) Text("Tìm tên ROM hoặc mã ID...", color = Rc.Faint, fontSize = 15.sp)
@@ -729,201 +651,6 @@ private fun GlassSearchBox(query: String, onChange: (String) -> Unit, modifier: 
                 }
             },
         )
-    }
-}
-
-/** Thanh tab hệ máy dạng viên thuốc kính, cuộn ngang khi nhiều hệ; tab đang chọn sáng hơn và tự cuộn vào tầm nhìn. */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun GlassTabBar(tabs: List<Pair<String, String>>, selected: Int, modifier: Modifier = Modifier, onSelect: (String) -> Unit) {
-    val even = tabs.size <= 4
-    Row(
-        modifier
-            .height(48.dp)
-            .glass(24.dp, blur = 16.dp, bevel = 12.dp, refraction = 4.dp)
-            .padding(4.dp)
-            .then(if (even) Modifier else Modifier.horizontalScroll(rememberScrollState())),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        tabs.forEachIndexed { i, (id, label) ->
-            val on = i == selected
-            val requester = remember { BringIntoViewRequester() }
-            LaunchedEffect(on) { if (on) requester.bringIntoView() }
-            Box(
-                Modifier
-                    .bringIntoViewRequester(requester)
-                    .then(if (even) Modifier.weight(1f) else Modifier.widthIn(min = 64.dp))
-                    .fillMaxHeight()
-                    .clip(CircleShape)
-                    .then(if (on) Modifier.background(Color(0x33FFFFFF)) else Modifier)
-                    .clickable(role = Role.Tab) { onSelect(id) }
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label,
-                    color = if (on) Rc.Text else Color(0xE6FFFFFF),
-                    fontSize = 15.sp,
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
-/** Thanh dưới nổi bằng kính. "Cài đặt" mở bảng cài đặt chứ không đổi mục đang xem. */
-@Composable
-private fun GlassBottomBar(selected: LibView, onSelect: (LibView) -> Unit, onSettings: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .height(68.dp)
-            .glass(34.dp, blur = 18.dp, bevel = 18.dp, refraction = 6.dp)
-            .padding(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BarItem("grid", "Thư viện", selected == LibView.LIBRARY, Modifier.weight(1f)) { onSelect(LibView.LIBRARY) }
-        BarItem("clock", "Gần đây", selected == LibView.RECENT, Modifier.weight(1f)) { onSelect(LibView.RECENT) }
-        BarItem("star", "Yêu thích", selected == LibView.FAVORITES, Modifier.weight(1f)) { onSelect(LibView.FAVORITES) }
-        BarItem("settings", "Cài đặt", false, Modifier.weight(1f)) { onSettings() }
-    }
-}
-
-@Composable
-private fun BarItem(icon: String, label: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Column(
-        modifier
-            .fillMaxHeight()
-            .clip(CircleShape)
-            .then(if (on) Modifier.background(Color(0x33FFFFFF)) else Modifier)
-            .clickable(role = Role.Tab, onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        RetroIcon(icon, size = 22.dp, tint = if (on) Rc.Text else Color(0xD9FFFFFF))
-        Spacer(Modifier.height(2.dp))
-        Text(
-            label,
-            color = if (on) Rc.Text else Color(0xD9FFFFFF),
-            fontSize = 10.5.sp,
-            fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-            maxLines = 1,
-        )
-    }
-}
-
-/** Thẻ "Chơi tiếp": game chơi gần nhất, chạm để vào chơi. Nằm trong lưới nên dùng mặt kính nhẹ (không đọc nền). */
-@Composable
-private fun HeroCard(rom: RomInfo, cover: ImageBitmap?, onOpen: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
-            .glassSurface(26.dp, tint = Color(0x4D26272C))
-            .clickable(onClick = onOpen)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF101114)),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (cover != null) {
-                Image(bitmap = cover, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            } else {
-                Text(
-                    rom.name.trim().take(1).uppercase(Locale.ROOT).ifEmpty { "?" },
-                    color = Rc.Muted,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text("CHƠI TIẾP", color = Rc.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
-            Text(
-                rom.name,
-                color = Rc.Text,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-            Text(
-                "Chơi lần cuối · " + relativeTime(rom.lastPlayedAt),
-                color = Rc.Muted,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Box(
-            Modifier
-                .size(46.dp)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(Color(0xFFFF6BAE), Color(0xFFD42A82)))),
-            contentAlignment = Alignment.Center,
-        ) {
-            RetroIcon("play", size = 22.dp, tint = Color.White)
-        }
-    }
-}
-
-/** Lưới game (cùng thẻ "Chơi tiếp" ở đầu nếu có). Đầu và cuối chừa chỗ cho thanh trên và thanh dưới nổi phía trên. */
-@Composable
-private fun GamesGrid(
-    shown: List<RomInfo>,
-    model: AppModel,
-    compact: Boolean,
-    topPad: androidx.compose.ui.unit.Dp,
-    bottomPad: androidx.compose.ui.unit.Dp,
-    showBadge: Boolean,
-    hero: RomInfo?,
-    onMenu: (RomInfo, androidx.compose.ui.geometry.Rect?) -> Unit,
-) {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        // Màn ngang: cỡ bìa tính theo chiều cao còn lại để cả bìa, tên 2 dòng và ngày chơi luôn nằm gọn trong một hàng.
-        val coverSize = maxOf(90.dp, minOf(170.dp, maxHeight - topPad - bottomPad - 84.dp))
-        LazyVerticalGrid(
-            columns = if (compact) GridCells.FixedSize(coverSize) else GridCells.Adaptive(150.dp),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topPad, bottom = bottomPad),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            if (hero != null) {
-                item(key = "hero", span = { GridItemSpan(maxLineSpan) }) {
-                    HeroCard(hero, rememberCover(model, hero), onOpen = { model.open(hero) })
-                }
-            }
-            items(shown, key = { it.id }) { rom ->
-                // Giữ vị trí ô bằng biến thường (không phải state) để cuộn danh sách không bị recompose liên tục.
-                val tileBounds = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
-                Box(Modifier.onGloballyPositioned { tileBounds[0] = it.boundsInWindow() }) {
-                    RomTile(
-                        rom = rom,
-                        cover = rememberCover(model, rom),
-                        showBadge = showBadge,
-                        onOpen = { model.open(rom) },
-                        onMenu = { onMenu(rom, tileBounds[0]) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** Thông báo gọn cho mục Gần đây / Yêu thích khi còn trống. */
-@Composable
-private fun SimpleEmpty(title: String, hint: String) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(title, color = Rc.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        Text(hint, color = Rc.Muted, fontSize = 15.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -1082,20 +809,17 @@ private fun GameMenuOverlay(
             val coverBottom = a.top + coverW + coverW * 0.04f
             val titleDp = 30f
             val n = actions.size
-            // Bảng không bao giờ đè lên bìa: đặt dưới bìa nếu đủ chỗ, không thì đặt trên bìa;
-            // cả hai đều thiếu thì chọn phía rộng hơn và thu nhỏ chiều cao dòng.
-            val lift = coverW * 0.04f
-            val spaceBelow = sh - insetBottom - (coverBottom + gap)
-            val spaceAbove = (a.top - lift - gap) - insetTop
-            val fullH = (titleDp + n * 48f) * dens
-            val below = spaceBelow >= fullH || (spaceAbove < fullH && spaceBelow >= spaceAbove)
-            val space = if (below) spaceBelow else spaceAbove
-            val rowDp = (((space / dens) - titleDp) / n).coerceIn(34f, 48f)
-            val panelH = (titleDp + n * rowDp) * dens
-            val my = if (below) coverBottom + gap else (a.top - lift - gap - panelH).coerceAtLeast(margin)
-            // Game ở cột trái: bảng thẳng hàng cạnh trái bìa; game ở cột phải: thẳng hàng cạnh phải.
-            val mx = (if (a.left + menuW + margin <= sw) a.left else a.right - menuW)
-                .coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
+            // Ưu tiên bảng nằm dưới game; không đủ chỗ thì sang cạnh game, đáy bảng bằng đáy game.
+            var rowDp = 48f
+            var mx = a.left.coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
+            var my = coverBottom + gap
+            if (my + (titleDp + n * rowDp) * dens > sh - insetBottom) {
+                val bottomY = minOf(coverBottom, sh - insetBottom)
+                rowDp = (((bottomY - insetTop) / dens - titleDp) / n).coerceIn(34f, 48f)
+                my = bottomY - (titleDp + n * rowDp) * dens
+                mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
+                else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
+            }
             // Game giữ nguyên vị trí cũ, phóng to nhẹ.
             Box(
                 Modifier
@@ -1128,10 +852,9 @@ private fun GameMenuOverlay(
                 Modifier
                     .offset { androidx.compose.ui.unit.IntOffset(mx.toInt(), my.toInt()) }
                     .width(260.dp)
-                    .shadow(24.dp, RoundedCornerShape(28.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xB3232327))
-                    .glassSurface(28.dp, tint = Color(0x0DFFFFFF))
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Rc.Sheet)
+                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
                     .clickable(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null,
@@ -1144,16 +867,15 @@ private fun GameMenuOverlay(
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.height(titleDp.dp).padding(horizontal = 20.dp).wrapContentHeight(Alignment.CenterVertically),
+                    modifier = Modifier.height(titleDp.dp).padding(horizontal = 16.dp).wrapContentHeight(Alignment.CenterVertically),
                 )
-                actions.forEachIndexed { idx, act ->
-                    if (idx > 0) Box(Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(1.dp).background(Color(0x1FFFFFFF)))
+                actions.forEach { act ->
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .clickable(onClick = act.onClick)
                             .height(rowDp.dp)
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -1177,7 +899,6 @@ private fun GameMenuOverlay(
 private fun RomTile(
     rom: RomInfo,
     cover: ImageBitmap?,
-    showBadge: Boolean,
     onOpen: () -> Unit,
     onMenu: () -> Unit,
 ) {
@@ -1217,26 +938,6 @@ private fun RomTile(
                     fontWeight = FontWeight.Bold,
                 )
             }
-            if (showBadge) {
-                val tabId = GameSystem.fromId(rom.system).tab
-                Text(
-                    GameSystem.TABS.firstOrNull { it.first == tabId }?.second ?: tabId.uppercase(Locale.ROOT),
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(7.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x73000000))
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                )
-            }
-            if (rom.favorite) {
-                RetroIcon("star", size = 16.dp, tint = Color(0xFFFFD60A), modifier = Modifier.align(Alignment.TopEnd).padding(7.dp))
-            }
         }
         Spacer(Modifier.height(8.dp))
         Text(
@@ -1256,17 +957,6 @@ private fun RomTile(
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 1.dp),
         )
-    }
-}
-
-/** "vừa xong", "12 phút trước", "3 giờ trước", rồi theo ngày. */
-private fun relativeTime(ts: Long): String {
-    val m = ((System.currentTimeMillis() - ts) / 60_000L).toInt()
-    return when {
-        m < 1 -> "vừa xong"
-        m < 60 -> "$m phút trước"
-        m < 1440 -> "${m / 60} giờ trước"
-        else -> relativeDay(ts).lowercase(Locale.ROOT)
     }
 }
 

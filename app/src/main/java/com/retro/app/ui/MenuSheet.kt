@@ -53,24 +53,15 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = state,
-        containerColor = Color.Transparent,
+        containerColor = Rc.Sheet,
         contentColor = Rc.Text,
-        scrimColor = Color(0x59000000),
+        scrimColor = Color(0x8C000000),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null,
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(Color(0xB31C1D21))
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color(0x14FFFFFF),
-                        1f to Color.Transparent,
-                    ),
-                )
-                .glassSurface(32.dp, tint = Color(0x0FFFFFFF))
                 .sheetMaxHeight()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
@@ -156,7 +147,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
     }
 }
 
-/** Ô biểu tượng trong lưới menu: ô kính bo tròn; bật = nền trắng biểu tượng đen. */
+/** Ô biểu tượng trong lưới menu: ô vuông kính, bật = nền trắng biểu tượng đen. */
 @Composable
 private fun MenuTile(icon: String, label: String, modifier: Modifier = Modifier, on: Boolean = false, onClick: () -> Unit) {
     Column(
@@ -165,15 +156,15 @@ private fun MenuTile(icon: String, label: String, modifier: Modifier = Modifier,
     ) {
         Box(
             Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .glassSurface(22.dp, tint = if (on) Color(0xF2FFFFFF) else Color(0x2EFFFFFF)),
+                .size(60.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(if (on) Color.White else Rc.GlassStrong),
             contentAlignment = Alignment.Center,
         ) {
-            RetroIcon(icon, size = 28.dp, tint = if (on) Color.Black else Rc.Text)
+            RetroIcon(icon, size = 26.dp, tint = if (on) Color.Black else Rc.Text)
         }
         Spacer(Modifier.height(6.dp))
-        Text(label, color = if (on) Rc.Text else Color(0xD9FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(label, color = if (on) Rc.Text else Rc.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
