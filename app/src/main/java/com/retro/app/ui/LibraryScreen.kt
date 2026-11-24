@@ -111,6 +111,7 @@ import com.retro.app.AppModel
 import com.retro.app.data.GameSystem
 import com.retro.app.data.RomInfo
 import com.retro.app.data.SortKey
+import androidx.compose.ui.geometry.Offset
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -295,7 +296,6 @@ fun LibraryScreen(model: AppModel) {
                         tint = tint,
                         onAdd = pickRoms,
                         onMenu = onMenu,
-                        onSeeRecent = { view = LibView.RECENT },
                     )
                 }
                 else -> {
@@ -763,44 +763,51 @@ private fun SectionHeader(title: String, action: String? = null, onAction: () ->
     }
 }
 
-/** Thanh dưới: Thư viện · Gần đây · Yêu thích · Cài đặt (Cài đặt mở bảng cài đặt, không đổi mục đang xem). */
+/** Thanh dưới gọn như GameHub: nền trong suốt, icon 24dp + chữ 11sp; mục đang chọn trắng, icon đặc, có hiệu ứng nảy. */
 @Composable
 private fun LibBottomBar(selected: LibView, onSelect: (LibView) -> Unit, onSettings: () -> Unit) {
-    Column(Modifier.fillMaxWidth().background(Color(0xF20C0D10))) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Ds.Divider))
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Ds.GapSm)) {
-            NavItem("grid", "Thư viện", selected == LibView.LIBRARY, Modifier.weight(1f)) { onSelect(LibView.LIBRARY) }
-            NavItem("clock", "Gần đây", selected == LibView.RECENT, Modifier.weight(1f)) { onSelect(LibView.RECENT) }
-            NavItem("star", "Yêu thích", selected == LibView.FAVORITES, Modifier.weight(1f)) { onSelect(LibView.FAVORITES) }
-            NavItem("settings", "Cài đặt", false, Modifier.weight(1f)) { onSettings() }
-        }
+    Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Ds.GapSm)) {
+        NavItem("grid", "Thư viện", selected == LibView.LIBRARY, Modifier.weight(1f)) { onSelect(LibView.LIBRARY) }
+        NavItem("clock", "Gần đây", selected == LibView.RECENT, Modifier.weight(1f)) { onSelect(LibView.RECENT) }
+        NavItem("star", "Yêu thích", selected == LibView.FAVORITES, Modifier.weight(1f)) { onSelect(LibView.FAVORITES) }
+        NavItem("settings", "Cài đặt", false, Modifier.weight(1f)) { onSettings() }
     }
 }
 
 @Composable
 private fun NavItem(icon: String, label: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val color by animateColorAsState(if (on) Color.White else Color(0xFFA9ABB3), tween(220), label = "navColor")
+    val pop by androidx.compose.animation.core.animateFloatAsState(
+        if (on) 1.14f else 1f,
+        androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 500f),
+        label = "navPop",
+    )
+    val fillAmt by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, tween(220), label = "navFill")
     Column(
-        modifier.clickableNoRipple(onClick).padding(top = 8.dp, bottom = 8.dp),
+        modifier.clickableNoRipple(onClick).padding(top = 8.dp, bottom = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            Modifier
-                .width(64.dp)
-                .height(36.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(if (on) Color(0x2EFFFFFF) else Color.Transparent),
-            contentAlignment = Alignment.Center,
-        ) {
-            RetroIcon(icon, size = Ds.IconNav, tint = if (on) Rc.Text else Rc.Faint)
+        Box(Modifier.size(Ds.IconBtn).graphicsLayer { scaleX = pop; scaleY = pop }, contentAlignment = Alignment.Center) {
+            if (icon == "grid") {
+                // Bốn ô bo tròn: viền khi tắt, đặc khi chọn (như icon Library của GameHub)
+                androidx.compose.foundation.Canvas(Modifier.size(Ds.IconBtn)) {
+                    val s = size.minDimension
+                    val gap = s * 0.10f
+                    val cell = (s - gap) / 2f
+                    val r = androidx.compose.ui.geometry.CornerRadius(cell * 0.30f)
+                    val sw = s * 0.085f
+                    for (i in 0..1) for (j in 0..1) {
+                        val tl = Offset(i * (cell + gap), j * (cell + gap))
+                        drawRoundRect(color.copy(alpha = fillAmt), tl, androidx.compose.ui.geometry.Size(cell, cell), r)
+                        drawRoundRect(color.copy(alpha = 1f - fillAmt), tl + Offset(sw / 2, sw / 2), androidx.compose.ui.geometry.Size(cell - sw, cell - sw), r, style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
+                    }
+                }
+            } else {
+                RetroIcon(icon, size = Ds.IconBtn, tint = color, fill = on && icon == "star")
+            }
         }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            label,
-            color = if (on) Rc.Text else Rc.Faint,
-            fontSize = 12.sp,
-            fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-            maxLines = 1,
-        )
+        Spacer(Modifier.height(3.dp))
+        Text(label, color = color, fontSize = 11.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -815,7 +822,6 @@ private fun LibraryPage(
     tint: Color,
     onAdd: () -> Unit,
     onMenu: (RomInfo, Bounds?) -> Unit,
-    onSeeRecent: () -> Unit,
 ) {
     val inTab = remember(model.roms, pageTab) {
         if (pageTab == ALL_TAB) model.roms else model.roms.filter { GameSystem.fromId(it.system).tab == pageTab }
@@ -832,13 +838,9 @@ private fun LibraryPage(
     }
     val home = pageTab == ALL_TAB && query.isBlank()
     val recent = remember(model.roms) {
-        model.roms.filter { it.lastPlayedAt > 0 }.sortedByDescending { it.lastPlayedAt }.take(8)
+        model.roms.filter { it.lastPlayedAt > 0 }.sortedByDescending { it.lastPlayedAt }.take(1)
     }
-    val added = remember(model.roms) { model.roms.sortedByDescending { it.addedAt }.take(10) }
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    // Vị trí tiêu đề "Tất cả game" trong danh sách, để nút "Xem thêm" của Thêm gần đây cuộn tới đó.
-    val allHeaderIndex = (if (recent.isNotEmpty()) 3 else 0) + 2
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val cols = ((maxWidth - Ds.Pad * 2) / 170.dp).toInt().coerceAtLeast(2)
         LazyColumn(
@@ -848,17 +850,12 @@ private fun LibraryPage(
         ) {
             if (home) {
                 if (recent.isNotEmpty()) {
-                    item(key = "h-recent") { SectionHeader("Chơi tiếp", "Xem thêm", onSeeRecent) }
-                    item(key = "r-recent") { RecentRail(recent, model, onMenu) }
-                    item(key = "feature") {
+                    item(key = "h-recent") { SectionHeader("Chơi tiếp") }
+                    item(key = "c-recent") {
                         val top = recent.first()
-                        FeaturedCard(top, rememberCover(model, top), tint) { model.open(top) }
+                        ContinueCard(top, rememberCover(model, top), { model.open(top) }) { b -> onMenu(top, b) }
                     }
                 }
-                item(key = "h-added") {
-                    SectionHeader("Thêm gần đây", "Xem thêm") { scope.launch { listState.animateScrollToItem(allHeaderIndex) } }
-                }
-                item(key = "r-added") { AddedRail(added, model, onMenu) }
                 item(key = "h-all") { SectionHeader("Tất cả game") }
             } else {
                 item(key = "top") { Spacer(Modifier.height(Ds.Gap)) }
@@ -932,34 +929,17 @@ private fun GameTile(rom: RomInfo, model: AppModel, showBadge: Boolean, onMenu: 
     }
 }
 
-/** Hàng thẻ "Chơi tiếp" cuộn ngang. */
-@Composable
-private fun RecentRail(list: List<RomInfo>, model: AppModel, onMenu: (RomInfo, Bounds?) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = Ds.Pad),
-        horizontalArrangement = Arrangement.spacedBy(Ds.Gap),
-    ) {
-        items(list, key = { it.id }) { rom ->
-            RailCard(
-                rom = rom,
-                cover = rememberCover(model, rom),
-                subtitle = sysLabel(rom) + " · " + relativeTime(rom.lastPlayedAt),
-                onOpen = { model.open(rom) },
-                onMenu = { b -> onMenu(rom, b) },
-            )
-        }
-    }
-}
-
+/** Thẻ "Chơi tiếp": một game vừa chơi, bìa bên trái, tên + hệ máy, nút play tròn trắng bên phải. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun RailCard(rom: RomInfo, cover: ImageBitmap?, subtitle: String, onOpen: () -> Unit, onMenu: (Bounds?) -> Unit) {
+private fun ContinueCard(rom: RomInfo, cover: ImageBitmap?, onOpen: () -> Unit, onMenu: (Bounds?) -> Unit) {
     val haptic = LocalHapticFeedback.current
     val bounds = remember { arrayOfNulls<Bounds>(1) }
     val shape = RoundedCornerShape(Ds.CardRadius)
-    Column(
+    Row(
         Modifier
-            .width(190.dp)
+            .padding(horizontal = Ds.Pad)
+            .fillMaxWidth()
             .onGloballyPositioned { bounds[0] = it.boundsInWindow() }
             .clip(shape)
             .background(Ds.CardFill)
@@ -971,149 +951,27 @@ private fun RailCard(rom: RomInfo, cover: ImageBitmap?, subtitle: String, onOpen
                     onMenu(bounds[0])
                 },
             )
-            .padding(7.dp),
+            .padding(Ds.GapSm),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverBox(rom, cover, Modifier.fillMaxWidth().height(112.dp), 16.dp, 36.sp)
-        Text(
-            rom.name,
-            color = Rc.Text,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 10.dp),
-        )
-        Text(
-            subtitle,
-            color = Rc.Muted,
-            fontSize = 13.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 6.dp),
-        )
-    }
-}
-
-/** Hàng bìa vuông nhỏ "Thêm gần đây" cuộn ngang. */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun AddedRail(list: List<RomInfo>, model: AppModel, onMenu: (RomInfo, Bounds?) -> Unit) {
-    val haptic = LocalHapticFeedback.current
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = Ds.Pad),
-        horizontalArrangement = Arrangement.spacedBy(Ds.Gap),
-    ) {
-        items(list, key = { it.id }) { rom ->
-            val bounds = remember { arrayOfNulls<Bounds>(1) }
-            Column(
-                Modifier
-                    .width(118.dp)
-                    .onGloballyPositioned { bounds[0] = it.boundsInWindow() }
-                    .clip(RoundedCornerShape(Ds.CoverRadius))
-                    .combinedClickable(
-                        onClick = { model.open(rom) },
-                        onLongClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onMenu(rom, bounds[0])
-                        },
-                    ),
-            ) {
-                CoverBox(rom, rememberCover(model, rom), Modifier.fillMaxWidth().aspectRatio(1f), 18.dp, 32.sp)
-                Text(
-                    rom.name,
-                    color = Rc.Text,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 3.dp, end = 3.dp, top = 8.dp),
-                )
-            }
-        }
-    }
-}
-
-/** Thẻ nổi bật "Hôm nay": game chơi gần nhất, nền lấy màu từ bìa, nút play tròn trắng. */
-@Composable
-private fun FeaturedCard(rom: RomInfo, cover: ImageBitmap?, tint: Color, onOpen: () -> Unit) {
-    val shape = RoundedCornerShape(26.dp)
-    val date = remember { java.text.SimpleDateFormat("MM/dd", Locale.getDefault()).format(java.util.Date()) }
-    Column(
-        Modifier
-            .padding(start = Ds.Pad, end = Ds.Pad, top = Ds.SectionGap)
-            .fillMaxWidth()
-            .clip(shape)
-            .background(lerp(tint, Color.White, 0.10f))
-            .border(BorderStroke(2.dp, lerp(tint, Color.White, 0.35f)), shape)
-            .clickable(onClick = onOpen),
-    ) {
-        Row(Modifier.padding(start = 16.dp, top = 14.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Hôm nay", color = Rc.Text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-            Spacer(Modifier.width(Ds.GapSm))
+        CoverBox(rom, cover, Modifier.size(88.dp), Ds.CoverRadius - 4.dp, 32.sp)
+        Spacer(Modifier.width(Ds.Gap))
+        Column(Modifier.weight(1f)) {
+            Text(rom.name, color = Rc.Text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
-                date,
-                color = Color.Black,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clip(RoundedCornerShape(7.dp)).background(Color.White).padding(horizontal = 8.dp, vertical = 2.dp),
+                sysLabel(rom) + " · " + relativeTime(rom.lastPlayedAt),
+                color = Rc.Muted,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
-        Box(
-            Modifier.fillMaxWidth().height(210.dp).clipToBounds().background(Color(0xFF0E0F13)),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (cover != null) {
-                Image(
-                    bitmap = cover,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().blur(28.dp, BlurredEdgeTreatment.Unbounded),
-                )
-                Box(Modifier.fillMaxSize().background(Color(0x66000000)))
-                Image(
-                    bitmap = cover,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(170.dp)
-                        .shadow(16.dp, RoundedCornerShape(Ds.CoverRadius))
-                        .clip(RoundedCornerShape(Ds.CoverRadius))
-                        .border(BorderStroke(1.dp, Ds.CardStroke), RoundedCornerShape(Ds.CoverRadius)),
-                )
-            } else {
-                Text(
-                    rom.name.trim().take(1).uppercase(Locale.ROOT).ifEmpty { "?" },
-                    color = Rc.Muted,
-                    fontSize = 64.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+        Spacer(Modifier.width(Ds.Gap))
+        Box(Modifier.size(Ds.BtnSize).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+            RetroIcon("play", size = Ds.IconBtn, tint = Color.Black)
         }
-        Row(Modifier.padding(start = 18.dp, end = 16.dp, top = 14.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    rom.name,
-                    color = Rc.Text,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.4).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    sysLabel(rom) + " · Chơi lần cuối " + relativeTime(rom.lastPlayedAt),
-                    color = Rc.Muted,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-            Spacer(Modifier.width(Ds.Gap))
-            Box(Modifier.size(54.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                RetroIcon("play", size = Ds.IconBtn, tint = Color.Black)
-            }
-        }
+        Spacer(Modifier.width(Ds.GapSm))
     }
 }
 

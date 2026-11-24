@@ -65,19 +65,20 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
         shape = sheetShape,
         dragHandle = null,
     ) {
+        // Khung ngoài cố định: phần cuộn ở trên, nút "Thoát về thư viện" ghim dưới cùng nên luôn thấy ngay
+        var page by remember { mutableStateOf(0) }
         Column(
             Modifier
                 .fillMaxWidth()
                 .sheetMaxHeight()
                 .background(Brush.verticalGradient(listOf(Color(0xFF23252D), Color(0xFF111216))), sheetShape)
                 .border(BorderStroke(1.dp, Ds.CardStroke), sheetShape)
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = Ds.Pad)
                 .navigationBarsPadding()
                 .padding(top = Ds.Pad, bottom = Ds.Pad),
         ) {
+          Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
             // 0 = menu chính, 1 = Cheat, 2 = Tay cầm, 3 = Lưu trạng thái, 4 = Nạp trạng thái, 5 = Hình ảnh
-            var page by remember { mutableStateOf(0) }
             val st = model.settings
             when (page) {
                 5 -> DisplayPage(model) { page = 0 }
@@ -145,30 +146,33 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                         }
                     }
 
-                    // Nút thoát dài, màu đỏ, nằm dưới cùng
-                    Spacer(Modifier.height(Ds.SectionGap))
-                    val exitShape = RoundedCornerShape(Ds.CardRadius)
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(Ds.RowHeight)
-                            .clip(exitShape)
-                            .background(Color(0x29FF5A5A))
-                            .border(BorderStroke(1.dp, Color(0x8CFF6B6B)), exitShape)
-                            .clickable(role = Role.Button) {
-                                onClose()
-                                model.exitToLibrary()
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RetroIcon("chevron-left", size = Ds.IconRow, tint = Color(0xFFFF8D8D))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Thoát về thư viện", color = Color(0xFFFF8D8D), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
                 }
             }
+          }
+          if (page == 0) {
+            Spacer(Modifier.height(Ds.Gap))
+            // Nút thoát dài, màu đỏ, nằm dưới cùng
+            val exitShape = RoundedCornerShape(Ds.CardRadius)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(Ds.RowHeight)
+                    .clip(exitShape)
+                    .background(Color(0x29FF5A5A))
+                    .border(BorderStroke(1.dp, Color(0x8CFF6B6B)), exitShape)
+                    .clickable(role = Role.Button) {
+                        onClose()
+                        model.exitToLibrary()
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RetroIcon("chevron-left", size = Ds.IconRow, tint = Color(0xFFFF8D8D))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Thoát về thư viện", color = Color(0xFFFF8D8D), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+          }
         }
     }
 }

@@ -122,7 +122,11 @@ fun ActionRow(
     RetroRow(Modifier.clickable(onClick = onClick), title, icon, subtitle, danger) {
         if (chevron) {
             Spacer(Modifier.width(12.dp))
-            RetroIcon("chevron-right", tint = if (danger) Rc.Danger else Rc.Muted)
+            // Cùng bề rộng với công tắc (52dp) và đặt sát mép phải: mũi tên chevron nằm lệch trong khung 24dp
+            // (nét thật chỉ từ 9 đến 15) nên dịch sang phải 9dp để mép nét trùng mép công tắc.
+            Box(Modifier.width(52.dp), contentAlignment = Alignment.CenterEnd) {
+                RetroIcon("chevron-right", modifier = Modifier.offset(x = 9.dp), tint = if (danger) Rc.Danger else Rc.Muted)
+            }
         }
     }
 }
@@ -215,6 +219,7 @@ fun PageHeader(title: String, onBack: () -> Unit) {
                 .clickable(role = Role.Button, onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
+            // nét chevron-left nằm trong khoảng 9..15 của khung 24: tâm đúng giữa nên không cần dịch
             RetroIcon("chevron-left", size = Ds.IconBtn, tint = Rc.Text)
         }
         Spacer(Modifier.width(14.dp))
