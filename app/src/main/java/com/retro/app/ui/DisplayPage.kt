@@ -60,6 +60,10 @@ fun DisplayPage(model: AppModel, onBack: () -> Unit) {
             ChoiceRow(m.label, m.hint, selected = st.scaleMode == m) { model.update { it.copy(scaleMode = m) } }
         }
     }
+    SectionTitle("Giao diện")
+    GroupCard {
+        ToggleRow("Hiệu ứng kính", st.glass, subtitle = "Thư viện làm mờ và khúc xạ nền. Tắt nếu máy bị giật.") { v -> model.update { it.copy(glass = v) } }
+    }
     Text(
         "Bộ lọc LCD và CRT đẹp nhất khi phóng nguyên số. Với NDS dùng skin, kích thước hai màn do skin quyết định.",
         color = Rc.Faint,

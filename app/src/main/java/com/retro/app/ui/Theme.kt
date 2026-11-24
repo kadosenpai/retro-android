@@ -34,9 +34,15 @@ object Rc {
     /** Đường kẻ mảnh giữa các hàng (--faint của web). */
     val Line = Color(0x14FFFFFF)
     val Text = Color(0xFFFFFFFF)
-    val Muted = Color(0x8CFFFFFF)
-    val Faint = Color(0x66FFFFFF)
+    val Muted = Color(0xB3FFFFFF)
+    val Faint = Color(0x8CFFFFFF)
     val Danger = Color(0xFFFF6B6B)
+    /** Lớp phủ của kính trong suốt (nền kính thấy được phía sau). */
+    val GlassTint = Color(0x12FFFFFF)
+    /** Nền kính khi không làm được hiệu ứng nền (tắt kính, Android cũ): tối hơn để chữ vẫn rõ. */
+    val GlassFallback = Color(0xCC17181C)
+    /** Bảng menu kính tối: chữ nổi rõ hơn trên nền game phía sau. */
+    val SheetGlass = Color(0xE0101216)
 }
 
 /** Phông Inter, giống bản web. */

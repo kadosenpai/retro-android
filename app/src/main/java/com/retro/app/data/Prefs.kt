@@ -41,8 +41,8 @@ data class Settings(
     /** Giữ nút: chạm một lần để giữ, chạm lần nữa để nhả. */
     val sticky: Boolean = false,
     val sort: SortKey = SortKey.RECENT,
-    /** Tab đang chọn trong thư viện (xem [GameSystem.TABS]). */
-    val tab: String = "gba",
+    /** Tab đang chọn trong thư viện: "all" (Tất cả) hoặc một id trong [GameSystem.TABS]. */
+    val tab: String = "all",
     /** Bảng màu Game Boy đời đầu: tên preset của mGBA (Grayscale, DMG Green, GB Pocket, GB Light). */
     val gbPalette: String = "Grayscale",
     /** Hiện viền Super Game Boy (áp dụng khi mở lại game). */
@@ -51,6 +51,8 @@ data class Settings(
     val filter: DisplayFilter = DisplayFilter.SHARP,
     val filterLevel: Float = 0.6f,
     val scaleMode: ScaleMode = ScaleMode.INTEGER,
+    /** Hiệu ứng kính (làm mờ và khúc xạ nền) ở thư viện; tắt thì dùng nền mờ đơn giản. */
+    val glass: Boolean = true,
 )
 
 class Prefs(ctx: Context) {
@@ -72,6 +74,7 @@ class Prefs(ctx: Context) {
             filter = enumOf(sp.getString("filter", null), d.filter),
             filterLevel = sp.getFloat("filterLevel", d.filterLevel).coerceIn(0f, 1f),
             scaleMode = enumOf(sp.getString("scaleMode", null), d.scaleMode),
+            glass = sp.getBoolean("glass", d.glass),
         )
     }
 
@@ -90,6 +93,7 @@ class Prefs(ctx: Context) {
             .putString("filter", s.filter.name)
             .putFloat("filterLevel", s.filterLevel)
             .putString("scaleMode", s.scaleMode.name)
+            .putBoolean("glass", s.glass)
             .apply()
     }
 

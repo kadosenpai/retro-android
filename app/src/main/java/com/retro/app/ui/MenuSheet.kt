@@ -52,9 +52,9 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = state,
-        containerColor = Rc.Sheet,
+        containerColor = Rc.SheetGlass,
         contentColor = Rc.Text,
-        scrimColor = Color(0x8C000000),
+        scrimColor = Color(0x59000000),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null,
     ) {
