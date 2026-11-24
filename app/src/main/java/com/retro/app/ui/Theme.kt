@@ -11,6 +11,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -43,6 +46,79 @@ object Rc {
     val GlassFallback = Color(0xE61E1F23)
     /** Bảng menu kính tối: chữ nổi rõ hơn trên nền game phía sau. */
     val SheetGlass = Color(0xD41C1D21)
+}
+
+/**
+ * Hệ thống thiết kế chung: mọi màn hình (thư viện, menu trong game, các trang cài đặt) dùng đúng các số này
+ * để khoảng cách, cỡ icon và bo góc đồng đều.
+ *
+ * Khoảng cách: 4 · 8 · 12 · 16 · 18 (lề màn hình) · 24.   Chữ: tiêu đề 28/26, mục 20, thân 16, phụ 13, nhãn 12.
+ */
+object Ds {
+    val Pad = 18.dp            // lề trái/phải của mọi màn hình
+    val Gap = 12.dp            // khoảng cách giữa các thẻ, nút cùng hàng
+    val GapSm = 8.dp
+    val SectionGap = 24.dp     // khoảng cách trên tiêu đề mục
+    val CardRadius = 22.dp     // thẻ, khối nhóm
+    val TileRadius = 28.dp     // ô icon lớn trong menu
+    val CoverRadius = 20.dp    // bìa game
+    val RowHeight = 56.dp
+    val IconRow = 22.dp        // icon ở đầu hàng
+    val IconBtn = 24.dp        // icon trong nút tròn
+    val IconNav = 28.dp        // icon ở thanh dưới
+    val IconTile = 38.dp       // icon trong ô lớn của menu
+    val BtnSize = 46.dp        // nút tròn ở đầu màn hình
+    /** Nền thẻ và viền thẻ (trắng 6% và 14%). */
+    val CardFill = Color(0x0FFFFFFF)
+    val CardStroke = Color(0x24FFFFFF)
+    val Divider = Color(0x14FFFFFF)
+}
+
+/** Nền màn hình: màu [tint] đậm ở trên, mờ dần về nền tối ở khoảng 60% chiều cao. */
+fun Modifier.tintBackground(tint: Color): Modifier = this.drawBehind {
+    drawRect(Rc.Bg)
+    drawRect(
+        brush = Brush.verticalGradient(
+            0f to tint,
+            0.6f to Color(
+                red = tint.red * 0.45f + Rc.Bg.red * 0.55f,
+                green = tint.green * 0.45f + Rc.Bg.green * 0.55f,
+                blue = tint.blue * 0.45f + Rc.Bg.blue * 0.55f,
+            ),
+            1f to Rc.Bg,
+        ),
+    )
+}
+
+/** Màu nền trung tính khi chưa có bìa để lấy màu. */
+val NeutralTint = Color(0xFF1B1D24)
+
+/**
+ * Lấy màu chủ đạo của ảnh bìa: thu nhỏ còn 24x24, lấy trung bình có trọng số theo độ rực,
+ * rồi chỉnh về dải tối vừa phải để chữ trắng luôn đọc được.
+ */
+fun dominantColor(img: ImageBitmap): Color {
+    val src = runCatching { img.asAndroidBitmap() }.getOrNull() ?: return NeutralTint
+    val small = runCatching { android.graphics.Bitmap.createScaledBitmap(src, 24, 24, true) }.getOrNull() ?: return NeutralTint
+    var r = 0.0
+    var g = 0.0
+    var b = 0.0
+    var wSum = 0.0
+    val hsv = FloatArray(3)
+    for (y in 0 until 24) for (x in 0 until 24) {
+        val p = small.getPixel(x, y)
+        android.graphics.Color.colorToHSV(p, hsv)
+        val w = hsv[1] * hsv[2] + 0.05
+        r += android.graphics.Color.red(p) * w
+        g += android.graphics.Color.green(p) * w
+        b += android.graphics.Color.blue(p) * w
+        wSum += w
+    }
+    if (wSum <= 0.0) return NeutralTint
+    android.graphics.Color.RGBToHSV((r / wSum).toInt(), (g / wSum).toInt(), (b / wSum).toInt(), hsv)
+    hsv[1] = hsv[1].coerceIn(0.35f, 0.75f)
+    hsv[2] = 0.42f
+    return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
 /** Phông Inter, giống bản web. */

@@ -122,7 +122,7 @@ fun ControllerPage(model: AppModel, onBack: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .clickable { capturing = b }
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = Ds.RowHeight)
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,

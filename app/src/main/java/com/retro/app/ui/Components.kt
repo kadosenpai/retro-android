@@ -42,8 +42,9 @@ fun GroupCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(Rc.Glass),
+            .clip(RoundedCornerShape(Ds.CardRadius))
+            .background(Ds.CardFill)
+            .border(BorderStroke(1.dp, Ds.CardStroke), RoundedCornerShape(Ds.CardRadius)),
     ) { content() }
 }
 
@@ -51,11 +52,11 @@ fun GroupCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text.uppercase(),
-        modifier = modifier.padding(start = 6.dp, top = 18.dp, bottom = 6.dp),
+        modifier = modifier.padding(start = 4.dp, top = Ds.SectionGap, bottom = Ds.GapSm),
         color = Rc.Muted,
         fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.6.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.7.sp,
     )
 }
 
@@ -67,7 +68,7 @@ fun RowDivider(inset: androidx.compose.ui.unit.Dp = 52.dp) {
             .padding(start = inset)
             .fillMaxWidth()
             .height(1.dp)
-            .background(Rc.Line),
+            .background(Ds.Divider),
     )
 }
 
@@ -84,13 +85,13 @@ private fun RetroRow(
     Row(
         modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = Ds.RowHeight)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-                RetroIcon(icon, size = 22.dp, tint = if (danger) Rc.Danger else Rc.Muted)
+            Box(Modifier.width(Ds.IconRow), contentAlignment = Alignment.Center) {
+                RetroIcon(icon, size = Ds.IconRow, tint = if (danger) Rc.Danger else Rc.Muted)
             }
             Spacer(Modifier.width(14.dp))
         }
@@ -168,11 +169,12 @@ fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         modifier
             .size(40.dp)
             .clip(CircleShape)
-            .background(Rc.GlassStrong)
+            .background(Ds.CardFill)
+            .border(BorderStroke(1.dp, Ds.CardStroke), CircleShape)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        RetroIcon("x", size = 20.dp, tint = Rc.Text)
+        RetroIcon("x", size = Ds.IconBtn, tint = Rc.Text)
     }
 }
 
@@ -187,9 +189,9 @@ fun SheetHeader(title: String, onClose: () -> Unit) {
         Text(
             title,
             color = Rc.Text,
-            fontSize = 22.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.3).sp,
+            letterSpacing = (-0.4).sp,
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(12.dp))
@@ -206,21 +208,22 @@ fun PageHeader(title: String, onBack: () -> Unit) {
     ) {
         Box(
             Modifier
-                .size(36.dp)
+                .size(40.dp)
                 .clip(CircleShape)
-                .background(Rc.GlassStrong)
+                .background(Ds.CardFill)
+                .border(BorderStroke(1.dp, Ds.CardStroke), CircleShape)
                 .clickable(role = Role.Button, onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            RetroIcon("chevron-left", size = 20.dp, tint = Rc.Text)
+            RetroIcon("chevron-left", size = Ds.IconBtn, tint = Rc.Text)
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(14.dp))
         Text(
             title,
             color = Rc.Text,
-            fontSize = 22.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.3).sp,
+            letterSpacing = (-0.4).sp,
         )
     }
 }
