@@ -940,7 +940,6 @@ private fun ContinueCard(rom: RomInfo, cover: ImageBitmap?, onOpen: () -> Unit, 
         Modifier
             .padding(horizontal = Ds.Pad)
             .fillMaxWidth()
-            .onGloballyPositioned { bounds[0] = it.boundsInWindow() }
             .clip(shape)
             .background(Ds.CardFill)
             .border(BorderStroke(1.dp, Ds.CardStroke), shape)
@@ -954,7 +953,7 @@ private fun ContinueCard(rom: RomInfo, cover: ImageBitmap?, onOpen: () -> Unit, 
             .padding(Ds.GapSm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverBox(rom, cover, Modifier.size(88.dp), Ds.CoverRadius - 4.dp, 32.sp)
+        CoverBox(rom, cover, Modifier.size(88.dp).onGloballyPositioned { bounds[0] = it.boundsInWindow() }, Ds.CoverRadius - 4.dp, 32.sp)
         Spacer(Modifier.width(Ds.Gap))
         Column(Modifier.weight(1f)) {
             Text(rom.name, color = Rc.Text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -1134,7 +1133,7 @@ private fun GameMenuOverlay(
             val insetTop = maxOf(WindowInsets.statusBars.getTop(density).toFloat(), with(density) { 24.dp.toPx() }) + margin
             val insetBottom = maxOf(WindowInsets.navigationBars.getBottom(density).toFloat(), with(density) { 20.dp.toPx() }) + margin
             val a = anchor ?: androidx.compose.ui.geometry.Rect(sw / 2 - 90f, sh / 3, sw / 2 + 90f, sh / 3 + 180f)
-            val coverW = a.width
+            val coverW = minOf(a.width, a.height)
             val menuW = with(density) { 260.dp.toPx() }
             val dens = density.density
             val coverBottom = a.top + coverW + coverW * 0.04f
@@ -1149,8 +1148,9 @@ private fun GameMenuOverlay(
             val below = spaceBelow >= fullH || (spaceAbove < fullH && spaceBelow >= spaceAbove)
             val space = if (below) spaceBelow else spaceAbove
             val rowDp = (((space / dens) - titleDp) / n).coerceIn(34f, 48f)
-            val panelH = (titleDp + n * rowDp) * dens
-            val my = if (below) coverBottom + gap else (a.top - lift - gap - panelH).coerceAtLeast(margin)
+            val panelH = minOf((titleDp + n * rowDp) * dens, space.coerceAtLeast(with(density) { 120.dp.toPx() }))
+            val my = (if (below) coverBottom + gap else a.top - lift - gap - panelH)
+                .coerceIn(insetTop.coerceAtMost(sh - panelH), (sh - insetBottom - panelH).coerceAtLeast(insetTop))
             // Game ở cột trái: bảng thẳng hàng cạnh trái bìa; game ở cột phải: thẳng hàng cạnh phải.
             val mx = (if (a.left + menuW + margin <= sw) a.left else a.right - menuW)
                 .coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
@@ -1186,15 +1186,17 @@ private fun GameMenuOverlay(
                 Modifier
                     .offset { androidx.compose.ui.unit.IntOffset(mx.toInt(), my.toInt()) }
                     .width(260.dp)
+                    .height(with(density) { panelH.toDp() })
                     .shadow(24.dp, RoundedCornerShape(28.dp), ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Brush.verticalGradient(listOf(lerp(tint, Color.White, 0.14f), lerp(tint, Color.Black, 0.2f))))
+                    .background(Brush.verticalGradient(listOf(lerp(tint, Color.White, 0.10f), lerp(tint, Color.Black, 0.12f))))
                     .border(BorderStroke(1.dp, Ds.CardStroke), RoundedCornerShape(28.dp))
                     .clickable(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null,
                         onClick = {},
-                    ),
+                    )
+                    .verticalScroll(rememberScrollState()),
             ) {
                 Text(
                     rom.name,
