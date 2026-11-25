@@ -101,6 +101,7 @@ fun LibraryScreen(model: AppModel) {
     }
     var sortPill by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var settingsPage by remember { mutableStateOf(0) }
     var gameMenu by remember { mutableStateOf<RomInfo?>(null) } // game đang mở menu giữ lâu
     var menuAnchor by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var renameTarget by remember { mutableStateOf<RomInfo?>(null) }
@@ -185,6 +186,7 @@ fun LibraryScreen(model: AppModel) {
     val compact = LocalConfiguration.current.screenHeightDp < 480
     // Màn đủ rộng thì hiện thêm số lượng game và biểu tượng sắp xếp, như bản web.
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -336,6 +338,36 @@ fun LibraryScreen(model: AppModel) {
         }
     }
 
+    // Cài đặt: trang toàn màn hình phủ lên thư viện (thư viện vẫn giữ nguyên vị trí cuộn bên dưới).
+    // Back lùi từng lớp: trang con -> trang Cài đặt -> thư viện.
+    if (settingsOpen) {
+        androidx.activity.compose.BackHandler { if (settingsPage != 0) settingsPage = 0 else settingsOpen = false }
+        Box(Modifier.fillMaxSize().retroBackground()) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = Ds.Pad)
+                    .padding(top = Ds.GapSm, bottom = Ds.SectionGap),
+            ) {
+                SettingsContent(
+                    model = model,
+                    page = settingsPage,
+                    onPage = { settingsPage = it },
+                    onClose = { settingsOpen = false },
+                    onDeleteAll = { deleteAllConfirm = true },
+                    onPickFolder = {
+                        scanAfterPick = false
+                        folderPicker.launch(null)
+                    },
+                )
+            }
+            model.toast?.let { ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
+        }
+    }
+    }
+
     // Giữ lâu vào một game: game phóng to ở giữa, bảng thao tác nằm dưới, phần còn lại mờ đi.
     gameMenu?.let { rom ->
         GameMenuOverlay(
@@ -363,44 +395,6 @@ fun LibraryScreen(model: AppModel) {
                 GameAction("Xoá game (kèm save)", "trash", danger = true) { gameMenu = null; deleteTarget = rom },
             ),
         )
-    }
-
-    // Cài đặt: trang toàn màn hình (không còn bảng trượt); Back lùi từng lớp rồi về thư viện.
-    if (settingsOpen) {
-        var settingsPage by remember { mutableStateOf(0) }
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { if (settingsPage != 0) settingsPage = 0 else settingsOpen = false },
-            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        ) {
-            val dialogView = androidx.compose.ui.platform.LocalView.current
-            androidx.compose.runtime.SideEffect {
-                (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setWindowAnimations(-1)
-            }
-            Box(Modifier.fillMaxSize().retroBackground()) {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.safeDrawing)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = Ds.Pad)
-                        .padding(top = Ds.GapSm, bottom = Ds.SectionGap),
-                ) {
-                    SettingsContent(
-                        model = model,
-                        page = settingsPage,
-                        onPage = { settingsPage = it },
-                        onClose = { settingsOpen = false },
-                        onDeleteAll = { deleteAllConfirm = true },
-                        onPickFolder = {
-                            scanAfterPick = false
-                            folderPicker.launch(null)
-                        },
-                    )
-                }
-                // Trang Cài đặt che mất thông báo của màn hình chính nên hiện thông báo ngay trong trang.
-                model.toast?.let { ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
-            }
-        }
     }
 
     if (deleteAllConfirm) {
