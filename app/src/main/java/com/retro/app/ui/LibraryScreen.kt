@@ -735,8 +735,9 @@ private fun SectionHeader(title: String, action: String? = null, onAction: () ->
 /** Thanh dưới gọn như GameHub: nền trong suốt, icon 24dp + chữ 11sp; mục đang chọn trắng, icon đặc, có hiệu ứng nảy. */
 @Composable
 private fun LibBottomBar(selected: LibView, tint: Color, onSelect: (LibView) -> Unit, modifier: Modifier = Modifier) {
-  Column(modifier.fillMaxWidth().background(lerp(tint, Color.Black, 0.88f).copy(alpha = 0.92f))) {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(Ds.Divider))
+  // Màu đo từ thanh của GameHub: nền #0E0D10 gần đặc (hơi sáng hơn nền trang), viền trên 1px xám nhạt (trắng ~11%).
+  Column(modifier.fillMaxWidth().background(Color(0xF50E0D10))) {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x1CFFFFFF)))
     Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Ds.GapSm)) {
         NavItem("grid", "Thư viện", selected == LibView.LIBRARY, Modifier.weight(1f)) { onSelect(LibView.LIBRARY) }
         NavItem("clock", "Gần đây", selected == LibView.RECENT, Modifier.weight(1f)) { onSelect(LibView.RECENT) }
