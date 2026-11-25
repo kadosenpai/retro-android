@@ -239,11 +239,18 @@ fun LibraryScreen(model: AppModel) {
         settingsOpen = true
     }
 
-    Column(
+    val navBarInset = with(androidx.compose.ui.platform.LocalDensity.current) { WindowInsets.navigationBars.getBottom(this).toDp() }
+    val navPad = if (compact) 0.dp else 64.dp + navBarInset
+    Box(
         Modifier
             .fillMaxSize()
             .blur(blurRadius, BlurredEdgeTreatment.Unbounded)
-            .tintBackground(tint)
+            .tintBackground(tint),
+    ) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalNavPad provides navPad) {
+    Column(
+        Modifier
+            .fillMaxSize()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     if (compact) WindowInsetsSides.Top + WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
@@ -252,7 +259,7 @@ fun LibraryScreen(model: AppModel) {
             ),
     ) {
         // Hàng đầu: ô tìm kiếm, sắp xếp, quét lại (màn ngang thêm nút cài đặt ở đầu).
-        Row(
+        if (view != LibView.SETTINGS) Row(
             Modifier.fillMaxWidth().padding(start = Ds.Pad, end = Ds.Pad, top = if (compact) 4.dp else Ds.GapSm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -270,7 +277,9 @@ fun LibraryScreen(model: AppModel) {
             ) { addOrScan() }
         }
 
-        if (view == LibView.LIBRARY && tabs.isNotEmpty()) {
+        if (view == LibView.SETTINGS) {
+            // tab Cài đặt: không cần thanh tab
+        } else if (view == LibView.LIBRARY && tabs.isNotEmpty()) {
             LibTabs(tabs, pagerState.currentPage, compact) { id ->
                 if (id != model.settings.tab) model.update { it.copy(tab = id) }
             }
@@ -280,6 +289,23 @@ fun LibraryScreen(model: AppModel) {
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
+                view == LibView.SETTINGS -> Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = Ds.Pad)
+                        .padding(bottom = LocalNavPad.current + Ds.SectionGap),
+                ) {
+                    SettingsContent(
+                        model = model,
+                        onClose = null,
+                        onDeleteAll = { deleteAllConfirm = true },
+                        onPickFolder = {
+                            scanAfterPick = false
+                            folderPicker.launch(null)
+                        },
+                    )
+                }
                 tabs.isEmpty() -> EmptyState(hasAny = false, onAdd = pickRoms)
                 view == LibView.LIBRARY -> HorizontalPager(
                     state = pagerState,
@@ -330,16 +356,18 @@ fun LibraryScreen(model: AppModel) {
             }
         }
 
-        if (!compact) {
-            LibBottomBar(
-                selected = view,
-                onSelect = { v ->
-                    hideKeyboard()
-                    view = v
-                },
-                onSettings = openSettings,
-            )
-        }
+    }
+    }
+    if (!compact) {
+        LibBottomBar(
+            selected = view,
+            onSelect = { v ->
+                hideKeyboard()
+                view = v
+            },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
     }
 
     // Giữ lâu vào một game: game phóng to ở giữa, bảng thao tác nằm dưới, phần còn lại mờ đi.
@@ -400,78 +428,15 @@ fun LibraryScreen(model: AppModel) {
                         .navigationBarsPadding()
                         .padding(top = 12.dp, bottom = 24.dp),
                 ) {
-                    // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy, 7 = BIOS, 8 = Hình ảnh
-                    var settingsPage by remember { mutableStateOf(0) }
-                val st = model.settings
-                when (settingsPage) {
-                    1 -> ControllerPage(model) { settingsPage = 0 }
-                    2 -> AboutPage { settingsPage = 0 }
-                    6 -> GameBoyPage(model) { settingsPage = 0 }
-                    7 -> BiosPage(model) { settingsPage = 0 }
-                    8 -> DisplayPage(model) { settingsPage = 0 }
-                    3 -> AudioPage(model) { settingsPage = 0 }
-                    4 -> {
-                        PageHeader("Cảm ứng & rung") { settingsPage = 0 }
-                        Spacer(Modifier.height(8.dp))
-                        GroupCard {
-                            ToggleRow("Hiện nút ảo", st.showPad, icon = "dpad") { v -> model.update { it.copy(showPad = v) } }
-                            RowDivider()
-                            ToggleRow("Rung khi nhấn nút", st.haptics, icon = "phone") { v -> model.update { it.copy(haptics = v) } }
-                        }
-                    }
-                    5 -> {
-                        PageHeader("Dữ liệu") { settingsPage = 0 }
-                        Spacer(Modifier.height(8.dp))
-                        GroupCard {
-                            ActionRow("Xoá hết game", danger = true, icon = "trash", subtitle = "Kèm Save State và file .sav") {
-                                deleteAllConfirm = true
-                            }
-                        }
-                        Text(
-                            "Tất cả dữ liệu nằm trên máy này.",
-                            color = Rc.Faint,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 10.dp),
-                        )
-                    }
-                    else -> {
-                        SheetHeader("Cài đặt") { settingsOpen = false }
-                        SectionTitle("Điều khiển")
-                        GroupCard {
-                            ActionRow("Tay cầm", icon = "gamepad", chevron = true) { settingsPage = 1 }
-                            RowDivider()
-                            ActionRow("Cảm ứng & rung", icon = "phone", chevron = true) { settingsPage = 4 }
-                        }
-                        SectionTitle("Trình giả lập")
-                        GroupCard {
-                            ActionRow("Hình ảnh", icon = "image", chevron = true, subtitle = model.settings.filter.label) { settingsPage = 8 }
-                            RowDivider()
-                            ActionRow("Âm thanh", icon = "volume", chevron = true) { settingsPage = 3 }
-                            RowDivider()
-                            ActionRow("Game Boy", icon = "image", chevron = true) { settingsPage = 6 }
-                            RowDivider()
-                            ActionRow("BIOS", icon = "database", chevron = true) { settingsPage = 7 }
-                        }
-                        SectionTitle("Dữ liệu")
-                        GroupCard {
-                            ActionRow(
-                                "Thư mục game",
-                                icon = "folder",
-                                subtitle = model.gameFolderName ?: "Chưa chọn. Quét thư mục để thêm game vào thư viện",
-                                chevron = true,
-                            ) {
-                                scanAfterPick = false
-                                folderPicker.launch(null)
-                            }
-                            RowDivider()
-                            ActionRow("Dữ liệu", icon = "database", chevron = true) { settingsPage = 5 }
-                        }
-                        SectionTitle("Khác")
-                        GroupCard {
-                            ActionRow("Giới thiệu và giấy phép", icon = "file-text", chevron = true) { settingsPage = 2 }
-                        }
-                    }
-                }
+                SettingsContent(
+                    model = model,
+                    onClose = { settingsOpen = false },
+                    onDeleteAll = { deleteAllConfirm = true },
+                    onPickFolder = {
+                        scanAfterPick = false
+                        folderPicker.launch(null)
+                    },
+                )
             }
                 // Bảng Cài đặt che mất thông báo của màn hình chính nên hiện thông báo ngay trong bảng.
                 model.toast?.let { ToastBubble(it, Modifier.align(Alignment.BottomCenter)) }
@@ -612,10 +577,13 @@ private fun rememberCover(model: AppModel, rom: RomInfo): ImageBitmap? {
 }
 
 
-private enum class LibView { LIBRARY, RECENT, FAVORITES }
+private enum class LibView { LIBRARY, RECENT, FAVORITES, SETTINGS }
 
 /** Id của tab "Tất cả" (các tab hệ máy dùng id trong [GameSystem.TABS]). */
 private const val ALL_TAB = "all"
+
+/** Khoảng đệm dưới cùng để nội dung cuộn không bị thanh điều hướng che. */
+private val LocalNavPad = androidx.compose.runtime.compositionLocalOf { 0.dp }
 
 private typealias Bounds = androidx.compose.ui.geometry.Rect
 
@@ -765,12 +733,12 @@ private fun SectionHeader(title: String, action: String? = null, onAction: () ->
 
 /** Thanh dưới gọn như GameHub: nền trong suốt, icon 24dp + chữ 11sp; mục đang chọn trắng, icon đặc, có hiệu ứng nảy. */
 @Composable
-private fun LibBottomBar(selected: LibView, onSelect: (LibView) -> Unit, onSettings: () -> Unit) {
-    Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Ds.GapSm)) {
+private fun LibBottomBar(selected: LibView, onSelect: (LibView) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().background(Color(0x8C000000)).navigationBarsPadding().padding(horizontal = Ds.GapSm)) {
         NavItem("grid", "Thư viện", selected == LibView.LIBRARY, Modifier.weight(1f)) { onSelect(LibView.LIBRARY) }
         NavItem("clock", "Gần đây", selected == LibView.RECENT, Modifier.weight(1f)) { onSelect(LibView.RECENT) }
         NavItem("star", "Yêu thích", selected == LibView.FAVORITES, Modifier.weight(1f)) { onSelect(LibView.FAVORITES) }
-        NavItem("settings", "Cài đặt", false, Modifier.weight(1f)) { onSettings() }
+        NavItem("settings", "Cài đặt", selected == LibView.SETTINGS, Modifier.weight(1f)) { onSelect(LibView.SETTINGS) }
     }
 }
 
@@ -846,7 +814,7 @@ private fun LibraryPage(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 0.dp, bottom = Ds.SectionGap),
+            contentPadding = PaddingValues(top = 0.dp, bottom = Ds.SectionGap + LocalNavPad.current),
         ) {
             if (home) {
                 if (recent.isNotEmpty()) {
@@ -889,7 +857,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.gameRows(
 private fun GamesList(title: String, list: List<RomInfo>, model: AppModel, showBadge: Boolean, onMenu: (RomInfo, Bounds?) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val cols = ((maxWidth - Ds.Pad * 2) / 170.dp).toInt().coerceAtLeast(2)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = Ds.SectionGap)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = Ds.SectionGap + LocalNavPad.current)) {
             item(key = "title") { SectionHeader(title) }
             gameRows(list, cols, model, showBadge, onMenu)
         }
@@ -904,7 +872,7 @@ private fun GamesGridCompact(list: List<RomInfo>, model: AppModel, showBadge: Bo
         LazyVerticalGrid(
             columns = GridCells.FixedSize(coverSize),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = Ds.Pad, end = Ds.Pad, top = Ds.GapSm, bottom = Ds.GapSm),
+            contentPadding = PaddingValues(start = Ds.Pad, end = Ds.Pad, top = Ds.GapSm, bottom = Ds.GapSm + LocalNavPad.current),
             horizontalArrangement = Arrangement.spacedBy(Ds.Gap, Alignment.Start),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -1229,6 +1197,104 @@ private fun GameMenuOverlay(
             }
         }
     }
+}
+
+/**
+ * Nội dung Cài đặt dùng chung cho tab Cài đặt (onClose = null) và bảng cài đặt ở màn ngang (onClose != null).
+ * Có nhiều trang con (Tay cầm, Âm thanh, ...); nút Back của hệ thống quay về trang chính.
+ */
+@Composable
+private fun SettingsContent(
+    model: AppModel,
+    onClose: (() -> Unit)?,
+    onDeleteAll: () -> Unit,
+    onPickFolder: () -> Unit,
+) {
+    // 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy, 7 = BIOS, 8 = Hình ảnh
+    var settingsPage by remember { mutableStateOf(0) }
+    androidx.activity.compose.BackHandler(enabled = settingsPage != 0) { settingsPage = 0 }
+    val st = model.settings
+    when (settingsPage) {
+        1 -> ControllerPage(model) { settingsPage = 0 }
+        2 -> AboutPage { settingsPage = 0 }
+        6 -> GameBoyPage(model) { settingsPage = 0 }
+        7 -> BiosPage(model) { settingsPage = 0 }
+        8 -> DisplayPage(model) { settingsPage = 0 }
+        3 -> AudioPage(model) { settingsPage = 0 }
+        4 -> {
+            PageHeader("Cảm ứng & rung") { settingsPage = 0 }
+            Spacer(Modifier.height(8.dp))
+            GroupCard {
+                ToggleRow("Hiện nút ảo", st.showPad, icon = "dpad") { v -> model.update { it.copy(showPad = v) } }
+                RowDivider()
+                ToggleRow("Rung khi nhấn nút", st.haptics, icon = "phone") { v -> model.update { it.copy(haptics = v) } }
+            }
+        }
+        5 -> {
+            PageHeader("Dữ liệu") { settingsPage = 0 }
+            Spacer(Modifier.height(8.dp))
+            GroupCard {
+                ActionRow("Xoá hết game", danger = true, icon = "trash", subtitle = "Kèm Save State và file .sav") {
+                    onDeleteAll()
+                }
+            }
+            Text(
+                "Tất cả dữ liệu nằm trên máy này.",
+                color = Rc.Faint,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 10.dp),
+            )
+        }
+        else -> {
+            if (onClose != null) SheetHeader("Cài đặt", onClose) else TabTitle("Cài đặt")
+            SectionTitle("Điều khiển")
+            GroupCard {
+                ActionRow("Tay cầm", icon = "gamepad", chevron = true) { settingsPage = 1 }
+                RowDivider()
+                ActionRow("Cảm ứng & rung", icon = "phone", chevron = true) { settingsPage = 4 }
+            }
+            SectionTitle("Trình giả lập")
+            GroupCard {
+                ActionRow("Hình ảnh", icon = "image", chevron = true, subtitle = model.settings.filter.label) { settingsPage = 8 }
+                RowDivider()
+                ActionRow("Âm thanh", icon = "volume", chevron = true) { settingsPage = 3 }
+                RowDivider()
+                ActionRow("Game Boy", icon = "image", chevron = true) { settingsPage = 6 }
+                RowDivider()
+                ActionRow("BIOS", icon = "database", chevron = true) { settingsPage = 7 }
+            }
+            SectionTitle("Dữ liệu")
+            GroupCard {
+                ActionRow(
+                    "Thư mục game",
+                    icon = "folder",
+                    subtitle = model.gameFolderName ?: "Chưa chọn. Quét thư mục để thêm game vào thư viện",
+                    chevron = true,
+                ) {
+                    onPickFolder()
+                }
+                RowDivider()
+                ActionRow("Dữ liệu", icon = "database", chevron = true) { settingsPage = 5 }
+            }
+            SectionTitle("Khác")
+            GroupCard {
+                ActionRow("Giới thiệu và giấy phép", icon = "file-text", chevron = true) { settingsPage = 2 }
+            }
+        }
+    }
+}
+
+/** Tiêu đề lớn của một tab (cùng cỡ với SheetHeader / PageHeader). */
+@Composable
+private fun TabTitle(text: String) {
+    Text(
+        text,
+        color = Rc.Text,
+        fontSize = 26.sp,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = (-0.4).sp,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+    )
 }
 
 /** Ô bìa: ảnh bìa cắt đầy ô, chưa có bìa thì hiện chữ cái đầu của tên game. */
