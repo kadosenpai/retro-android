@@ -240,7 +240,7 @@ fun LibraryScreen(model: AppModel) {
     }
 
     val navBarInset = with(androidx.compose.ui.platform.LocalDensity.current) { WindowInsets.navigationBars.getBottom(this).toDp() }
-    val navPad = if (compact) 0.dp else 52.dp + navBarInset
+    val navPad = if (compact) 0.dp else 48.dp + navBarInset
     Box(
         Modifier
             .fillMaxSize()
@@ -750,19 +750,19 @@ private fun LibBottomBar(selected: LibView, tint: Color, onSelect: (LibView) -> 
 private fun NavItem(icon: String, label: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val color by animateColorAsState(if (on) Color.White else Color(0xFFA9ABB3), tween(220), label = "navColor")
     val pop by androidx.compose.animation.core.animateFloatAsState(
-        if (on) 1.14f else 1f,
+        if (on) 1.06f else 1f,
         androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 500f),
         label = "navPop",
     )
     val fillAmt by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, tween(220), label = "navFill")
     Column(
-        modifier.clickableNoRipple(onClick).padding(top = 6.dp, bottom = 4.dp),
+        modifier.clickableNoRipple(onClick).padding(top = 7.dp, bottom = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(22.dp).graphicsLayer { scaleX = pop; scaleY = pop }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(20.dp).graphicsLayer { scaleX = pop; scaleY = pop }, contentAlignment = Alignment.Center) {
             if (icon == "grid") {
                 // Bốn ô bo tròn: viền khi tắt, đặc khi chọn (như icon Library của GameHub)
-                androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
+                androidx.compose.foundation.Canvas(Modifier.size(20.dp)) {
                     val s = size.minDimension
                     val gap = s * 0.10f
                     val cell = (s - gap) / 2f
@@ -775,11 +775,11 @@ private fun NavItem(icon: String, label: String, on: Boolean, modifier: Modifier
                     }
                 }
             } else {
-                RetroIcon(icon, size = 22.dp, tint = color, fill = on && icon == "star")
+                RetroIcon(icon, size = 20.dp, tint = color, fill = on && icon == "star")
             }
         }
         Spacer(Modifier.height(2.dp))
-        Text(label, color = color, fontSize = 11.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+        Text(label, color = color, fontSize = 10.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium, maxLines = 1)
     }
 }
 
