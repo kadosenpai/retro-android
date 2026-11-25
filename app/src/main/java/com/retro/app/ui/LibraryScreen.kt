@@ -240,7 +240,7 @@ fun LibraryScreen(model: AppModel) {
     }
 
     val navBarInset = with(androidx.compose.ui.platform.LocalDensity.current) { WindowInsets.navigationBars.getBottom(this).toDp() }
-    val navPad = if (compact) 0.dp else 64.dp + navBarInset
+    val navPad = if (compact) 0.dp else 52.dp + navBarInset
     Box(
         Modifier
             .fillMaxSize()
@@ -361,6 +361,7 @@ fun LibraryScreen(model: AppModel) {
     if (!compact) {
         LibBottomBar(
             selected = view,
+            tint = tint,
             onSelect = { v ->
                 hideKeyboard()
                 view = v
@@ -733,13 +734,16 @@ private fun SectionHeader(title: String, action: String? = null, onAction: () ->
 
 /** Thanh dưới gọn như GameHub: nền trong suốt, icon 24dp + chữ 11sp; mục đang chọn trắng, icon đặc, có hiệu ứng nảy. */
 @Composable
-private fun LibBottomBar(selected: LibView, onSelect: (LibView) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().background(Color(0x8C000000)).navigationBarsPadding().padding(horizontal = Ds.GapSm)) {
+private fun LibBottomBar(selected: LibView, tint: Color, onSelect: (LibView) -> Unit, modifier: Modifier = Modifier) {
+  Column(modifier.fillMaxWidth().background(lerp(tint, Color.Black, 0.88f).copy(alpha = 0.92f))) {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Ds.Divider))
+    Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Ds.GapSm)) {
         NavItem("grid", "Thư viện", selected == LibView.LIBRARY, Modifier.weight(1f)) { onSelect(LibView.LIBRARY) }
         NavItem("clock", "Gần đây", selected == LibView.RECENT, Modifier.weight(1f)) { onSelect(LibView.RECENT) }
         NavItem("star", "Yêu thích", selected == LibView.FAVORITES, Modifier.weight(1f)) { onSelect(LibView.FAVORITES) }
         NavItem("settings", "Cài đặt", selected == LibView.SETTINGS, Modifier.weight(1f)) { onSelect(LibView.SETTINGS) }
     }
+  }
 }
 
 @Composable
@@ -752,13 +756,13 @@ private fun NavItem(icon: String, label: String, on: Boolean, modifier: Modifier
     )
     val fillAmt by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, tween(220), label = "navFill")
     Column(
-        modifier.clickableNoRipple(onClick).padding(top = 8.dp, bottom = 6.dp),
+        modifier.clickableNoRipple(onClick).padding(top = 6.dp, bottom = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(Ds.IconBtn).graphicsLayer { scaleX = pop; scaleY = pop }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(22.dp).graphicsLayer { scaleX = pop; scaleY = pop }, contentAlignment = Alignment.Center) {
             if (icon == "grid") {
                 // Bốn ô bo tròn: viền khi tắt, đặc khi chọn (như icon Library của GameHub)
-                androidx.compose.foundation.Canvas(Modifier.size(Ds.IconBtn)) {
+                androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
                     val s = size.minDimension
                     val gap = s * 0.10f
                     val cell = (s - gap) / 2f
@@ -771,10 +775,10 @@ private fun NavItem(icon: String, label: String, on: Boolean, modifier: Modifier
                     }
                 }
             } else {
-                RetroIcon(icon, size = Ds.IconBtn, tint = color, fill = on && icon == "star")
+                RetroIcon(icon, size = 22.dp, tint = color, fill = on && icon == "star")
             }
         }
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(2.dp))
         Text(label, color = color, fontSize = 11.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
     }
 }
@@ -1100,8 +1104,13 @@ private fun GameMenuOverlay(
             val margin = with(density) { 12.dp.toPx() }
             val insetTop = maxOf(WindowInsets.statusBars.getTop(density).toFloat(), with(density) { 24.dp.toPx() }) + margin
             val insetBottom = maxOf(WindowInsets.navigationBars.getBottom(density).toFloat(), with(density) { 20.dp.toPx() }) + margin
-            val a = anchor ?: androidx.compose.ui.geometry.Rect(sw / 2 - 90f, sh / 3, sw / 2 + 90f, sh / 3 + 180f)
-            val coverW = minOf(a.width, a.height)
+            val a0 = anchor ?: androidx.compose.ui.geometry.Rect(sw / 2 - 90f, sh / 3, sw / 2 + 90f, sh / 3 + 180f)
+            val coverW = minOf(a0.width, a0.height)
+            // Game ở sát mép dưới/trên màn hình hay bị thanh điều hướng che: đẩy bìa vào vùng nhìn thấy để không mất khúc nào.
+            val grow = coverW * 0.08f
+            val ay = a0.top.coerceIn(insetTop + grow / 2, (sh - insetBottom - coverW - grow / 2).coerceAtLeast(insetTop + grow / 2))
+            val ax = a0.left.coerceIn(margin + grow / 2, (sw - margin - coverW - grow / 2).coerceAtLeast(margin))
+            val a = androidx.compose.ui.geometry.Rect(ax, ay, ax + coverW, ay + coverW)
             val menuW = with(density) { 260.dp.toPx() }
             val dens = density.density
             val coverBottom = a.top + coverW + coverW * 0.04f
