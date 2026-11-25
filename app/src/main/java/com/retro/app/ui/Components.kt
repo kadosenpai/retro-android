@@ -166,43 +166,6 @@ fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
-/** Nút tròn kính đậm có biểu tượng ✕ (đóng bảng). */
-@Composable
-fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(Ds.CardFill)
-            .border(BorderStroke(1.dp, Ds.CardStroke), CircleShape)
-            .clickable(role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        RetroIcon("x", size = Ds.IconBtn, tint = Rc.Text)
-    }
-}
-
-/** Đầu bảng: tiêu đề lớn bên trái, nút ✕ bên phải. */
-@Composable
-fun SheetHeader(title: String, onClose: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            title,
-            color = Rc.Text,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.4).sp,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(12.dp))
-        CloseButton(onClose)
-    }
-}
-
 /** Đầu trang con trong bảng: nút quay lại tròn + tiêu đề lớn. */
 @Composable
 fun PageHeader(title: String, onBack: () -> Unit) {
@@ -277,7 +240,7 @@ fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
  * Trang ngắn thì bảng ôm sát nội dung (không còn khoảng trống phía trên); trang dài thì cuộn.
  */
 @Composable
-fun Modifier.sheetMaxHeight(full: Boolean = false): Modifier {
+fun Modifier.sheetMaxHeight(): Modifier {
     val density = LocalDensity.current
     val view = LocalView.current
     val cfg = LocalConfiguration.current
@@ -285,6 +248,5 @@ fun Modifier.sheetMaxHeight(full: Boolean = false): Modifier {
     val rootH = remember(cfg.orientation, cfg.screenHeightDp, cfg.screenWidthDp) { view.rootView.height }
     val winH = if (rootH > 0) with(density) { rootH.toDp() } else cfg.screenHeightDp.dp
     val top = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
-    // full = bảng luôn cao hết cỡ (dưới thanh trạng thái một đoạn), mọi trang con cùng chiều cao
-    return if (full) this.height(winH - top - 24.dp) else this.heightIn(max = winH - top)
+    return this.heightIn(max = winH - top)
 }

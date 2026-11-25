@@ -1,10 +1,6 @@
 package com.retro.app.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,12 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -49,8 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
 
-private val sheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
-
 /** Menu ▲ khi đang chơi: thanh trên (Thoát · Tạm dừng · Tiếp tục), lưới biểu tượng, vài cài đặt gọn. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,26 +52,23 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = state,
-        containerColor = Color.Transparent,
+        containerColor = Rc.Sheet,
         contentColor = Rc.Text,
         scrimColor = Color(0x8C000000),
-        shape = sheetShape,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null,
     ) {
-        // Khung ngoài cố định: phần cuộn ở trên, nút "Thoát về thư viện" ghim dưới cùng nên luôn thấy ngay
-        var page by remember { mutableStateOf(0) }
         Column(
             Modifier
                 .fillMaxWidth()
                 .sheetMaxHeight()
-                .background(Brush.verticalGradient(listOf(Color(0xFF23252D), Color(0xFF111216))), sheetShape)
-                .border(BorderStroke(1.dp, Ds.CardStroke), sheetShape)
-                .padding(horizontal = Ds.Pad)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
                 .navigationBarsPadding()
-                .padding(top = Ds.Pad, bottom = Ds.Pad),
+                .padding(top = 12.dp, bottom = 20.dp),
         ) {
-          Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
             // 0 = menu chính, 1 = Cheat, 2 = Tay cầm, 3 = Lưu trạng thái, 4 = Nạp trạng thái, 5 = Hình ảnh
+            var page by remember { mutableStateOf(0) }
             val st = model.settings
             when (page) {
                 5 -> DisplayPage(model) { page = 0 }
@@ -87,34 +77,39 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                 3 -> StatesPage(model, save = true, onClose = onClose) { page = 0 }
                 4 -> StatesPage(model, save = false, onClose = onClose) { page = 0 }
                 else -> {
-                    // Tiêu đề căn giữa
-                    Text(
-                        "Tạm dừng",
-                        color = Rc.Text,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.4).sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    // Thanh trên
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                            PillButton("Thoát", compact = true, primary = false, onClick = {
+                                onClose()
+                                model.exitToLibrary()
+                            })
+                        }
+                        Text("Tạm dừng", color = Rc.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                            PillButton("Tiếp tục", compact = true, primary = false, onClick = onClose)
+                        }
+                    }
                     Text(
                         model.current?.name ?: "",
-                        color = Rc.Muted,
-                        fontSize = 13.sp,
+                        color = Rc.Faint,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                     )
 
-                    // Lưới biểu tượng 3 x 2, mọi ô cùng cỡ, cách đều Ds.Gap
-                    Spacer(Modifier.height(Ds.SectionGap))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Ds.Gap)) {
-                        MenuTile("download", "Lưu", Modifier.weight(1f)) { page = 3 }
+                    // Lưới biểu tượng 3 x 2
+                    Spacer(Modifier.height(14.dp))
+                    Row(Modifier.fillMaxWidth()) {
+                        MenuTile("save", "Lưu", Modifier.weight(1f)) { page = 3 }
                         MenuTile("upload", "Nạp", Modifier.weight(1f)) { page = 4 }
-                        MenuTile("star", "Cheat", Modifier.weight(1f)) { page = 1 }
+                        MenuTile("star", "Cheat", Modifier.weight(1f)) {
+                            page = 1
+                        }
                     }
-                    Spacer(Modifier.height(Ds.Gap))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Ds.Gap)) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth()) {
                         MenuTile("fast-forward", "Tua nhanh", Modifier.weight(1f), on = model.speed != 1f) {
                             val fast = model.speed == 1f
                             model.changeSpeed(if (fast) 2f else 1f)
@@ -145,59 +140,30 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
                             model.update { it.copy(showStats = v) }
                         }
                     }
-
                 }
             }
-          }
-          if (page == 0) {
-            Spacer(Modifier.height(Ds.Gap))
-            // Nút thoát dài, màu đỏ, nằm dưới cùng
-            val exitShape = RoundedCornerShape(Ds.CardRadius)
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(Ds.RowHeight)
-                    .clip(exitShape)
-                    .background(Color(0x29FF5A5A))
-                    .border(BorderStroke(1.dp, Color(0x8CFF6B6B)), exitShape)
-                    .clickable(role = Role.Button) {
-                        onClose()
-                        model.exitToLibrary()
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RetroIcon("chevron-left", size = Ds.IconRow, tint = Color(0xFFFF8D8D))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Thoát về thư viện", color = Color(0xFFFF8D8D), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-          }
         }
     }
 }
 
-/** Ô biểu tượng lớn trong lưới menu: cao 84dp, icon 38dp; bật = nền trắng, icon đen. */
+/** Ô biểu tượng trong lưới menu: ô vuông kính, bật = nền trắng biểu tượng đen. */
 @Composable
 private fun MenuTile(icon: String, label: String, modifier: Modifier = Modifier, on: Boolean = false, onClick: () -> Unit) {
     Column(
         modifier.clickableNoRipple(onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val shape = RoundedCornerShape(Ds.TileRadius)
         Box(
             Modifier
-                .fillMaxWidth()
-                .height(84.dp)
-                .clip(shape)
-                .background(if (on) Color.White else Ds.CardFill)
-                .border(BorderStroke(1.dp, if (on) Color.White else Ds.CardStroke), shape),
+                .size(60.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(if (on) Color.White else Rc.GlassStrong),
             contentAlignment = Alignment.Center,
         ) {
-            RetroIcon(icon, size = Ds.IconTile, tint = if (on) Color.Black else Rc.Text)
+            RetroIcon(icon, size = 26.dp, tint = if (on) Color.Black else Rc.Text)
         }
-        Spacer(Modifier.height(Ds.GapSm))
-        Text(label, color = if (on) Rc.Text else Rc.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Spacer(Modifier.height(6.dp))
+        Text(label, color = if (on) Rc.Text else Rc.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -208,12 +174,12 @@ private val timeFmt = SimpleDateFormat("HH:mm dd/MM", Locale.getDefault())
 private fun StatesPage(model: AppModel, save: Boolean, onClose: () -> Unit, onBack: () -> Unit) {
     PageHeader(if (save) "Lưu trạng thái" else "Nạp trạng thái", onBack)
     LaunchedEffect(Unit) { model.refreshSlots() }
-    Spacer(Modifier.height(Ds.Gap))
+    Spacer(Modifier.height(12.dp))
     val bySlot = model.slots.associateBy { it.slot }
     val ids = (1..RomStore.SLOT_COUNT).toList() + if (save) emptyList() else listOf(RomStore.AUTO_SLOT)
     ids.chunked(2).forEachIndexed { i, pair ->
-        if (i > 0) Spacer(Modifier.height(Ds.Gap))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Ds.Gap)) {
+        if (i > 0) Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             for (n in pair) {
                 val view = bySlot[n]
                 val filled = view != null && view.savedAt > 0
@@ -236,9 +202,8 @@ private fun SlotCard(title: String, view: SlotView?, enabled: Boolean, modifier:
     val filled = view != null && view.savedAt > 0
     Column(
         modifier
-            .clip(RoundedCornerShape(Ds.CardRadius))
-            .background(Ds.CardFill)
-            .border(BorderStroke(1.dp, Ds.CardStroke), RoundedCornerShape(Ds.CardRadius))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Rc.Glass)
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
         Box(

@@ -222,16 +222,6 @@ class AppModel(private val app: Application) {
         }
     }
 
-    /** Bật/tắt đánh dấu yêu thích của một game. */
-    fun toggleFavorite(rom: RomInfo) {
-        scope.launch {
-            val now = !rom.favorite
-            withContext(Dispatchers.IO) { store.setFavorite(rom.id, now) }
-            refresh()
-            toast = if (now) "Đã thêm \"${rom.name}\" vào Yêu thích" else "Đã bỏ \"${rom.name}\" khỏi Yêu thích"
-        }
-    }
-
     fun delete(rom: RomInfo) {
         scope.launch {
             if (current?.id == rom.id) leaveGame()

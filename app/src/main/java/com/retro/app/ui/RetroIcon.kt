@@ -22,7 +22,6 @@ fun RetroIcon(
     modifier: Modifier = Modifier,
     size: Dp = 24.dp,
     tint: Color = Rc.Muted,
-    fill: Boolean = false,
 ) {
     val paths = remember(name) {
         (RetroIconData.paths[name] ?: emptyList()).map { PathParser().parsePathString(it).toPath() }
@@ -32,7 +31,6 @@ fun RetroIcon(
         val k = this.size.minDimension / 24f
         scale(scaleX = k, scaleY = k, pivot = Offset.Zero) {
             for (p in paths) {
-                if (fill) drawPath(p, color = tint)
                 drawPath(
                     p,
                     color = tint,

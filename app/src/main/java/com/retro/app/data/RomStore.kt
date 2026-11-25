@@ -25,8 +25,6 @@ data class RomInfo(
     val system: String = "gba",
     /** Chế độ máy của game NDS: "auto" (tự chọn), "ds" hoặc "dsi". */
     val consoleMode: String = "auto",
-    /** Đã đánh dấu yêu thích (hiện ở mục "Yêu thích" của thư viện). */
-    val favorite: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -39,7 +37,6 @@ data class RomInfo(
         .put("coverTriedAt", coverTriedAt)
         .put("system", system)
         .put("consoleMode", consoleMode)
-        .put("favorite", favorite)
 
     companion object {
         fun fromJson(o: JSONObject) = RomInfo(
@@ -53,7 +50,6 @@ data class RomInfo(
             coverTriedAt = o.optLong("coverTriedAt", 0),
             system = o.optString("system", "gba"),
             consoleMode = o.optString("consoleMode", "auto"),
-            favorite = o.optBoolean("favorite", false),
         )
     }
 }
@@ -459,10 +455,6 @@ class RomStore(private val ctx: Context) {
 
     fun rename(id: String, name: String) = synchronized(lock) {
         writeIndex(readIndex().map { if (it.id == id) it.copy(name = name) else it })
-    }
-
-    fun setFavorite(id: String, favorite: Boolean) = synchronized(lock) {
-        writeIndex(readIndex().map { if (it.id == id) it.copy(favorite = favorite) else it })
     }
 
     fun setConsoleMode(id: String, mode: String) = synchronized(lock) {
