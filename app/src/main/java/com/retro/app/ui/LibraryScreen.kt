@@ -689,7 +689,7 @@ private fun SettingsContent(
         3 -> AudioPage(model) { onPage(0) }
         4 -> {
             PageHeader("Cảm ứng & rung") { onPage(0) }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Ds.SectionGap))
             GroupCard {
                 ToggleRow("Hiện nút ảo", st.showPad, icon = "dpad") { v -> model.update { it.copy(showPad = v) } }
                 RowDivider()
@@ -698,7 +698,7 @@ private fun SettingsContent(
         }
         5 -> {
             PageHeader("Dữ liệu") { onPage(0) }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Ds.SectionGap))
             GroupCard {
                 ActionRow("Xoá hết game", danger = true, icon = "trash", subtitle = "Kèm Save State và file .sav") {
                     onDeleteAll()
@@ -817,16 +817,35 @@ private fun GameMenuOverlay(
             val coverBottom = a.top + coverW + coverW * 0.04f
             val titleDp = 30f
             val n = actions.size
-            // Ưu tiên bảng nằm dưới game; không đủ chỗ thì sang cạnh game, đáy bảng bằng đáy game.
+            // Vị trí bảng: ưu tiên dưới game, rồi trên game (co chiều cao dòng nếu cần, tối thiểu 34dp);
+            // chỉ khi cả hai chiều đều không vừa mới đặt cạnh game. Bảng không bao giờ đè lên game.
+            val coverTop = a.top - coverW * 0.04f
+            val rowBelow = (((sh - insetBottom - (coverBottom + gap)) / dens - titleDp) / n)
+            val rowAbove = ((((coverTop - gap) - insetTop) / dens - titleDp) / n)
             var rowDp = 48f
             var mx = a.left.coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
             var my = coverBottom + gap
-            if (my + (titleDp + n * rowDp) * dens > sh - insetBottom) {
-                val bottomY = minOf(coverBottom, sh - insetBottom)
-                rowDp = (((bottomY - insetTop) / dens - titleDp) / n).coerceIn(34f, 48f)
-                my = bottomY - (titleDp + n * rowDp) * dens
-                mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
-                else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
+            when {
+                rowBelow >= 44f -> rowDp = rowBelow.coerceAtMost(48f)
+                rowAbove >= 44f -> {
+                    rowDp = rowAbove.coerceAtMost(48f)
+                    my = coverTop - gap - (titleDp + n * rowDp) * dens
+                }
+                maxOf(rowBelow, rowAbove) >= 34f -> {
+                    if (rowBelow >= rowAbove) {
+                        rowDp = rowBelow
+                    } else {
+                        rowDp = rowAbove
+                        my = coverTop - gap - (titleDp + n * rowDp) * dens
+                    }
+                }
+                else -> {
+                    val bottomY = minOf(coverBottom, sh - insetBottom)
+                    rowDp = (((bottomY - insetTop) / dens - titleDp) / n).coerceIn(34f, 48f)
+                    my = bottomY - (titleDp + n * rowDp) * dens
+                    mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
+                    else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
+                }
             }
             // Game giữ nguyên vị trí cũ, phóng to nhẹ.
             Box(

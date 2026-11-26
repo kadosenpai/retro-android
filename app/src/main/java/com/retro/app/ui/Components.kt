@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -166,26 +167,30 @@ fun RetroSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
-/** Đầu trang con trong bảng: nút quay lại tròn + tiêu đề lớn. */
+/**
+ * Đầu trang con: mũi tên quay lại trần (không nền, cùng kiểu icon ở thư viện) + tiêu đề lớn sát bên.
+ * Cao cố định 48dp; khoảng cách xuống nội dung do SectionTitle / Spacer phía dưới quyết định (24dp).
+ * Vùng chạm 44dp, nhưng nét mũi tên nằm sát lề trái nội dung.
+ */
 @Composable
 fun PageHeader(title: String, onBack: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp),
+        Modifier.fillMaxWidth().height(48.dp).padding(top = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Ds.CardFill)
-                .border(BorderStroke(1.dp, Ds.CardStroke), CircleShape)
-                .clickable(role = Role.Button, onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) {
-            // nét chevron-left nằm trong khoảng 9..15 của khung 24: tâm đúng giữa nên không cần dịch
-            RetroIcon("chevron-left", size = Ds.IconBtn, tint = Rc.Text)
+        Box(Modifier.width(34.dp)) {
+            Box(
+                Modifier
+                    .requiredSize(44.dp)
+                    .offset(x = (-10).dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                RetroIcon("chevron-left", size = 28.dp, tint = Rc.Text)
+            }
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(2.dp))
         Text(
             title,
             color = Rc.Text,

@@ -3,6 +3,8 @@ package com.retro.app.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,6 +87,7 @@ fun AboutPage(onBack: () -> Unit) {
     }
 
     PageHeader("Giới thiệu", onBack)
+    Spacer(Modifier.height(Ds.SectionGap))
 
     GroupCard {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {

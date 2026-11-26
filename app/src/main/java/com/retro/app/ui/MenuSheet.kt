@@ -174,7 +174,7 @@ private val timeFmt = SimpleDateFormat("HH:mm dd/MM", Locale.getDefault())
 private fun StatesPage(model: AppModel, save: Boolean, onClose: () -> Unit, onBack: () -> Unit) {
     PageHeader(if (save) "Lưu trạng thái" else "Nạp trạng thái", onBack)
     LaunchedEffect(Unit) { model.refreshSlots() }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(Ds.SectionGap))
     val bySlot = model.slots.associateBy { it.slot }
     val ids = (1..RomStore.SLOT_COUNT).toList() + if (save) emptyList() else listOf(RomStore.AUTO_SLOT)
     ids.chunked(2).forEachIndexed { i, pair ->

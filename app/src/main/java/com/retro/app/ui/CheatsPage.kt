@@ -37,6 +37,7 @@ fun CheatsPage(model: AppModel, onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
 
     PageHeader("Cheat", onBack)
+    Spacer(Modifier.height(Ds.SectionGap))
 
     GroupCard {
         if (model.cheats.isEmpty()) {
