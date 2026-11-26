@@ -1,36 +1,18 @@
 package com.retro.app.ui
 
-import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.pager.HorizontalPager
-import kotlinx.coroutines.launch
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,51 +25,42 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retro.app.AppModel
 import com.retro.app.data.GameSystem
 import com.retro.app.data.RomInfo
 import com.retro.app.data.SortKey
-import java.util.Locale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -502,498 +475,5 @@ fun LibraryScreen(model: AppModel) {
             },
             dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Huỷ") } },
         )
-    }
-}
-
-private fun consoleLabel(mode: String) = when (mode) {
-    "ds" -> "DS"
-    "dsi" -> "DSi"
-    else -> "Tự động"
-}
-
-/** Đọc ảnh bìa của game từ bộ nhớ (ngoài luồng chính); null nếu chưa có. */
-@Composable
-private fun rememberCover(model: AppModel, rom: RomInfo): ImageBitmap? {
-    val img by produceState<ImageBitmap?>(null, rom.id, rom.coverAt) {
-        value = if (rom.coverAt == 0L) {
-            null
-        } else {
-            withContext(Dispatchers.IO) {
-                model.store.readCover(rom.id)?.let { b ->
-                    runCatching { BitmapFactory.decodeByteArray(b, 0, b.size)?.asImageBitmap() }.getOrNull()
-                }
-            }
-        }
-    }
-    return img
-}
-
-
-/** Nút tròn có biểu tượng (cài đặt, sắp xếp, thêm game). */
-@Composable
-private fun IconBtn(icon: String, desc: String, modifier: Modifier = Modifier, small: Boolean = false, onClick: () -> Unit) {
-    Box(
-        modifier
-            .size(if (small) 36.dp else 44.dp)
-            .clip(CircleShape)
-            .clickable(role = Role.Button, onClickLabel = desc, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        RetroIcon(icon, size = if (small) 22.dp else 26.dp, tint = Rc.Text)
-    }
-}
-
-/** Ô tìm kiếm dạng viên thuốc. */
-@Composable
-private fun SearchBox(query: String, onChange: (String) -> Unit, height: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .height(height)
-            .clip(RoundedCornerShape(height / 2))
-            .background(Rc.Glass)
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RetroIcon("search", size = 20.dp, tint = Rc.Muted)
-        Spacer(Modifier.size(10.dp))
-        BasicTextField(
-            value = query,
-            onValueChange = onChange,
-            singleLine = true,
-            textStyle = TextStyle(color = Rc.Text, fontSize = 15.sp, fontFamily = InterFamily),
-            cursorBrush = SolidColor(Color.White),
-            modifier = Modifier.weight(1f),
-            decorationBox = { inner ->
-                Box(contentAlignment = Alignment.CenterStart) {
-                    if (query.isEmpty()) Text("Tìm tên ROM hoặc mã ID...", color = Rc.Faint, fontSize = 15.sp)
-                    inner()
-                }
-            },
-        )
-    }
-}
-
-/** Menu chọn kiểu sắp xếp: dấu ✓ ở kiểu đang dùng, dấu − ở các kiểu còn lại. */
-@Composable
-private fun SortMenu(expanded: Boolean, onDismiss: () -> Unit, current: SortKey, onPick: (SortKey) -> Unit) {
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        SortKey.values().forEach { k ->
-            DropdownMenuItem(
-                leadingIcon = { RetroIcon(if (k == current) "check" else "minus", size = 20.dp, tint = Rc.Muted) },
-                text = { Text(k.label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold) },
-                onClick = {
-                    onPick(k)
-                    onDismiss()
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
-    val cfg = LocalConfiguration.current
-    val wide = cfg.screenWidthDp >= 600
-    val compact = cfg.screenHeightDp < 480
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        if (hasAny) {
-            Text(
-                "Không tìm thấy game nào",
-                color = Rc.Text,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 36.dp),
-            )
-            Text(
-                "Thử từ khoá khác.",
-                color = Rc.Muted,
-                fontSize = 15.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            )
-            return@Column
-        }
-        val shape = RoundedCornerShape(28.dp)
-        val cardMod = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(Rc.Glass)
-            .border(BorderStroke(1.dp, Rc.Stroke), shape)
-        val desc = "Bấm dấu + để thêm file ROM (.gba, .gb, .gbc) của bạn. Chỉ dùng ROM bạn sở hữu hợp pháp; dữ liệu nằm trên máy này."
-        if (compact) {
-            // Màn ngang thấp: thẻ gọn một hàng để nằm vừa màn hình, không phải vuốt.
-            Row(cardMod.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                RetroIcon("layers", size = 40.dp, tint = Rc.Text)
-                Spacer(Modifier.width(18.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Chưa có game nào", color = Rc.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(2.dp))
-                    Text(desc, color = Rc.Muted, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-                Spacer(Modifier.width(18.dp))
-                PillButton("Thêm ROM", icon = "plus", onClick = onAdd)
-            }
-        } else if (wide) {
-            Row(cardMod.padding(horizontal = 24.dp, vertical = 22.dp), verticalAlignment = Alignment.CenterVertically) {
-                RetroIcon("layers", size = 56.dp, tint = Rc.Text)
-                Spacer(Modifier.width(22.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Chưa có game nào", color = Rc.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(6.dp))
-                    Text(desc, color = Rc.Muted, fontSize = 16.sp)
-                }
-                Spacer(Modifier.width(22.dp))
-                PillButton("Thêm ROM", icon = "plus", onClick = onAdd)
-            }
-        } else {
-            Column(cardMod.padding(horizontal = 24.dp, vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                RetroIcon("layers", size = 56.dp, tint = Rc.Text)
-                Spacer(Modifier.height(18.dp))
-                Text("Chưa có game nào", color = Rc.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(10.dp))
-                Text(desc, color = Rc.Muted, fontSize = 17.sp, lineHeight = 25.sp, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(22.dp))
-                PillButton("Thêm ROM", icon = "plus", onClick = onAdd)
-            }
-        }
-    }
-}
-
-/** Menu nhỏ khi giữ lâu vào một game. */
-/**
- * Nội dung trang Cài đặt: trang chính và các trang con (Tay cầm, Âm thanh, Hình ảnh, ...).
- * page: 0 = chính, 1 = Tay cầm, 2 = Giới thiệu, 3 = Âm thanh, 4 = Cảm ứng & rung, 5 = Dữ liệu, 6 = Game Boy, 7 = BIOS, 8 = Hình ảnh.
- */
-@Composable
-private fun SettingsContent(
-    model: AppModel,
-    page: Int,
-    onPage: (Int) -> Unit,
-    onClose: () -> Unit,
-    onDeleteAll: () -> Unit,
-    onPickFolder: () -> Unit,
-) {
-    val st = model.settings
-    when (page) {
-        1 -> ControllerPage(model) { onPage(0) }
-        2 -> AboutPage { onPage(0) }
-        6 -> GameBoyPage(model) { onPage(0) }
-        7 -> BiosPage(model) { onPage(0) }
-        8 -> DisplayPage(model) { onPage(0) }
-        3 -> AudioPage(model) { onPage(0) }
-        4 -> {
-            PageHeader("Cảm ứng & rung") { onPage(0) }
-            Spacer(Modifier.height(Ds.SectionGap))
-            GroupCard {
-                ToggleRow("Hiện nút ảo", st.showPad, icon = "dpad") { v -> model.update { it.copy(showPad = v) } }
-                RowDivider()
-                ToggleRow("Rung khi nhấn nút", st.haptics, icon = "phone") { v -> model.update { it.copy(haptics = v) } }
-            }
-        }
-        5 -> {
-            PageHeader("Dữ liệu") { onPage(0) }
-            Spacer(Modifier.height(Ds.SectionGap))
-            GroupCard {
-                ActionRow("Xoá hết game", danger = true, icon = "trash", subtitle = "Kèm Save State và file .sav") {
-                    onDeleteAll()
-                }
-            }
-            Text(
-                "Tất cả dữ liệu nằm trên máy này.",
-                color = Rc.Faint,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 10.dp),
-            )
-        }
-        else -> {
-            PageHeader("Cài đặt", onClose)
-            SectionTitle("Điều khiển")
-            GroupCard {
-                ActionRow("Tay cầm", icon = "gamepad", chevron = true) { onPage(1) }
-                RowDivider()
-                ActionRow("Cảm ứng & rung", icon = "phone", chevron = true) { onPage(4) }
-            }
-            SectionTitle("Trình giả lập")
-            GroupCard {
-                ActionRow("Hình ảnh", icon = "image", chevron = true, subtitle = model.settings.filter.label) { onPage(8) }
-                RowDivider()
-                ActionRow("Âm thanh", icon = "volume", chevron = true) { onPage(3) }
-                RowDivider()
-                ActionRow("Game Boy", icon = "image", chevron = true) { onPage(6) }
-                RowDivider()
-                ActionRow("BIOS", icon = "database", chevron = true) { onPage(7) }
-            }
-            SectionTitle("Dữ liệu")
-            GroupCard {
-                ActionRow(
-                    "Thư mục game",
-                    icon = "folder",
-                    subtitle = model.gameFolderName ?: "Chưa chọn. Quét thư mục để thêm game vào thư viện",
-                    chevron = true,
-                ) {
-                    onPickFolder()
-                }
-                RowDivider()
-                ActionRow("Dữ liệu", icon = "database", chevron = true) { onPage(5) }
-            }
-            SectionTitle("Khác")
-            GroupCard {
-                ActionRow("Giới thiệu và giấy phép", icon = "file-text", chevron = true) { onPage(2) }
-            }
-        }
-    }
-}
-
-private class GameAction(val label: String, val icon: String, val danger: Boolean = false, val onClick: () -> Unit)
-
-@Composable
-private fun GameMenuOverlay(
-    rom: RomInfo,
-    cover: ImageBitmap?,
-    anchor: androidx.compose.ui.geometry.Rect?,
-    actions: List<GameAction>,
-    onDismiss: () -> Unit,
-) {
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-    ) {
-        val density = androidx.compose.ui.platform.LocalDensity.current
-        // Tắt hiệu ứng mở cửa sổ mặc định của Dialog (nó phóng nhẹ từ giữa nên nội dung bị "trượt" sang trái).
-        val dialogView = androidx.compose.ui.platform.LocalView.current
-        // Làm mờ phần phía sau bằng hiệu ứng mờ cửa sổ của hệ điều hành (Android 12+, nếu máy bật); không có thì chỉ tối nền.
-        val blurOk = remember {
-            android.os.Build.VERSION.SDK_INT >= 31 &&
-                dialogView.context.getSystemService(android.view.WindowManager::class.java)?.isCrossWindowBlurEnabled == true
-        }
-        androidx.compose.runtime.SideEffect {
-            (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.apply {
-                setWindowAnimations(-1)
-                setDimAmount(0f)
-                if (blurOk && android.os.Build.VERSION.SDK_INT >= 31) {
-                    addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-                    attributes = attributes.also { it.blurBehindRadius = 150 }
-                }
-            }
-        }
-        val scale = remember { androidx.compose.animation.core.Animatable(1f) }
-        val fade = remember { androidx.compose.animation.core.Animatable(0f) }
-        LaunchedEffect(Unit) {
-            launch { fade.animateTo(1f, androidx.compose.animation.core.tween(140)) }
-            scale.animateTo(1.08f, androidx.compose.animation.core.tween(160))
-        }
-        BoxWithConstraints(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = fade.value }
-                .background(if (blurOk) Color(0x55000000) else Color(0xCC000000))
-                .clickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss,
-                ),
-        ) {
-            val sw = with(density) { maxWidth.toPx() }
-            val sh = with(density) { maxHeight.toPx() }
-            val gap = with(density) { 12.dp.toPx() }
-            val margin = with(density) { 12.dp.toPx() }
-            val insetTop = maxOf(WindowInsets.statusBars.getTop(density).toFloat(), with(density) { 24.dp.toPx() }) + margin
-            val insetBottom = maxOf(WindowInsets.navigationBars.getBottom(density).toFloat(), with(density) { 20.dp.toPx() }) + margin
-            val a0 = anchor ?: androidx.compose.ui.geometry.Rect(sw / 2 - 90f, sh / 3, sw / 2 + 90f, sh / 3 + 180f)
-            val coverW = minOf(a0.width, a0.height)
-            // Game ở sát mép màn hình: đẩy bìa vào vùng nhìn thấy để không bị cắt mất khúc nào.
-            val grow = coverW * 0.08f
-            val ay = a0.top.coerceIn(insetTop + grow / 2, (sh - insetBottom - coverW - grow / 2).coerceAtLeast(insetTop + grow / 2))
-            val ax = a0.left.coerceIn(margin + grow / 2, (sw - margin - coverW - grow / 2).coerceAtLeast(margin))
-            val a = androidx.compose.ui.geometry.Rect(ax, ay, ax + coverW, ay + coverW)
-            val menuW = with(density) { 260.dp.toPx() }
-            val dens = density.density
-            val coverBottom = a.top + coverW + coverW * 0.04f
-            val titleDp = 30f
-            val n = actions.size
-            // Vị trí bảng: ưu tiên dưới game, rồi trên game (co chiều cao dòng nếu cần, tối thiểu 34dp);
-            // chỉ khi cả hai chiều đều không vừa mới đặt cạnh game. Bảng không bao giờ đè lên game.
-            val coverTop = a.top - coverW * 0.04f
-            val rowBelow = (((sh - insetBottom - (coverBottom + gap)) / dens - titleDp) / n)
-            val rowAbove = ((((coverTop - gap) - insetTop) / dens - titleDp) / n)
-            var rowDp = 48f
-            var mx = a.left.coerceIn(margin, (sw - menuW - margin).coerceAtLeast(margin))
-            var my = coverBottom + gap
-            when {
-                rowBelow >= 44f -> rowDp = rowBelow.coerceAtMost(48f)
-                rowAbove >= 44f -> {
-                    rowDp = rowAbove.coerceAtMost(48f)
-                    my = coverTop - gap - (titleDp + n * rowDp) * dens
-                }
-                maxOf(rowBelow, rowAbove) >= 34f -> {
-                    if (rowBelow >= rowAbove) {
-                        rowDp = rowBelow
-                    } else {
-                        rowDp = rowAbove
-                        my = coverTop - gap - (titleDp + n * rowDp) * dens
-                    }
-                }
-                else -> {
-                    val bottomY = minOf(coverBottom, sh - insetBottom)
-                    rowDp = (((bottomY - insetTop) / dens - titleDp) / n).coerceIn(34f, 48f)
-                    my = bottomY - (titleDp + n * rowDp) * dens
-                    mx = if (a.right + gap + menuW <= sw - margin) a.right + coverW * 0.04f + gap
-                    else (a.left - coverW * 0.04f - gap - menuW).coerceAtLeast(margin)
-                }
-            }
-            // Game giữ nguyên vị trí cũ, phóng to nhẹ.
-            Box(
-                Modifier
-                    .offset { androidx.compose.ui.unit.IntOffset(a.left.toInt(), a.top.toInt()) }
-                    .size(with(density) { coverW.toDp() })
-                    .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF101114))
-                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(16.dp))
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (cover != null) {
-                    Image(bitmap = cover, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                } else {
-                    Text(
-                        rom.name.trim().take(1).uppercase(Locale.ROOT).ifEmpty { "?" },
-                        color = Rc.Muted,
-                        fontSize = 40.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-            // Bảng thao tác
-            Column(
-                Modifier
-                    .offset { androidx.compose.ui.unit.IntOffset(mx.toInt(), my.toInt()) }
-                    .width(260.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Rc.Sheet)
-                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    ),
-            ) {
-                Text(
-                    rom.name,
-                    color = Rc.Muted,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.height(titleDp.dp).padding(horizontal = 16.dp).wrapContentHeight(Alignment.CenterVertically),
-                )
-                actions.forEach { act ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = act.onClick)
-                            .height(rowDp.dp)
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            act.label,
-                            color = if (act.danger) Rc.Danger else Rc.Text,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        RetroIcon(act.icon, size = 20.dp, tint = if (act.danger) Rc.Danger else Rc.Muted)
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Ô game trong lưới: bìa vuông, tên bên dưới. Chạm để chơi, giữ lâu để mở menu. */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun RomTile(
-    rom: RomInfo,
-    cover: ImageBitmap?,
-    onOpen: () -> Unit,
-    onMenu: () -> Unit,
-) {
-    val haptic = LocalHapticFeedback.current
-    Column(
-        Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .combinedClickable(
-                onClick = onOpen,
-                onLongClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onMenu()
-                },
-            ),
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF101114))
-                .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (cover != null) {
-                Image(
-                    bitmap = cover,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Text(
-                    rom.name.trim().take(1).uppercase(Locale.ROOT).ifEmpty { "?" },
-                    color = Rc.Muted,
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            rom.name,
-            color = Rc.Text,
-            fontSize = 13.sp,
-            lineHeight = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 2.dp),
-        )
-        Text(
-            relativeDay(maxOf(rom.lastPlayedAt, rom.addedAt)),
-            color = Rc.Muted,
-            fontSize = 11.sp,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 2.dp, vertical = 1.dp),
-        )
-    }
-}
-
-private fun relativeDay(ts: Long): String {
-    if (ts <= 0L) return "Chưa chơi"
-    val days = ((System.currentTimeMillis() - ts) / 86_400_000L).toInt()
-    return when {
-        days <= 0 -> "Hôm nay"
-        days == 1 -> "Hôm qua"
-        days < 30 -> "$days ngày trước"
-        else -> "Lâu rồi"
     }
 }

@@ -127,6 +127,8 @@ class AppModel(private val app: Application) {
         EmulatorEngine.setOption("melonds_mic_input", "blow")
         EmulatorEngine.setOption("melonds_dsi_sdcard", "disabled")
         EmulatorEngine.setOption("melonds_homebrew_sdcard", "disabled")
+        // Đồng hồ DS luôn bám giờ điện thoại (lõi tự đặt lại RTC mỗi khung hình), kể cả sau khi nạp state/tua nhanh.
+        EmulatorEngine.setOption("melonds_start_time_mode", "sync")
         // Không hỗ trợ chơi online (Wi-Fi): tắt mạng của lõi.
         EmulatorEngine.setOption("melonds_network_mode", "disabled")
         listOf(

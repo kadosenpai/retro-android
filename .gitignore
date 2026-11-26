@@ -19,3 +19,4 @@ app/src/main/assets/fceumm-version.txt
 app/src/main/assets/mgba-version.txt
 *.jks
 *.keystore
+*.zip

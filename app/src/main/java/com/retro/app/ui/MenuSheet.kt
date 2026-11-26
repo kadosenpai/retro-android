@@ -163,7 +163,7 @@ private fun MenuTile(icon: String, label: String, modifier: Modifier = Modifier,
             RetroIcon(icon, size = 26.dp, tint = if (on) Color.Black else Rc.Text)
         }
         Spacer(Modifier.height(6.dp))
-        Text(label, color = if (on) Rc.Text else Rc.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(label, color = if (on) Rc.Text else Rc.Muted, fontSize = 12.sp, fontWeight = FontWeight.Normal, maxLines = 1)
     }
 }
 

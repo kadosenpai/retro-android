@@ -195,7 +195,7 @@ fun PageHeader(title: String, onBack: () -> Unit) {
             title,
             color = Rc.Text,
             fontSize = 26.sp,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.Bold,
             letterSpacing = (-0.4).sp,
         )
     }

@@ -65,10 +65,8 @@ object Ds {
 /** Phông Inter, giống bản web. */
 val InterFamily = FontFamily(
     Font(R.font.inter_regular, FontWeight.Normal),
-    Font(R.font.inter_medium, FontWeight.Medium),
     Font(R.font.inter_semibold, FontWeight.SemiBold),
     Font(R.font.inter_bold, FontWeight.Bold),
-    Font(R.font.inter_extrabold, FontWeight.ExtraBold),
 )
 
 private fun Typography.withFont(f: FontFamily): Typography = copy(
