@@ -74,7 +74,7 @@ private fun PaletteRow(p: GbPalette, selected: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.clip(RoundedCornerShape(8.dp))) {
+        Row(Modifier.clip(RoundedCornerShape(Ds.RadiusSm))) {
             p.colors.forEach { c -> Box(Modifier.size(width = 22.dp, height = 28.dp).background(Color(c))) }
         }
         Spacer(Modifier.width(14.dp))

@@ -55,7 +55,7 @@ fun PlayMenuSheet(model: AppModel, onClose: () -> Unit) {
         containerColor = Rc.Sheet,
         contentColor = Rc.Text,
         scrimColor = Color(0x8C000000),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = RoundedCornerShape(topStart = Ds.RadiusSheet, topEnd = Ds.RadiusSheet),
         dragHandle = null,
     ) {
         Column(
@@ -156,7 +156,7 @@ private fun MenuTile(icon: String, label: String, modifier: Modifier = Modifier,
         Box(
             Modifier
                 .size(60.dp)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(RoundedCornerShape(Ds.RadiusMd))
                 .background(if (on) Color.White else Rc.GlassStrong),
             contentAlignment = Alignment.Center,
         ) {
@@ -202,7 +202,7 @@ private fun SlotCard(title: String, view: SlotView?, enabled: Boolean, modifier:
     val filled = view != null && view.savedAt > 0
     Column(
         modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Ds.RadiusMd))
             .background(Rc.Glass)
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
     ) {

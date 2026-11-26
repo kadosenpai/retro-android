@@ -169,7 +169,7 @@ internal fun EmptyState(hasAny: Boolean, onAdd: () -> Unit) {
             )
             return@Column
         }
-        val shape = RoundedCornerShape(28.dp)
+        val shape = RoundedCornerShape(Ds.CardRadius)
         val cardMod = Modifier
             .fillMaxWidth()
             .clip(shape)
@@ -227,7 +227,7 @@ internal fun RomTile(
     val haptic = LocalHapticFeedback.current
     Column(
         Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Ds.RadiusMd))
             .combinedClickable(
                 onClick = onOpen,
                 onLongClick = {
@@ -240,9 +240,9 @@ internal fun RomTile(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(Ds.RadiusMd))
                 .background(Color(0xFF101114))
-                .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(16.dp)),
+                .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(Ds.RadiusMd)),
             contentAlignment = Alignment.Center,
         ) {
             if (cover != null) {

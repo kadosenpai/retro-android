@@ -114,7 +114,7 @@ fun PlayScreen(model: AppModel) {
                     .align(Alignment.TopEnd)
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(8.dp)
-                    .background(Rc.Solid.copy(alpha = 0.7f), RoundedCornerShape(20.dp))
+                    .background(Rc.Solid.copy(alpha = 0.7f), RoundedCornerShape(Ds.CardRadius))
                     .pointerInput(Unit) {
                         // Chạm nhanh mở menu; giữ đủ lâu thì thoát thẳng về thư viện.
                         awaitEachGesture {

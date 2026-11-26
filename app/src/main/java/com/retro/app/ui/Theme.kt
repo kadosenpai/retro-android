@@ -51,8 +51,10 @@ object Ds {
     val Gap = 12.dp            // khoảng cách giữa các thẻ, nút cùng hàng
     val GapSm = 8.dp
     val SectionGap = 24.dp     // khoảng cách trên tiêu đề mục
-    val CardRadius = 22.dp     // thẻ, khối nhóm
-    val CoverRadius = 20.dp    // bìa game
+    val RadiusSm = 12.dp       // chip nhỏ, dòng chọn, bảng màu
+    val RadiusMd = 16.dp       // bìa game, ô lưới, thẻ slot, nút to
+    val CardRadius = 22.dp     // thẻ, khối nhóm, bảng thao tác, toast
+    val RadiusSheet = 28.dp    // menu kéo từ dưới lên
     val RowHeight = 56.dp
     val IconRow = 22.dp        // icon ở đầu hàng
     val IconBtn = 24.dp        // icon trong nút tròn

@@ -53,7 +53,7 @@ fun ToastBubble(msg: String, modifier: Modifier = Modifier) {
         modifier
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = 24.dp, vertical = 28.dp)
-            .background(Color(0xE61E1F24), RoundedCornerShape(22.dp))
+            .background(Color(0xE61E1F24), RoundedCornerShape(Ds.CardRadius))
             .padding(horizontal = 18.dp, vertical = 12.dp),
     ) {
         Text(msg, color = Color.White, fontSize = 15.sp)

@@ -145,9 +145,9 @@ internal fun GameMenuOverlay(
                     .offset { androidx.compose.ui.unit.IntOffset(a.left.toInt(), a.top.toInt()) }
                     .size(with(density) { coverW.toDp() })
                     .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(Ds.RadiusMd))
                     .background(Color(0xFF101114))
-                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(16.dp))
+                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(Ds.RadiusMd))
                     .clickable(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null,
@@ -171,9 +171,9 @@ internal fun GameMenuOverlay(
                 Modifier
                     .offset { androidx.compose.ui.unit.IntOffset(mx.toInt(), my.toInt()) }
                     .width(260.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(Ds.CardRadius))
                     .background(Rc.Sheet)
-                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
+                    .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(Ds.CardRadius))
                     .clickable(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null,

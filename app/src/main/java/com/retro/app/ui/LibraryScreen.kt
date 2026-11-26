@@ -225,9 +225,9 @@ fun LibraryScreen(model: AppModel) {
             Box {
                 Row(
                     Modifier
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(RoundedCornerShape(Ds.CardRadius))
                         .background(Rc.Glass)
-                        .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(18.dp))
+                        .border(BorderStroke(1.dp, Rc.Stroke), RoundedCornerShape(Ds.CardRadius))
                         .clickable { sortPill = true }
                         .padding(start = 12.dp, end = 6.dp, top = if (compact) 3.dp else 6.dp, bottom = if (compact) 3.dp else 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -419,7 +419,7 @@ fun LibraryScreen(model: AppModel) {
                         Row(
                             Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(RoundedCornerShape(Ds.RadiusSm))
                                 .clickable {
                                     model.setConsoleMode(rom, key)
                                     consoleTarget = null
